@@ -1,0 +1,20 @@
+[package]
+name = "screen-compiler-codegen-rust"
+description = "Rust generation for Screen Compiler: UI IR to deterministic Rust against NoWayOS's UI builder contract."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+screen-compiler-ir.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+# The snapshot tests run the whole pipeline over the fixtures.
+screen-compiler-analyse.workspace = true
+screen-compiler-tsx.workspace = true
+
+[lints]
+workspace = true

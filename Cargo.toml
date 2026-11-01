@@ -1,0 +1,55 @@
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+publish = false
+license = "MIT"
+
+[workspace.dependencies]
+screen-compiler-analyse = { path = "crates/screen-compiler-analyse" }
+screen-compiler-codegen-rust = { path = "crates/screen-compiler-codegen-rust" }
+screen-compiler-ir = { path = "crates/screen-compiler-ir" }
+screen-compiler-tsx = { path = "crates/screen-compiler-tsx" }
+
+# TSX parser (MIT). 0.133 is the newest release whose declared MSRV (1.93) fits
+# our toolchain pin; every oxc crate moves together. Only screen-compiler-tsx uses them.
+oxc_allocator = "0.133"
+oxc_ast = "0.133"
+# Default feature `regular_expression` parses regex literals, which the subset
+# never accepts anyway.
+oxc_parser = { version = "0.133", default-features = false }
+oxc_span = "0.133"
+
+# Dev-only. MIT OR Apache-2.0. Default features off: no fork/timeout machinery needed.
+proptest = { version = "1.11", default-features = false, features = ["std"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+undocumented_unsafe_blocks = "deny"
+# Panicking macros `panic` does not cover.
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+# No panic inside a function that returns Result, and every #[allow] says why.
+panic_in_result_fn = "deny"
+allow_attributes_without_reason = "deny"
+# No out-of-bounds panics and no unchecked arithmetic on lengths and offsets:
+# every crate, so a new one cannot forget them (tests allow them locally).
+indexing_slicing = "deny"
+arithmetic_side_effects = "deny"
+
+[profile.release]
+overflow-checks = true
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

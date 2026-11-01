@@ -1,0 +1,77 @@
+# cargo-deny settings for screen-compiler-contract-check (`make deny`), held to the
+# NoWayOS baseline (nowayos/tools/baseline.toml) by check-baseline.
+#
+# Its graph is this crate and NoWayOS's own crates, by path, and - for the
+# tests that draw each screen - embedded-graphics and its
+# dependencies, which this file checks like any third-party code. Unpublished
+# crates skip the licence check ([licenses.private] below): NoWayOS's crates
+# have no licence field while NoWayOS's licence is undecided - but two:
+# nowayos-glyphs, the glyph atlases nowayos-ui measures text with and
+# nowayos-render-eg draws it from, which is OFL-1.1, the signed-off
+# font's licence, and nowayos-icons, the icons' masks, ISC, Lucide's;
+# the skip covers them too. check-baseline's
+# local-crate guard makes sure the skip covers only this crate and NoWayOS's
+# crates in nowayos/crates, never third-party code, and allows a licence
+# field on those two alone, each at its path and with its licence.
+# Nothing this harness builds is distributed, so it carries no font notice.
+
+[graph]
+targets = []
+all-features = false
+no-default-features = false
+
+[advisories]
+unmaintained = "all"
+unsound = "all"
+yanked = "deny"
+ignore = []
+
+[licenses]
+allow = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC"]
+confidence-threshold = 0.93
+include-dev = true
+unused-allowed-license = "allow"
+exceptions = [
+    # outside house list - signed off: nowayos-glyphs, NoWayOS's glyph
+    # atlases, a Modified Version of the signed-off font, is OFL-1.1.
+    { crate = "nowayos-glyphs", allow = ["OFL-1.1"] },
+]
+
+[licenses.private]
+# Our own crate and NoWayOS's declare their licences and are checked like
+# any other crate.
+ignore = false
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+# The NoWayOS baseline's bans (nowayos/tools/baseline.toml): the
+# trusted path has no browser engine, WebView, window system or C GUI
+# runtime, so their usual crates are banned by name in every workspace.
+deny = [
+    { crate = "wry", reason = "trusted-path non-negotiable: no WebView" },
+    { crate = "webkit2gtk", reason = "trusted-path non-negotiable: no browser engine" },
+    { crate = "webkit2gtk-sys", reason = "trusted-path non-negotiable: no browser engine" },
+    { crate = "webview2-com", reason = "trusted-path non-negotiable: no WebView" },
+    { crate = "servo", reason = "trusted-path non-negotiable: no browser engine" },
+    { crate = "tao", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "winit", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "x11", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "x11-dl", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "x11rb", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "wayland-client", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "wayland-sys", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "gtk", reason = "trusted-path non-negotiable: no C GUI runtime" },
+    { crate = "gtk4", reason = "trusted-path non-negotiable: no C GUI runtime" },
+    { crate = "gtk-sys", reason = "trusted-path non-negotiable: no C GUI runtime" },
+    { crate = "sdl2", reason = "trusted-path non-negotiable: no C GUI runtime" },
+    { crate = "sdl2-sys", reason = "trusted-path non-negotiable: no C GUI runtime" },
+    { crate = "minifb", reason = "trusted-path non-negotiable: no window system" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

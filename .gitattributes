@@ -1,0 +1,12 @@
+# Check every text file out with LF line endings, whatever core.autocrlf says
+# (Git for Windows defaults it to true): the snapshot tests compare generated
+# Rust and diagnostics byte for byte.
+* text=auto eol=lf
+
+# Approved images (PNG) are binary: never convert their bytes.
+*.png binary
+
+# Our own assistant's instructions are not published: the public tree is
+# made with git archive, which leaves these out. AGENTS.md is the public one.
+CLAUDE.md export-ignore
+.claude/** export-ignore

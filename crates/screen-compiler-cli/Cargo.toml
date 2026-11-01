@@ -1,0 +1,21 @@
+[package]
+name = "screen-compiler-cli"
+description = "The `screen-compiler` command: convert and check React/TSX screens against subset v0."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "screen-compiler"
+path = "src/main.rs"
+
+[dependencies]
+screen-compiler-analyse.workspace = true
+screen-compiler-codegen-rust.workspace = true
+screen-compiler-ir.workspace = true
+screen-compiler-tsx.workspace = true
+
+[lints]
+workspace = true

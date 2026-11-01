@@ -1,0 +1,16 @@
+[package]
+name = "screen-compiler-ir"
+description = "Screen Compiler's UI intermediate representation: a constrained, declarative description of screens."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,114 @@
+# cargo-deny: licences, sources, banned crates and advisories for the Screen Compiler
+# workspace. Runs inside the NoWayOS dev container: `make deny` (or
+# `make ci`).
+# House licence rule: MIT, Apache-2.0, BSD and ISC. Anything outside the
+# house list needs the project owner's written sign-off before it goes in.
+#
+# Screen Compiler is a build-time tool: these crates run on developer machines and
+# in CI and never ship on a device. The Rust it generates depends on none of
+# them.
+#
+# The three [[licenses.exceptions]] below were signed off in writing by the
+# project owner on 2026-10-01. A new exception starts as
+# "Status: pending" and keeps it until its own sign-off is recorded here (ID
+# and date); never remove a pending status without that record.
+
+[graph]
+all-features = true
+
+[advisories]
+# Every vulnerability, unsound and unmaintained advisory is an error, whichever
+# crate in the tree it concerns, and so is a yanked crate version, unless it is
+# listed in `ignore` with the reason it does not apply. (By default cargo-deny
+# fails an unsound advisory only for a direct dependency, and only warns about
+# a yanked version.) The NoWayOS baseline: ../nowayos/tools/baseline.toml.
+unmaintained = "all"
+unsound = "all"
+yanked = "deny"
+ignore = []
+
+[licenses]
+# The house list: permissive licences that need no sign-off.
+allow = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC"]
+confidence-threshold = 0.93
+# Dev-dependencies too (proptest's tree): the house rule covers every package
+# we add, and cargo-deny leaves them out unless told.
+include-dev = true
+# The list is policy, not a record of what is used today.
+unused-allowed-license = "allow"
+
+# oxc_parser -> oxc_syntax / oxc_regular_expression -> unicode-id-start:
+# Unicode identifier tables, "(MIT OR Apache-2.0) AND Unicode-3.0".
+# Status: signed off by the project owner, 2026-10-01.
+[[licenses.exceptions]]
+# outside house list - signed off
+crate = "unicode-id-start"
+allow = ["Unicode-3.0"]
+
+# proc-macro2 (compile-time only: oxc's, thiserror's and serde's derive macros)
+# -> unicode-ident, "(MIT OR Apache-2.0) AND Unicode-3.0".
+# Status: signed off by the project owner, 2026-10-01.
+[[licenses.exceptions]]
+# outside house list - signed off
+crate = "unicode-ident"
+allow = ["Unicode-3.0"]
+
+# oxc_ecmascript enables oxc_syntax's `to_js_string` feature -> dragonbox_ecma
+# (number formatting), "Apache-2.0 WITH LLVM-exception OR BSL-1.0". Neither
+# option is on the house list; the LLVM exception only adds permissions to
+# Apache-2.0.
+# Status: signed off by the project owner, 2026-10-01.
+[[licenses.exceptions]]
+# outside house list - signed off
+crate = "dragonbox_ecma"
+allow = ["Apache-2.0 WITH LLVM-exception"]
+
+# textwrap is held at 0.16.2 in Cargo.lock (oxc-miette accepts ^0.16.2):
+# 0.16.3 and later replace unicode-linebreak (Apache-2.0) with icu_segmenter,
+# which brings in the ICU4X crates (icu_*, zerovec, yoke, tinystr and
+# others), licensed Unicode-3.0 only. If `cargo update` lifts textwrap, this
+# check fails on those licences: that is the intended alarm.
+
+[licenses.private]
+# Our own crates are licensed MIT and declare it, so they are checked
+# like every other crate rather than skipped as unpublished.
+ignore = false
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Workspace crates depend on each other by path; unpublished crates' path
+# dependencies are not treated as wildcards.
+allow-wildcard-paths = true
+# The NoWayOS baseline's bans (../nowayos/tools/baseline.toml):
+# the trusted path has no browser engine, WebView, window system or C GUI
+# runtime (non-negotiables), so their usual crates
+# are banned by name in every workspace, this build-time tool's included.
+# `make deny` fails if one is missing or banned only in part, if [graph]
+# narrows what cargo-deny checks, or if Cargo.lock holds one.
+deny = [
+    { crate = "wry", reason = "trusted-path non-negotiable: no WebView" },
+    { crate = "webkit2gtk", reason = "trusted-path non-negotiable: no browser engine" },
+    { crate = "webkit2gtk-sys", reason = "trusted-path non-negotiable: no browser engine" },
+    { crate = "webview2-com", reason = "trusted-path non-negotiable: no WebView" },
+    { crate = "servo", reason = "trusted-path non-negotiable: no browser engine" },
+    { crate = "tao", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "winit", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "x11", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "x11-dl", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "x11rb", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "wayland-client", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "wayland-sys", reason = "trusted-path non-negotiable: no window system" },
+    { crate = "gtk", reason = "trusted-path non-negotiable: no C GUI runtime" },
+    { crate = "gtk4", reason = "trusted-path non-negotiable: no C GUI runtime" },
+    { crate = "gtk-sys", reason = "trusted-path non-negotiable: no C GUI runtime" },
+    { crate = "sdl2", reason = "trusted-path non-negotiable: no C GUI runtime" },
+    { crate = "sdl2-sys", reason = "trusted-path non-negotiable: no C GUI runtime" },
+    { crate = "minifb", reason = "trusted-path non-negotiable: no window system" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

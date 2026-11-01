@@ -1,0 +1,8 @@
+# Cargo build output
+/target/
+/contract-check/target/
+# Written next to an approved image when a frame differs; never committed.
+*.actual.png
+
+# macOS
+.DS_Store

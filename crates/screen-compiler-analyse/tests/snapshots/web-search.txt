@@ -1,0 +1,30 @@
+web-search.tsx:4:10: error[unsupported]: React API `useState` is not supported in subset v1
+  help: hooks, state and effects are outside subset v1
+web-search.tsx:6:1: error[unsupported]: importing "./search.css" for its side effects is not supported
+  help: Screen Compiler does not implement CSS files: write style={{ … }} with the declared properties, and layout props (gap, padding) and design tokens
+web-search.tsx:8:16: error[unsupported]: top-level constant `tokens` must be a whole number (a design token) or a screen component, not an object literal
+  help: design tokens are written `const SPACE_MD = 16;`
+web-search.tsx:11:3: error[unsupported]: React hook `useState` in a component body is not supported
+  help: state and effects are outside subset v1: keep state in the application and pass callbacks as props
+web-search.tsx:14:19: error[invalid-value]: `gap` must be a number of pixels or a design token, not the string "16px"
+  help: CSS values are not supported: write gap={16} or use a design token
+web-search.tsx:14:35: error[unknown-prop]: `background` is not a style property of <Column> in subset v1
+  help: <Column>'s style takes gap, padding, width, height, minWidth, maxWidth, alignItems, justifyContent, backgroundColor, borderColor, borderWidth, borderRadius
+web-search.tsx:15:9: error[unknown-element]: HTML element <h1> is not supported
+  help: use the kit's elements: Column, Row, Text, Button, TextInput, Spacer, Checkbox, RadioGroup, Card, Notice, HeaderBar, ProgressBar, Icon, ScrollView, Select, Keyboard or FieldError
+web-search.tsx:16:28: error[unsupported]: text mixed with `query` is not supported
+  help: a prop's text is a <Text> of its own: <Row><Text>Label:</Text><Text>{props.value}</Text></Row>
+web-search.tsx:17:10: error[unsupported]: a call to `.map()` as a child is not supported
+  help: lists and computed content are outside subset v1; conditional rendering is {props.NAME && <Element />} or {props.NAME ? <A /> : <B />}
+web-search.tsx:18:10: error[unsupported]: a binary expression as a condition is not supported
+  help: a condition is one prop of the component: work anything more out in the application and pass it as a prop, such as {props.canRetry && …}
+web-search.tsx:18:47: error[unsupported]: inline event handlers are not supported in subset v1
+  help: pass a callback prop of the component: onPress={onContinue}
+web-search.tsx:19:9: error[missing-prop]: <Button> needs an onPress callback prop
+  help: write onPress={onContinue}, where onContinue is a prop of the component
+web-search.tsx:19:17: error[unknown-prop]: <Button> has no prop `onClick` in subset v1
+  help: use onPress={…} with a callback prop
+web-search.tsx:19:36: error[unknown-prop]: <Button> has no prop `disabled` in subset v1
+  help: the application decides what is required and where focus goes; subset v1 has no such prop
+web-search.tsx:22:15: error[unsupported]: `&copy;` is not a supported character reference
+  help: write the character itself, or use &amp; &lt; &gt; &quot; &apos; &nbsp; or a numeric reference such as &#169;

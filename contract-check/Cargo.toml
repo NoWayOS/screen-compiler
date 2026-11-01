@@ -1,0 +1,71 @@
+# screen-compiler-contract-check: every screen Screen Compiler generates, built against
+# the real nowayos-ui - the checked-in snapshots, and each
+# fixture converted afresh by `make contract-check` - for the host and for
+# aarch64-unknown-none, then built on a real nowayos-ui tree, laid out and
+# drawn by NoWayOS's renderer; each fixture's frame must match its approved
+# image in golden/ pixel for pixel.
+#
+# A workspace of its own, so that Screen Compiler's own crates never depend on
+# NoWayOS: `make no-nowayos` checks the main workspace's graph. It
+# uses NoWayOS by path from the sibling clone (nowayos/ beside screen-compiler/),
+# as Showcase does; `make contract-check` prints which NoWayOS commit it built
+# against. MIT, like everything in this repository (LICENSE). Never published.
+
+[package]
+name = "screen-compiler-contract-check"
+description = "Builds every screen Screen Compiler generates against the real nowayos-ui, and runs it on a real tree"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+rust-version = "1.93"
+publish = false
+build = "build.rs"
+
+[workspace]
+resolver = "3"
+
+[dependencies]
+# NoWayOS's UI core, from the sibling clone. Cargo.lock cannot pin a path
+# dependency's code, and on purpose no NoWayOS revision is recorded here, so
+# that nowayos's own make ci tests the change under test: `make
+# contract-check` prints the commit it built against.
+nowayos-ui = { path = "../../nowayos/crates/nowayos-ui", version = "=0.1.0" }
+
+[dev-dependencies]
+# For the viewport each screen is laid out in.
+nowayos-display = { path = "../../nowayos/crates/nowayos-display", version = "=0.1.0" }
+# NoWayOS's renderer, and its golden-image harness (PNG files, compared pixel
+# for pixel). They bring in embedded-graphics (MIT OR Apache-2.0) and its
+# dependencies; `make contract-check` fails unless Cargo.lock pins the
+# versions NoWayOS's own Cargo.lock pins (same-versions.py).
+nowayos-render-eg = { path = "../../nowayos/crates/nowayos-render-eg", version = "=0.1.0" }
+nowayos-testkit = { path = "../../nowayos/crates/nowayos-testkit", version = "=0.1.0" }
+
+[lints]
+workspace = true
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+# The same lints as Screen Compiler's own workspace: generated code is held to
+# them here, against the real nowayos-ui, as the snapshot tests hold it to
+# them against the reference contract.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+undocumented_unsafe_blocks = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+panic_in_result_fn = "deny"
+allow_attributes_without_reason = "deny"
+indexing_slicing = "deny"
+arithmetic_side_effects = "deny"
+
+[profile.release]
+overflow-checks = true
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

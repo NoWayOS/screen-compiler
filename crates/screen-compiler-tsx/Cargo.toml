@@ -1,0 +1,21 @@
+[package]
+name = "screen-compiler-tsx"
+description = "TSX parsing for Screen Compiler: oxc_parser output converted into Screen Compiler's own syntax tree."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+oxc_allocator.workspace = true
+oxc_ast.workspace = true
+oxc_parser.workspace = true
+oxc_span.workspace = true
+screen-compiler-ir.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

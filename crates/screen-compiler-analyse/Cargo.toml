@@ -1,0 +1,18 @@
+[package]
+name = "screen-compiler-analyse"
+description = "Subset checking for Screen Compiler: reports unsupported TSX with positions and lowers the rest to the UI IR."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+screen-compiler-ir.workspace = true
+screen-compiler-tsx.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true
