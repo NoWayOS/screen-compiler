@@ -94,6 +94,15 @@ mod fixture_check_in {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_check_in_parts {
+    use crate::nowayos_ui;
+    include!("snapshots/check-in-parts.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_notice_board {
     use crate::nowayos_ui;
     include!("snapshots/notice-board.rs");
@@ -163,8 +172,9 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 15] = [
+const COMPILED: [&str; 16] = [
     "check-in",
+    "check-in-parts",
     "details-form",
     "edge-names",
     "fuelling",
@@ -333,6 +343,27 @@ fn queue_ticket_builds_exactly_its_ir_with_its_text_roles() {
     ] {
         assert!(rust.contains(call), "{call}");
     }
+}
+
+/// The screen built of parts - its own components and a fragment - is
+/// check-in's, written flat: the same IR, and the same builder calls in the
+/// same order, only the source locations in comments differ.
+#[test]
+fn check_in_built_of_parts_is_check_in_written_flat() {
+    assert_eq!(ir_outline("check-in-parts.tsx"), ir_outline("check-in.tsx"));
+    let calls = |rust: &str| -> Vec<String> {
+        rust.lines()
+            .filter(|line| line.trim_start().starts_with("let n"))
+            .map(|line| line.split(" // ").next().unwrap_or(line).to_owned())
+            .collect()
+    };
+    let flat = calls(include_str!("snapshots/check-in.rs"));
+    assert!(!flat.is_empty());
+    assert_eq!(calls(include_str!("snapshots/check-in-parts.rs")), flat);
+    use fixture_check_in_parts::check_in as screen;
+    let mut recorder = Recorder::with_capacity(32);
+    let nodes = screen::build(&mut recorder).unwrap();
+    assert_eq!(recorder.outline(nodes.root), ir_outline("check-in.tsx"));
 }
 
 #[test]

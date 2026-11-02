@@ -13,7 +13,7 @@
 //! Run it only on code you trust: the parser's limits are those of
 //! `check` and `convert`.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::fs;
 use std::io;
@@ -31,7 +31,7 @@ pub const MAX_FILES: usize = 10_000;
 /// A step on the road towards React and CSS: what would convert a gap.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Step {
-    /// Fragments and the components a screen's authors write.
+    /// A screen's own components written in other files.
     Components,
     /// Text mixing literals and props.
     MixedText,
@@ -58,7 +58,7 @@ impl Step {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
-            Self::Components => "fragments and your own components",
+            Self::Components => "your own components from other files",
             Self::MixedText => "text mixing literals and props",
             Self::Lists => "lists",
             Self::CssLayout => "more of CSS layout",
@@ -126,10 +126,27 @@ const HTML: &[&str] = &[
     "div", "span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "label", "button", "input", "hr",
 ];
 
-/// What the subset makes of `construct`.
+/// What the subset makes of `construct`, in a module that declares no
+/// components of its own.
 #[must_use]
 pub fn verdict(construct: &Construct) -> Verdict {
+    verdict_in(construct, &BTreeSet::new())
+}
+
+/// What the subset makes of `construct` in a module whose own components
+/// are `own` ([`Census::own_components`](screen_compiler_tsx::census::Census::own_components)):
+/// they are expanded where they are used, so they and their props convert.
+#[must_use]
+pub fn verdict_in(construct: &Construct, own: &BTreeSet<String>) -> Verdict {
     match construct {
+        Construct::Component(name) if own.contains(name) => Verdict::Subset,
+        Construct::Prop { element, .. } if own.contains(element) => Verdict::Subset,
+        Construct::Style { element, property }
+            if own.contains(element)
+                && KitComponent::ALL.iter().any(|kit| kit.styles(property)) =>
+        {
+            Verdict::Subset
+        }
         Construct::Component(name) => component(name),
         Construct::Html(name) => match name.as_str() {
             "img" => Verdict::Road(Step::ImagesAndMasking),
@@ -137,7 +154,7 @@ pub fn verdict(construct: &Construct) -> Verdict {
             _ => Verdict::Unknown,
         },
         Construct::OtherElement => Verdict::Unknown,
-        Construct::Fragment => Verdict::Road(Step::Components),
+        Construct::Fragment => Verdict::Subset,
         Construct::Prop { element, prop } => prop_verdict(element, prop),
         Construct::SpreadProp => Verdict::Out(SPREAD),
         Construct::Style { element, property } => style_verdict(element, property),
@@ -441,7 +458,7 @@ impl Report {
             }
             let mut steps_here = BTreeMap::new();
             for (construct, count) in &census.counts {
-                let verdict = verdict(construct);
+                let verdict = verdict_in(construct, &census.own_components);
                 tally.add(verdict, *count);
                 match verdict {
                     Verdict::Subset => {}

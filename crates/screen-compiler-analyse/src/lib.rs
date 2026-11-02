@@ -26,7 +26,10 @@
 //!   (`<Text>{props.name}</Text>`) becomes a slot the application fills; and
 //!   `{props.NAME && <X/>}` and `{props.NAME ? <X/> : <Y/>}` (or `: null`)
 //!   become a group the application shows or hides, each named after its
-//!   prop. A condition is one prop, and what it shows one element.
+//!   prop. A condition is one prop, and what it shows one element;
+//! * fragments and the file's own components (*parts*), expanded at build
+//!   time before the walk (its rules in the private `parts` module), so a screen
+//!   built of parts is checked and lowered as if written flat.
 //!
 //! Every component, prop and style property, with the values each takes,
 //! is in the kit's tables ([`KitComponent::props`], [`KitComponent::style`]),
@@ -38,6 +41,7 @@
 pub mod audit;
 mod kit;
 mod lower;
+mod parts;
 pub mod subset;
 
 pub use kit::{Children, KitComponent, Prop, StyleProperty, Value};
