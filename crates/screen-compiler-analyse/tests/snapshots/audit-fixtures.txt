@@ -1,0 +1,49 @@
+screen-compiler audit: 17 files
+  convert                15  88.2%
+  do not convert          2
+  cannot be read          0
+
+constructs            565
+  in the subset       550  97.3%
+  on the road           9  1.5%
+  out by design         2  0.3%
+  unknown               4  0.7%
+
+on the road
+  text mixing literals and props           2 in 2 files
+  lists                                    2 in 1 file
+  more conditions                          1 in 1 file
+  React DOM's event names                  2 in 1 file
+  common HTML elements                     1 in 1 file
+  CSS modules                              1 in 1 file
+
+out by design
+  a global stylesheet: there is no cascade
+    an import of a stylesheet              1
+  state and hooks live in the application, which sets what a screen shows
+    useState()                             1
+
+unknown
+  a statement: local variable              1
+  disabled on <Button>                     1
+  setQuery()                               1
+  style background on <Column>             1
+
+files
+  check-in.tsx  converts
+  details-form.tsx  converts
+  edge-names.tsx  converts
+  fuelling.tsx  converts
+  lost-property-1-item.tsx  converts
+  lost-property-2-contact.tsx  converts
+  lost-property-3-review.tsx  converts
+  notice-board.tsx  converts
+  order-ready.tsx  converts
+  parcel-status.tsx  converts
+  parking-paid.tsx  converts
+  queue-ticket.tsx  converts
+  tiles.tsx  converts
+  unsupported/form-controls.tsx  does not convert: 1 on the road, 0 out by design, 0 unknown
+  unsupported/web-search.tsx  does not convert: 8 on the road, 2 out by design, 4 unknown
+  visit-booking.tsx  converts
+  welcome.tsx  converts

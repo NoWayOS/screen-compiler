@@ -339,3 +339,18 @@ fn help_and_version() {
         format!("screen-compiler {}\n", env!("CARGO_PKG_VERSION"))
     );
 }
+
+#[test]
+fn audit_counts_a_folder_and_quotes_no_code() {
+    let out = screen_compiler(&fixtures(), &["audit", "."]);
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(stdout.starts_with("screen-compiler audit: "), "{stdout}");
+    assert!(stdout.contains("  welcome.tsx  converts\n"), "{stdout}");
+    // Names, never code: the fixture's search placeholder text is not quoted.
+    let source = fs::read_to_string(fixtures().join("unsupported/web-search.tsx")).unwrap();
+    assert!(source.contains("useState"));
+    assert!(!stdout.contains("=>"), "{stdout}");
+    let missing = screen_compiler(&fixtures(), &["audit", "no-such-folder"]);
+    assert_eq!(missing.status.code(), Some(2));
+}

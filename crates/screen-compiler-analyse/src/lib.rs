@@ -31,6 +31,7 @@
 
 #![deny(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
 
+pub mod audit;
 mod kit;
 mod lower;
 

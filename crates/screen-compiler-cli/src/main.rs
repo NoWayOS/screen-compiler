@@ -4,7 +4,8 @@
 //!
 //! ```text
 //! screen-compiler convert IN.tsx [-o OUT.rs]   write Rust to OUT.rs (or standard output)
-//! screen-compiler check IN.tsx                 report what is outside subset v0
+//! screen-compiler check IN.tsx                 report what is outside the subset
+//! screen-compiler audit DIR                     how much of a folder of TSX converts
 //! ```
 //!
 //! Exit status: 0 success; 1 the input cannot be converted (diagnostics on
@@ -35,6 +36,7 @@ screen-compiler - converts a supported subset of React/TSX into Rust for NoWayOS
 Usage:
   screen-compiler convert <INPUT.tsx> [-o <OUTPUT.rs>]
   screen-compiler check <INPUT.tsx>
+  screen-compiler audit <DIR>
   screen-compiler --help | --version
 
 Commands:
@@ -42,6 +44,10 @@ Commands:
             Nothing is written if anything is outside the supported subset.
   check     Report every construct outside the supported subset, with its
             line and column, without writing anything.
+  audit     Count every construct written in DIR's .tsx files: in the
+            subset, on the road towards React and CSS, out by design or
+            unknown; and which files convert. Names constructs, quotes no
+            code. Run it only on code you trust.
 
 Exit status: 0 success, 1 not convertible (see diagnostics), 2 usage or I/O error.
 ";
@@ -55,11 +61,31 @@ fn main() -> ExitCode {
         }
         Ok(Command::Convert { input, output }) => convert(&input, output.as_deref()),
         Ok(Command::Check { input }) => check(&input),
+        Ok(Command::Audit { dir }) => audit(&dir),
         Err(error) => {
             let error = error.to_string();
             eprint_best_effort(&format!(
                 "screen-compiler: {}\n\n{USAGE}",
                 escape_special(&error)
+            ));
+            ExitCode::from(2)
+        }
+    }
+}
+
+/// `screen-compiler audit DIR`: the coverage report on standard output.
+fn audit(dir: &Path) -> ExitCode {
+    match screen_compiler_analyse::audit::audit_dir(dir) {
+        Ok(report) => emit_stdout(&report.render()),
+        Err(screen_compiler_analyse::audit::AuditError::Io(path, error)) => {
+            eprint_best_effort(&format!("screen-compiler: {}: {error}\n", shown(&path)));
+            ExitCode::from(2)
+        }
+        Err(screen_compiler_analyse::audit::AuditError::TooManyFiles) => {
+            eprint_best_effort(&format!(
+                "screen-compiler: {}: more than {} .tsx files\n",
+                shown(dir),
+                screen_compiler_analyse::audit::MAX_FILES
             ));
             ExitCode::from(2)
         }

@@ -36,15 +36,20 @@
 //!
 //! Syntax errors are returned as diagnostics with line and column; nothing is
 //! guessed from a source that does not parse.
+//!
+//! [`census()`] parses the same way and counts every construct written, for
+//! the coverage report ([`census`](mod@census)).
 
 #![deny(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
 
+pub mod census;
 mod convert;
 pub mod jsx_text;
 mod lines;
 pub mod syntax;
 
 use oxc_allocator::Allocator;
+use oxc_ast::ast::Program;
 use oxc_parser::{ParseOptions, Parser};
 use oxc_span::SourceType;
 use screen_compiler_ir::{Code, Diagnostic, sort_diagnostics};
@@ -76,12 +81,36 @@ pub const PARSER_STACK_BYTES: usize = 256 * 1024 * 1024;
 /// Returns the diagnostics (sorted by position) when the source is too large
 /// or too deeply nested, or does not parse.
 pub fn parse(source: &str) -> Result<SourceModule, Vec<Diagnostic>> {
+    on_parser_thread(source, |program| {
+        let mut module = convert::Converter::new(source).module(program);
+        sort_diagnostics(&mut module.diagnostics);
+        module
+    })
+}
+
+/// Counts every construct written in TSX `source`, for the coverage report:
+/// what is written, not whether it converts.
+///
+/// # Errors
+///
+/// As [`parse`]: the diagnostics when the source is too large or too deeply
+/// nested, or does not parse.
+pub fn census(source: &str) -> Result<census::Census, Vec<Diagnostic>> {
+    on_parser_thread(source, census::count)
+}
+
+/// Parses `source` on a thread with [`PARSER_STACK_BYTES`] of stack, after
+/// the size and bracket checks, and makes `make`'s result of its program.
+fn on_parser_thread<T: Send>(
+    source: &str,
+    make: impl FnOnce(&Program<'_>) -> T + Send,
+) -> Result<T, Vec<Diagnostic>> {
     precheck(source)?;
     let result = std::thread::scope(|scope| {
         let spawned = std::thread::Builder::new()
             .name("screen-compiler-parse".to_owned())
             .stack_size(PARSER_STACK_BYTES)
-            .spawn_scoped(scope, || parse_here(source));
+            .spawn_scoped(scope, || parse_here(source, make));
         match spawned {
             Ok(handle) => handle.join().unwrap_or_else(|_| {
                 Err(vec![Diagnostic::error(
@@ -143,7 +172,7 @@ fn precheck(source: &str) -> Result<(), Vec<Diagnostic>> {
     Ok(())
 }
 
-fn parse_here(source: &str) -> Result<SourceModule, Vec<Diagnostic>> {
+fn parse_here<T>(source: &str, make: impl FnOnce(&Program<'_>) -> T) -> Result<T, Vec<Diagnostic>> {
     let allocator = Allocator::default();
     let source_type = SourceType::tsx().with_module(true);
     let options = ParseOptions {
@@ -186,9 +215,7 @@ fn parse_here(source: &str) -> Result<SourceModule, Vec<Diagnostic>> {
         }
         return Err(diagnostics);
     }
-    let mut module = convert::Converter::new(source).module(&parsed.program);
-    sort_diagnostics(&mut module.diagnostics);
-    Ok(module)
+    Ok(make(&parsed.program))
 }
 
 #[cfg(test)]
