@@ -131,7 +131,10 @@ fn the_road_takes_the_constructs_its_steps_name() {
             "{construct:?}"
         );
     }
-    assert_eq!(road(Construct::Map), Verdict::Road(Step::Lists));
+    // A list with a most converts; one with none is out: the screen must
+    // know how many rows it may show.
+    assert_eq!(road(Construct::BoundedMap), Verdict::Subset);
+    assert!(matches!(road(Construct::Map), Verdict::Out(_)));
     assert_eq!(road(Construct::MixedText), Verdict::Road(Step::MixedText));
     assert_eq!(road(Construct::Unary("!")), Verdict::Road(Step::Conditions));
     assert_eq!(

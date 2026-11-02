@@ -14,8 +14,8 @@ web-search.tsx:15:9: error[unknown-element]: HTML element <h1> is not supported
   help: use the kit's elements: Column, Row, Text, Button, TextInput, Spacer, Checkbox, RadioGroup, Card, Notice, HeaderBar, ProgressBar, Icon, ScrollView, Select, Keyboard or FieldError
 web-search.tsx:16:28: error[unsupported]: text mixed with `query` is not supported
   help: a prop's text is a <Text> of its own: <Row><Text>Label:</Text><Text>{props.value}</Text></Row>
-web-search.tsx:17:10: error[unsupported]: a call to `.map()` as a child is not supported
-  help: lists and computed content are outside subset v1; conditional rendering is {props.NAME && <Element />} or {props.NAME ? <A /> : <B />}
+web-search.tsx:17:10: error[unsupported]: the list `results` has no most: the screen must know how many rows it may show
+  help: write results.slice(0, 5).map(…): at most 5 rows, which the application fills
 web-search.tsx:18:10: error[unsupported]: a binary expression as a condition is not supported
   help: a condition is one prop of the component: work anything more out in the application and pass it as a prop, such as {props.canRetry && …}
 web-search.tsx:18:47: error[unsupported]: inline event handlers are not supported in subset v1

@@ -421,6 +421,49 @@ impl<'s> Converter<'s> {
     /// Converts an expression at nesting `depth`. Every construct that nests
     /// (functions, elements, fragments) adds one level, so the recursion and
     /// the tree it builds stay bounded by [`MAX_NESTING`].
+    /// The parts of `list.map(callback)` or `list.slice(0, most).map(callback)`,
+    /// `callback` one arrow or function: the list, `most`, the callback.
+    fn map_call<'c, 'a>(
+        &self,
+        call: &'c js::CallExpression<'a>,
+    ) -> Option<(
+        &'c Expression<'a>,
+        Option<&'c Expression<'a>>,
+        FnParts<'c, 'a>,
+    )> {
+        let Expression::StaticMemberExpression(member) = &call.callee else {
+            return None;
+        };
+        if member.optional || call.optional || member.property.name.as_str() != "map" {
+            return None;
+        }
+        let [argument] = call.arguments.as_slice() else {
+            return None;
+        };
+        let callback = match argument.as_expression()? {
+            Expression::ArrowFunctionExpression(arrow) => FnParts::arrow(arrow),
+            Expression::FunctionExpression(function) => FnParts::function(function),
+            _ => return None,
+        };
+        let mut list = &member.object;
+        while let Expression::ParenthesizedExpression(inner) = list {
+            list = &inner.expression;
+        }
+        if let Expression::CallExpression(slice) = list
+            && let Expression::StaticMemberExpression(sliced) = &slice.callee
+            && sliced.property.name.as_str() == "slice"
+            && !sliced.optional
+            && !slice.optional
+            && let [from, most] = slice.arguments.as_slice()
+            && let Some(Expression::NumericLiteral(from)) = from.as_expression()
+            && from.value == 0.0
+            && let Some(most) = most.as_expression()
+        {
+            return Some((&sliced.object, Some(most), callback));
+        }
+        Some((list, None, callback))
+    }
+
     fn expr(&mut self, expression: &Expression<'_>, depth: usize) -> Expr {
         let mut expression = expression;
         while let Expression::ParenthesizedExpression(inner) = expression {
@@ -549,6 +592,17 @@ impl<'s> Converter<'s> {
                     .collect(),
                 loc: self.loc(span),
             },
+            Expression::CallExpression(call) if self.map_call(call).is_some() => {
+                match self.map_call(call) {
+                    Some((list, most, callback)) => Expr::Map {
+                        list: Box::new(self.expr(list, inner)),
+                        most: most.map(|most| Box::new(self.expr(most, inner))),
+                        callback: Box::new(self.function(&callback, inner)),
+                        loc: self.loc(span),
+                    },
+                    None => Expr::Other(self.other("call expression", span)),
+                }
+            }
             Expression::LogicalExpression(logical) => Expr::Logical {
                 op: match logical.operator {
                     LogicalOperator::And => LogicalOp::And,

@@ -91,6 +91,7 @@ const SPREAD: &str = "a spread's props are known only when the code runs";
 const COMPUTED_STYLE: &str = "a style computed when the code runs";
 const CASCADE: &str = "a global stylesheet: there is no cascade";
 const ANIMATION: &str = "animation";
+const UNBOUNDED: &str = "a list with no most: slice it, .slice(0, N), so the screen knows its rows";
 
 /// The style properties the road's CSS layout step adds.
 const LAYOUT: &[&str] = &[
@@ -161,7 +162,8 @@ pub fn verdict_in(construct: &Construct, own: &BTreeSet<String>) -> Verdict {
         Construct::ComputedStyle => Verdict::Out(COMPUTED_STYLE),
         Construct::MixedText | Construct::Template => Verdict::Road(Step::MixedText),
         Construct::Hook(_) | Construct::Class => Verdict::Out(STATE),
-        Construct::Map => Verdict::Road(Step::Lists),
+        Construct::BoundedMap => Verdict::Subset,
+        Construct::Map => Verdict::Out(UNBOUNDED),
         Construct::Call(_) => Verdict::Unknown,
         Construct::Binary(op) => match *op {
             "===" | "!==" | "==" | "!=" | "<" | ">" | "<=" | ">=" => {
@@ -209,7 +211,7 @@ fn prop_verdict(element: &str, prop: &str) -> Verdict {
     match (KitComponent::from_name(element), prop) {
         (_, "onClick") => road(Step::DomEvents),
         (_, "className" | "class") => road(Step::CssModules),
-        (_, "key") => road(Step::Lists),
+        (_, "key") => Verdict::Subset,
         (Some(kit), prop) if kit.prop(prop).is_some() => Verdict::Subset,
         (Some(KitComponent::TextInput), "type") => road(Step::ImagesAndMasking),
         (
@@ -269,7 +271,8 @@ fn describe(construct: &Construct) -> String {
         Construct::ComputedStyle => "a computed style".to_owned(),
         Construct::MixedText => "text mixed with {…}".to_owned(),
         Construct::Hook(name) => format!("{name}()"),
-        Construct::Map => ".map()".to_owned(),
+        Construct::Map => ".map() with no most".to_owned(),
+        Construct::BoundedMap => ".map() with a most".to_owned(),
         Construct::Call(name) if name.is_empty() => "a call".to_owned(),
         Construct::Call(name) => format!("{name}()"),
         Construct::Template => "a template literal".to_owned(),

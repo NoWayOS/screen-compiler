@@ -16,6 +16,19 @@
 //! one is reported missing), a child or a condition made of it shows
 //! nothing, and a style property set from it is not set.
 //!
+//! Lists are expanded too. `.map` over an array literal or a top-level
+//! `const` array - or one of these sliced with `.slice(0, N)` - gives one
+//! copy of what the callback returns for each item, its parameter given the
+//! item: a field of an object item as a part's prop is given, the item
+//! itself to `(item) => …`, and `key` on what it returns is dropped. A
+//! screen's prop sliced, `props.items.slice(0, N).map(item => …)`, gives `N`
+//! rows the application fills: row `r` is the group `items_r`, each field
+//! `item.name` the slot `items_r_name`, the item itself the slot
+//! `items_r_item` - so the application shows as many rows as it has items,
+//! and sets their text. A list from a prop with no most, a row of more than
+//! one element, a list from a prop inside a row of another, or a callback
+//! taking more than the item, is refused where written.
+//!
 //! Refused where written: a part that uses itself, directly or through
 //! others; a spread on a part; a part's props taken other than destructured
 //! or as one object; the whole props object passed on; `children` anywhere
@@ -29,7 +42,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use screen_compiler_ir::{Code, Diagnostic, Loc};
 use screen_compiler_tsx::syntax::{
-    Attr, AttrValue, Child, Element, ElementName, Expr, LogicalOp, ObjectProp, Params, PropBinding,
+    Attr, AttrValue, Body, Child, Element, ElementName, Expr, Function, LogicalOp, ObjectProp,
+    Params, PropBinding, Stmt,
 };
 
 /// How deep parts may use parts.
@@ -39,6 +53,15 @@ pub(crate) const MAX_PART_DEPTH: usize = 16;
 /// children given to a part are expanded where they are written, then
 /// walked again inside the part, so they count more than once.
 pub(crate) const ELEMENTS_PER_NODE: usize = 8;
+
+/// The most rows a list from a prop may have: `.slice(0, N)` with `N` up
+/// to this.
+pub(crate) const MAX_LIST_ROWS: u16 = 32;
+
+/// What starts the name of a prop the expansion makes - a list row's group
+/// or slot - which the walk takes as the screen's prop of the name after it.
+/// No name in a source file can hold it.
+pub(crate) const MADE_PROP: char = '\u{1}';
 
 /// How deep the expansion walks a tree: past the walk's own limit on
 /// nesting, so a tree too deep is reported by the walk, where it is.
@@ -54,6 +77,7 @@ pub(crate) struct Part<'s> {
 }
 
 /// What a part's parameters bind, for substitution.
+#[derive(Clone, Copy)]
 enum Bound<'s> {
     /// No parameters.
     None,
@@ -73,6 +97,14 @@ struct Use<'s> {
     given: BTreeMap<String, AttrValue>,
     /// The children written between its tags, already expanded.
     children: Vec<Child>,
+    /// The value of the parameter itself, `(item) => item`: a list's item;
+    /// a part's props object cannot be used whole.
+    whole: Option<Expr>,
+    /// Names a callback inside the part binds, which are not the part's.
+    shadow: Vec<String>,
+    /// Whether this is a list's callback, a closure: the names around it
+    /// are its own as well, so any other name is left to the walk.
+    closure: bool,
 }
 
 /// What a name in a part refers to.
@@ -83,11 +115,19 @@ enum Named<'n> {
     Props,
     /// Something declared in the file, or not a name of the part's.
     Other,
+    /// A name a callback inside the part binds.
+    Shadowed,
 }
 
 /// Expands the parts and fragments of one screen.
 pub(crate) struct Expander<'p, 's> {
     parts: &'p BTreeMap<&'s str, Part<'s>>,
+    /// The file's top-level `const` arrays, by name.
+    lists: &'p BTreeMap<&'s str, &'s Expr>,
+    /// The screen's parameters, which a list from a prop names.
+    screen: Option<&'s Params>,
+    /// Whether the expansion is inside a row of a list from a prop.
+    in_row: bool,
     /// Every name declared in the file, which a part may use as it is.
     declared: &'p BTreeSet<String>,
     /// Problems found, each where it is written.
@@ -103,11 +143,15 @@ pub(crate) struct Expander<'p, 's> {
 impl<'p, 's> Expander<'p, 's> {
     pub(crate) fn new(
         parts: &'p BTreeMap<&'s str, Part<'s>>,
+        lists: &'p BTreeMap<&'s str, &'s Expr>,
         declared: &'p BTreeSet<String>,
         max_elements: usize,
     ) -> Self {
         Self {
             parts,
+            lists,
+            screen: None,
+            in_row: false,
             declared,
             diagnostics: Vec::new(),
             stack: Vec::new(),
@@ -124,7 +168,8 @@ impl<'p, 's> Expander<'p, 's> {
 
     /// What a screen component returns, its parts expanded: an element, or
     /// a fragment if a part at its root returns several.
-    pub(crate) fn root(&mut self, returned: &'s Expr) -> Expr {
+    pub(crate) fn root(&mut self, returned: &'s Expr, screen: &'s Params) -> Expr {
+        self.screen = Some(screen);
         match returned {
             Expr::Element(element) => self.single(element, returned.loc(), 0),
             other => other.clone(),
@@ -159,6 +204,12 @@ impl<'p, 's> Expander<'p, 's> {
                 Child::Fragment { children, .. } | Child::Expr(Expr::Fragment { children, .. }) => {
                     out.extend(self.children(children, inner));
                 }
+                Child::Expr(Expr::Map {
+                    list,
+                    most,
+                    callback,
+                    loc,
+                }) => out.extend(self.map(list, most.as_deref(), callback, *loc, inner)),
                 Child::Expr(Expr::Logical {
                     op,
                     left,
@@ -310,6 +361,9 @@ impl<'p, 's> Expander<'p, 's> {
             bound,
             given,
             children,
+            whole: None,
+            shadow: Vec::new(),
+            closure: false,
         };
         let returned = match self.subst_expr(&using, returned, depth) {
             Some(returned) => returned,
@@ -335,8 +389,220 @@ impl<'p, 's> Expander<'p, 's> {
         expanded
     }
 
+    /// A list: one copy of what the callback returns for each item, or, for
+    /// a screen's prop sliced, one row for each place.
+    fn map(
+        &mut self,
+        list: &Expr,
+        most: Option<&Expr>,
+        callback: &Function,
+        loc: Loc,
+        depth: usize,
+    ) -> Vec<Child> {
+        let help = "write .map((item) => <Row>…</Row>), or .map(({ name }) => …)";
+        let bound = match &callback.params {
+            Params::Named { name, .. } => Bound::Object(name),
+            Params::Destructured(bindings) => Bound::Destructured(bindings),
+            Params::None => Bound::None,
+            Params::Unsupported(other) => {
+                self.error(
+                    Code::Unsupported,
+                    other.loc,
+                    "a list's callback takes the item alone",
+                    help,
+                );
+                return Vec::new();
+            }
+        };
+        let returned = match returned_values(callback).as_slice() {
+            [one] if returns_only(callback) => *one,
+            _ => {
+                self.error(
+                    Code::Unsupported,
+                    callback.loc,
+                    "a list's callback only returns what each item shows",
+                    help,
+                );
+                return Vec::new();
+            }
+        };
+        let most = match most {
+            None => None,
+            Some(Expr::Num { value, raw, .. })
+                if value.fract() == 0.0
+                    && (1.0..=f64::from(MAX_LIST_ROWS)).contains(value)
+                    && !raw.starts_with('0') =>
+            {
+                // Exact: a whole number from 1 to MAX_LIST_ROWS, so the
+                // text is its digits.
+                raw.parse::<usize>().ok()
+            }
+            Some(other) => {
+                self.error(
+                    Code::InvalidValue,
+                    other.loc(),
+                    format!("a list's most must be a whole number from 1 to {MAX_LIST_ROWS}"),
+                    "write .slice(0, 5)",
+                );
+                return Vec::new();
+            }
+        };
+        let items = match list {
+            Expr::Array { elements, .. } => Some(elements.as_slice()),
+            Expr::Ident { name, .. } => match self.lists.get(name.as_str()) {
+                Some(Expr::Array { elements, .. }) => Some(elements.as_slice()),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some(items) = items {
+            let take = most.unwrap_or(items.len());
+            let mut out = Vec::new();
+            for item in items.iter().take(take) {
+                let given = match item {
+                    Expr::Object { props, .. } => props
+                        .iter()
+                        .map(|prop| (prop.key.clone(), AttrValue::Expr(prop.value.clone())))
+                        .collect(),
+                    _ => BTreeMap::new(),
+                };
+                let using = Use {
+                    part: "a list",
+                    bound,
+                    given,
+                    children: Vec::new(),
+                    whole: Some(item.clone()),
+                    shadow: Vec::new(),
+                    closure: true,
+                };
+                if let Some(shown) = self.subst_expr(&using, returned, depth) {
+                    out.extend(self.shown(without_key(shown), depth));
+                }
+            }
+            return out;
+        }
+        let Some(key) = self.screen_prop(list) else {
+            self.error(
+                Code::Unsupported,
+                list.loc(),
+                format!("{} cannot be listed", list.describe()),
+                "list an array literal, a top-level const array, or a prop of the screen sliced: props.items.slice(0, 5).map(…)",
+            );
+            return Vec::new();
+        };
+        let Some(rows) = most else {
+            self.error(
+                Code::Unsupported,
+                loc,
+                format!(
+                    "the list `{key}` has no most: the screen must know how many rows it may show"
+                ),
+                format!(
+                    "write {key}.slice(0, 5).map(…): at most 5 rows, which the application fills"
+                ),
+            );
+            return Vec::new();
+        };
+        if self.in_row {
+            self.error(
+                Code::Unsupported,
+                loc,
+                "a list from a prop inside a row of another",
+                "list one level from props; build-time lists may nest",
+            );
+            return Vec::new();
+        }
+        let mut fields = BTreeSet::new();
+        match bound {
+            Bound::Object(name) => members_of(returned, name, &mut fields, 0),
+            Bound::Destructured(bindings) => fields.extend(bindings.iter().map(|b| b.key.clone())),
+            Bound::None => {}
+        }
+        let made = |name: String, at: Loc| Expr::Ident {
+            name: format!("{MADE_PROP}{name}"),
+            loc: at,
+        };
+        let mut out = Vec::new();
+        self.in_row = true;
+        for row in 1..=rows {
+            let given = fields
+                .iter()
+                .map(|field| {
+                    (
+                        field.clone(),
+                        AttrValue::Expr(made(format!("{key}_{row}_{field}"), loc)),
+                    )
+                })
+                .collect();
+            let using = Use {
+                part: "a list",
+                bound,
+                given,
+                children: Vec::new(),
+                whole: Some(made(format!("{key}_{row}_item"), loc)),
+                shadow: Vec::new(),
+                closure: true,
+            };
+            let Some(shown) = self.subst_expr(&using, returned, depth) else {
+                continue;
+            };
+            let mut shown = self.shown(without_key(shown), depth);
+            let element = match (shown.len(), shown.pop()) {
+                (1, Some(Child::Element(element))) => element,
+                _ => {
+                    self.error(
+                        Code::Unsupported,
+                        returned.loc(),
+                        format!("each row of the list `{key}` must be one element"),
+                        "wrap the row in a <Row> or a <Column>",
+                    );
+                    break;
+                }
+            };
+            out.push(Child::Expr(Expr::Logical {
+                op: LogicalOp::And,
+                left: Box::new(made(format!("{key}_{row}"), loc)),
+                right: Box::new(Expr::Element(Box::new(element))),
+                loc,
+            }));
+        }
+        self.in_row = false;
+        out
+    }
+
+    /// What one item shows, expanded.
+    fn shown(&mut self, shown: Expr, depth: usize) -> Vec<Child> {
+        match shown {
+            Expr::Element(element) => self.element(&element, depth),
+            Expr::Fragment { children, .. } => self.children(&children, depth),
+            Expr::Null { .. } => Vec::new(),
+            other => vec![Child::Expr(other)],
+        }
+    }
+
+    /// The screen's prop `list` names, `props.items` or a destructured
+    /// `items`: the list's name for its rows.
+    fn screen_prop(&self, list: &Expr) -> Option<String> {
+        match (list, self.screen?) {
+            (
+                Expr::Member {
+                    object, property, ..
+                },
+                Params::Named { name, .. },
+            ) if object == name => Some(property.clone()),
+            (Expr::Ident { name, .. }, Params::Destructured(bindings)) => bindings
+                .iter()
+                .find(|binding| binding.local == *name)
+                .map(|binding| binding.key.clone()),
+            _ => None,
+        }
+    }
+
     /// What `name` refers to inside the part `using` expands.
     fn named<'n>(using: &'n Use<'_>, name: &'n str) -> Named<'n> {
+        if using.shadow.iter().any(|shadowed| shadowed == name) {
+            return Named::Shadowed;
+        }
         match using.bound {
             Bound::Destructured(bindings) => bindings
                 .iter()
@@ -366,6 +632,7 @@ impl<'p, 's> Expander<'p, 's> {
                     self.declared_here(using, name, *loc);
                     Ok(None)
                 }
+                Named::Shadowed => Ok(None),
             },
             Expr::Member {
                 object,
@@ -373,7 +640,7 @@ impl<'p, 's> Expander<'p, 's> {
                 loc,
             } => match Self::named(using, object) {
                 Named::Props => Ok(Some(property.as_str())),
-                Named::Prop(_) => Ok(None),
+                Named::Prop(_) | Named::Shadowed => Ok(None),
                 Named::Other => {
                     self.declared_here(using, object, *loc);
                     Ok(None)
@@ -387,7 +654,7 @@ impl<'p, 's> Expander<'p, 's> {
     /// declared in the file: it would be the screen's, which React does not
     /// give a part.
     fn declared_here(&mut self, using: &Use<'_>, name: &str, loc: Loc) {
-        if !self.declared.contains(name) {
+        if !using.closure && !self.declared.contains(name) {
             let part = using.part;
             self.error(
                 Code::UnknownName,
@@ -409,6 +676,15 @@ impl<'p, 's> Expander<'p, 's> {
         let AttrValue::Expr(expr) = value else {
             return Some(value.clone());
         };
+        if let Some(whole) = Self::whole_of(using, expr) {
+            return Some(match whole {
+                Expr::Str { value, loc } => AttrValue::Str {
+                    value: value.clone(),
+                    loc: *loc,
+                },
+                other => AttrValue::Expr(other.clone()),
+            });
+        }
         match self.prop_of(using, expr) {
             Ok(Some("children")) => {
                 self.error(
@@ -427,8 +703,21 @@ impl<'p, 's> Expander<'p, 's> {
 
     /// An expression with the part's props given: `None` when it is
     /// `undefined`.
+    /// The parameter itself, if `expr` names it and it has a value whole.
+    fn whole_of<'u>(using: &'u Use<'_>, expr: &Expr) -> Option<&'u Expr> {
+        match (expr, using.bound, &using.whole) {
+            (Expr::Ident { name, .. }, Bound::Object(object), Some(whole)) if name == object => {
+                Some(whole)
+            }
+            _ => None,
+        }
+    }
+
     fn subst_expr(&mut self, using: &Use<'_>, expr: &Expr, depth: usize) -> Option<Expr> {
         let inner = depth.saturating_add(1);
+        if let Some(whole) = Self::whole_of(using, expr) {
+            return Some(whole.clone());
+        }
         match self.prop_of(using, expr) {
             Ok(Some("children")) => {
                 self.error(
@@ -545,6 +834,61 @@ impl<'p, 's> Expander<'p, 's> {
                     .collect(),
                 loc: *loc,
             },
+            Expr::Map {
+                list,
+                most,
+                callback,
+                loc,
+            } => {
+                let list = self.subst_expr(using, list, inner)?;
+                let most = match most {
+                    Some(most) => Some(Box::new(self.subst_expr(using, most, inner)?)),
+                    None => None,
+                };
+                // The callback's own parameters are not the part's.
+                let shadowing = Use {
+                    part: using.part,
+                    bound: using.bound,
+                    given: using.given.clone(),
+                    children: using.children.clone(),
+                    whole: using.whole.clone(),
+                    closure: using.closure,
+                    shadow: using
+                        .shadow
+                        .iter()
+                        .cloned()
+                        .chain(bound_names(&callback.params))
+                        .collect(),
+                };
+                let mut function = (**callback).clone();
+                function.body = match &callback.body {
+                    Body::Expr(body) => Body::Expr(Box::new(
+                        self.subst_expr(&shadowing, body, inner)
+                            .unwrap_or(Expr::Null { loc: body.loc() }),
+                    )),
+                    Body::Block(statements) => Body::Block(
+                        statements
+                            .iter()
+                            .map(|statement| match statement {
+                                Stmt::Return {
+                                    value: Some(value),
+                                    loc,
+                                } => Stmt::Return {
+                                    value: self.subst_expr(&shadowing, value, inner),
+                                    loc: *loc,
+                                },
+                                other => other.clone(),
+                            })
+                            .collect(),
+                    ),
+                };
+                Expr::Map {
+                    list: Box::new(list),
+                    most,
+                    callback: Box::new(function),
+                    loc: *loc,
+                }
+            }
             // Refused by the walk wherever it stands; nothing inside is
             // substituted.
             Expr::Function(_) => expr.clone(),
@@ -592,6 +936,11 @@ impl<'p, 's> Expander<'p, 's> {
         let inner = depth.saturating_add(1);
         for child in children {
             match child {
+                Child::Expr(expr) if Self::whole_of(using, expr).is_some() => {
+                    if let Some(whole) = Self::whole_of(using, expr) {
+                        out.push(Child::Expr(whole.clone()));
+                    }
+                }
                 Child::Expr(expr) => match self.prop_of(using, expr) {
                     Ok(Some("children")) => out.extend(using.children.iter().cloned()),
                     _ => {
@@ -665,6 +1014,12 @@ pub(crate) fn element_names<'e>(expr: &'e Expr, out: &mut BTreeSet<&'e str>, dep
                 element_names(&prop.value, out, inner);
             }
         }
+        Expr::Map { list, callback, .. } => {
+            element_names(list, out, inner);
+            for returned in returned_values(callback) {
+                element_names(returned, out, inner);
+            }
+        }
         Expr::Function(_)
         | Expr::Str { .. }
         | Expr::Num { .. }
@@ -672,6 +1027,138 @@ pub(crate) fn element_names<'e>(expr: &'e Expr, out: &mut BTreeSet<&'e str>, dep
         | Expr::Member { .. }
         | Expr::Null { .. }
         | Expr::Other(_) => {}
+    }
+}
+
+/// The values a function returns, as written.
+pub(crate) fn returned_values(function: &Function) -> Vec<&Expr> {
+    match &function.body {
+        Body::Expr(expr) => vec![expr],
+        Body::Block(statements) => statements
+            .iter()
+            .filter_map(|statement| match statement {
+                Stmt::Return {
+                    value: Some(value), ..
+                } => Some(value),
+                _ => None,
+            })
+            .collect(),
+    }
+}
+
+/// Whether a function's body is its returned value alone: an arrow's
+/// expression, or a block that is one `return`.
+fn returns_only(function: &Function) -> bool {
+    match &function.body {
+        Body::Expr(_) => true,
+        Body::Block(statements) => {
+            matches!(statements.as_slice(), [Stmt::Return { value: Some(_), .. }])
+        }
+    }
+}
+
+/// The names a function's parameters bind.
+fn bound_names(params: &Params) -> Vec<String> {
+    match params {
+        Params::Named { name, .. } => vec![name.clone()],
+        Params::Destructured(bindings) => bindings.iter().map(|b| b.local.clone()).collect(),
+        Params::None | Params::Unsupported(_) => Vec::new(),
+    }
+}
+
+/// Each property `name.property` reads in `expr`, for a row's fields.
+fn members_of(expr: &Expr, name: &str, out: &mut BTreeSet<String>, depth: usize) {
+    if depth > MAX_TREE_DEPTH {
+        return;
+    }
+    let inner = depth.saturating_add(1);
+    match expr {
+        Expr::Member {
+            object, property, ..
+        } if object == name => {
+            out.insert(property.clone());
+        }
+        Expr::Element(element) => members_in_element(element, name, out, inner),
+        Expr::Fragment { children, .. } => members_in_children(children, name, out, inner),
+        Expr::Logical { left, right, .. } => {
+            members_of(left, name, out, inner);
+            members_of(right, name, out, inner);
+        }
+        Expr::Conditional {
+            test,
+            consequent,
+            alternate,
+            ..
+        } => {
+            members_of(test, name, out, inner);
+            members_of(consequent, name, out, inner);
+            members_of(alternate, name, out, inner);
+        }
+        Expr::Array { elements, .. } => {
+            for element in elements {
+                members_of(element, name, out, inner);
+            }
+        }
+        Expr::Object { props, .. } => {
+            for prop in props {
+                members_of(&prop.value, name, out, inner);
+            }
+        }
+        Expr::Map { list, most, .. } => {
+            members_of(list, name, out, inner);
+            if let Some(most) = most {
+                members_of(most, name, out, inner);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn members_in_element(element: &Element, name: &str, out: &mut BTreeSet<String>, depth: usize) {
+    for attr in &element.attrs {
+        if let Attr::Named {
+            value: AttrValue::Expr(value),
+            ..
+        } = attr
+        {
+            members_of(value, name, out, depth);
+        }
+    }
+    members_in_children(&element.children, name, out, depth);
+}
+
+fn members_in_children(children: &[Child], name: &str, out: &mut BTreeSet<String>, depth: usize) {
+    if depth > MAX_TREE_DEPTH {
+        return;
+    }
+    for child in children {
+        match child {
+            Child::Element(element) => {
+                members_in_element(element, name, out, depth.saturating_add(1));
+            }
+            Child::Expr(expr) => members_of(expr, name, out, depth),
+            Child::Fragment { children, .. } => {
+                members_in_children(children, name, out, depth.saturating_add(1));
+            }
+            Child::Text { .. }
+            | Child::InvalidText { .. }
+            | Child::Empty { .. }
+            | Child::Spread { .. } => {}
+        }
+    }
+}
+
+/// `expr` without `key` on the element it is: React's list key, which
+/// tells nothing here.
+fn without_key(expr: Expr) -> Expr {
+    match expr {
+        Expr::Element(mut element) => {
+            element
+                .attrs
+                .retain(|attr| !matches!(attr, Attr::Named { name, .. } if name == "key"));
+            Expr::Element(element)
+        }
+        other => other,
     }
 }
 

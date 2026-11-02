@@ -1,17 +1,16 @@
-screen-compiler audit: 18 files
-  convert                16  88.8%
+screen-compiler audit: 19 files
+  convert                17  89.4%
   do not convert          2
   cannot be read          0
 
-constructs            620
-  in the subset       605  97.5%
-  on the road           9  1.4%
-  out by design         2  0.3%
+constructs            652
+  in the subset       638  97.8%
+  on the road           7  1.0%
+  out by design         3  0.4%
   unknown               4  0.6%
 
 on the road
   text mixing literals and props           2 in 2 files
-  lists                                    2 in 1 file
   more conditions                          1 in 1 file
   React DOM's event names                  2 in 1 file
   common HTML elements                     1 in 1 file
@@ -20,6 +19,8 @@ on the road
 out by design
   a global stylesheet: there is no cascade
     an import of a stylesheet              1
+  a list with no most: slice it, .slice(0, N), so the screen knows its rows
+    .map() with no most                    1
   state and hooks live in the application, which sets what a screen shows
     useState()                             1
 
@@ -40,11 +41,12 @@ files
   lost-property-3-review.tsx  converts
   notice-board.tsx  converts
   order-ready.tsx  converts
+  order-summary.tsx  converts
   parcel-status.tsx  converts
   parking-paid.tsx  converts
   queue-ticket.tsx  converts
   tiles.tsx  converts
   unsupported/form-controls.tsx  does not convert: 1 on the road, 0 out by design, 0 unknown
-  unsupported/web-search.tsx  does not convert: 8 on the road, 2 out by design, 4 unknown
+  unsupported/web-search.tsx  does not convert: 6 on the road, 3 out by design, 4 unknown
   visit-booking.tsx  converts
   welcome.tsx  converts
