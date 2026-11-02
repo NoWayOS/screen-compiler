@@ -34,14 +34,22 @@
 //! `whole` (with `least`, `most` and `token`), `choice` (with `values`),
 //! `colour`, `action`, `prop`, `options` (with `most`) or `style`; a
 //! component's `children` is `none`, `one-element`, `elements`,
-//! `text-or-prop` or `text` ([`Children`](crate::Children)).
+//! `text-or-prop` or `text` ([`Children`]).
+//!
+//! [`declarations`] writes the same tables as TypeScript declarations of
+//! `nowayos:kit` (`screen-compiler subset --dts`), so an editor that bundles
+//! TypeScript flags an unknown component, an unknown prop or a value
+//! outside the lists as it is typed. They declare the global `JSX`
+//! namespace themselves, for a project with no React types (`"jsx":
+//! "preserve"`): no HTML elements, no `key`, and an element's type branded
+//! so that text cannot stand where an element must.
 
 use std::fmt::Write as _;
 
 use screen_compiler_ir::{Colour, Space};
 
 use crate::KIT_MODULE;
-use crate::kit::{KitComponent, Value};
+use crate::kit::{Children, KitComponent, StyleProperty, Value};
 
 /// The subset as JSON, ending in a newline.
 #[must_use]
@@ -157,6 +165,167 @@ fn string(text: &str) -> String {
     out
 }
 
+/// A range of whole numbers no wider than this is declared as a union of
+/// its literals (`1 | 2 | … | 8`); a wider one as `number`.
+const MOST_LITERALS: u16 = 17;
+
+/// The subset as TypeScript declarations of `nowayos:kit`, ending in a
+/// newline.
+#[must_use]
+pub fn declarations() -> String {
+    let mut out = String::from(
+        "// The declarations of `nowayos:kit`, written by `screen-compiler subset --dts` from\n\
+         // Screen Compiler's own tables: do not edit. For an editor's TypeScript in a folder\n\
+         // of screens without React's types: \"jsx\": \"preserve\" in its tsconfig.json.\n\
+         // Screen Compiler checks more than these types can say (a text's characters, an\n\
+         // id's form, where a field error or a keyboard may go): it has the last word.\n\n",
+    );
+    out.push_str(
+        "declare namespace JSX {\n\
+         \x20 /** An element of a screen: one of the kit's components. */\n\
+         \x20 interface Element {\n\
+         \x20   readonly \"nowayos:kit\": true;\n\
+         \x20 }\n\
+         \x20 /** None: a screen is built from the kit's components only. */\n\
+         \x20 interface IntrinsicElements {}\n\
+         \x20 interface ElementChildrenAttribute {\n\
+         \x20   children: {};\n\
+         \x20 }\n\
+         }\n\n",
+    );
+    let _ = writeln!(out, "declare module {} {{", string(KIT_MODULE));
+    let _ = writeln!(
+        out,
+        "  /** One of the theme's colours, by name: never a colour value. */\n  export type Colour = {};\n",
+        union(&Colour::NAMES)
+    );
+    let _ = writeln!(
+        out,
+        "  /** One of the theme's spacing tokens, which grow with the large-text theme. */\n  \
+         export interface Space {{\n    readonly \"nowayos:space\": {};\n  }}\n",
+        union(&Space::NAMES)
+    );
+    let tokens: Vec<String> = Space::NAMES
+        .iter()
+        .map(|name| format!("readonly {name}: Space"))
+        .collect();
+    let _ = writeln!(
+        out,
+        "  /** The theme's spacing tokens: `space.xs` to `space.xl`. */\n  export const space: {{ {} }};\n",
+        tokens.join("; ")
+    );
+    out.push_str(
+        "  /**\n   \
+         * What a column or a row holds: elements, and the parts the application shows or hides\n   \
+         * (`{props.ready && <X />}` is the prop's falsy value while it is hidden).\n   \
+         */\n  \
+         export type Child = JSX.Element | false | null | undefined | \"\" | 0;\n",
+    );
+    for component in KitComponent::ALL {
+        component_declarations(&mut out, component);
+    }
+    out.push_str("}\n");
+    out
+}
+
+fn component_declarations(out: &mut String, component: KitComponent) {
+    let name = component.name();
+    if !component.style().is_empty() {
+        let _ = writeln!(out, "\n  /** What `style` on `<{name}>` may name. */");
+        let _ = writeln!(out, "  export interface {name}Style {{");
+        for &StyleProperty {
+            name: property,
+            value,
+        } in component.style()
+        {
+            member(out, property, false, value, name);
+        }
+        out.push_str("  }\n");
+    }
+    let _ = writeln!(out, "\n  /** The props of `<{name}>`. */");
+    let _ = writeln!(out, "  export interface {name}Props {{");
+    for prop in component.props() {
+        member(out, prop.name, prop.required, prop.value, name);
+    }
+    let children = match component.children() {
+        Children::None => "  children?: never;",
+        Children::One => "  /** Exactly one element. */\n    children: JSX.Element;",
+        Children::Elements => "  children?: Child | readonly Child[];",
+        Children::TextOrProp => {
+            "  /** Literal text, or one prop the application sets. */\n    children: string;"
+        }
+        Children::Text => "  /** Its label: literal text. */\n    children: string;",
+    };
+    let _ = writeln!(out, "  {children}");
+    out.push_str("  }\n");
+    let _ = writeln!(
+        out,
+        "  /** {} */\n  export function {name}(props: {name}Props): JSX.Element;",
+        component.summary()
+    );
+}
+
+/// One property of a props or style interface, with what it takes.
+fn member(out: &mut String, name: &str, required: bool, value: Value, component: &str) {
+    if let Some(doc) = doc(value) {
+        let _ = writeln!(out, "    /** {doc} */");
+    }
+    let optional = if required { "" } else { "?" };
+    let _ = writeln!(out, "    {name}{optional}: {};", ts_type(value, component));
+}
+
+/// The TypeScript type of a value.
+fn ts_type(value: Value, component: &str) -> String {
+    match value {
+        Value::Id | Value::FieldId | Value::Text => "string".to_owned(),
+        Value::Length => "number | Space".to_owned(),
+        Value::Size => "number".to_owned(),
+        Value::Whole {
+            least,
+            most,
+            token: false,
+        } if most.saturating_sub(least) < MOST_LITERALS => {
+            let literals: Vec<String> = (least..=most).map(|n| n.to_string()).collect();
+            literals.join(" | ")
+        }
+        Value::Whole { .. } => "number".to_owned(),
+        Value::Choice(values) => union(values),
+        Value::Colour => "Colour".to_owned(),
+        Value::Action => "() => void".to_owned(),
+        Value::Prop => "number".to_owned(),
+        Value::Options { .. } => "readonly string[]".to_owned(),
+        Value::Style => format!("{component}Style"),
+    }
+}
+
+/// What a value takes, in words, where its type does not say it all.
+fn doc(value: Value) -> Option<String> {
+    Some(match value {
+        Value::Id => "An id: letters, digits, `-` and `_`, starting with a letter.".to_owned(),
+        Value::FieldId => "The id of a field on the same screen.".to_owned(),
+        Value::Text => "A string literal.".to_owned(),
+        Value::Length => {
+            "A whole number of layout units, a design token or a spacing token (`space.md`)."
+                .to_owned()
+        }
+        Value::Size => "A whole number of layout units or a design token.".to_owned(),
+        Value::Whole { least, most, token } => {
+            let or = if token { ", or a design token" } else { "" };
+            format!("A whole number from {least} to {most}{or}.")
+        }
+        Value::Action => "A callback prop of the screen, which becomes an action.".to_owned(),
+        Value::Prop => "A prop of the screen, whose value the application sets.".to_owned(),
+        Value::Options { most } => format!("1 to {most} string literals."),
+        Value::Choice(_) | Value::Colour | Value::Style => return None,
+    })
+}
+
+/// `"a" | "b" | "c"`.
+fn union(values: &[&str]) -> String {
+    let quoted: Vec<String> = values.iter().map(|v| string(v)).collect();
+    quoted.join(" | ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -166,6 +335,21 @@ mod tests {
         assert_eq!(string("a\"b\\c"), "\"a\\\"b\\\\c\"");
         assert_eq!(string("\u{a3}\n"), "\"\\u00a3\\u000a\"");
         assert_eq!(string("\u{1F600}"), "\"\\ud83d\\ude00\"");
+    }
+
+    #[test]
+    fn the_declarations_are_ascii_and_declare_every_component() {
+        let dts = declarations();
+        assert!(dts.is_ascii());
+        for component in KitComponent::ALL {
+            assert!(
+                dts.contains(&format!(
+                    "export function {component}(props: {component}Props)"
+                )),
+                "{component}"
+            );
+        }
+        assert_eq!(dts.matches('{').count(), dts.matches('}').count());
     }
 
     #[test]

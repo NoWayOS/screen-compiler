@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: MIT
+// For an editor that bundles TypeScript (VS Code): the fixtures checked against
+// the kit's declarations, kit/nowayos-kit.d.ts, as they are typed. A folder of
+// your own screens needs the same, with its path to the declarations.
+{
+  "compilerOptions": {
+    "jsx": "preserve",
+    "strict": true,
+    "noEmit": true,
+    "types": [],
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["*.tsx", "../kit/nowayos-kit.d.ts"]
+}

@@ -6,8 +6,12 @@
 //! prop or a style property converts, values outside them are refused, and
 //! so is a prop or a style property they do not list.
 //!
-//! Set `SCREEN_COMPILER_BLESS=1` to rewrite `kit/subset.json` after a
-//! deliberate change (`make bless`), then review the diff.
+//! `kit/nowayos-kit.d.ts`, the same tables as TypeScript declarations, is
+//! likewise what they print.
+//!
+//! Set `SCREEN_COMPILER_BLESS=1` to rewrite `kit/subset.json` and
+//! `kit/nowayos-kit.d.ts` after a deliberate change (`make bless`), then
+//! review the diff.
 
 #![allow(
     clippy::unwrap_used,
@@ -29,16 +33,23 @@ use screen_compiler_ir::Colour;
 
 #[test]
 fn the_committed_subset_is_what_the_tables_print() {
-    let json = subset::json();
-    let committed = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../kit/subset.json");
+    same_as_committed("subset.json", &subset::json());
+    same_as_committed("nowayos-kit.d.ts", &subset::declarations());
+}
+
+/// `printed` is `kit/NAME`, or, when blessing, becomes it.
+fn same_as_committed(name: &str, printed: &str) {
+    let committed = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../kit")
+        .join(name);
     if std::env::var_os("SCREEN_COMPILER_BLESS").is_some() {
-        fs::write(&committed, &json).unwrap();
+        fs::write(&committed, printed).unwrap();
         return;
     }
     let expected = fs::read_to_string(&committed).unwrap_or_default();
     assert!(
-        expected == json,
-        "the kit's tables changed; if on purpose, run `make bless` and review kit/subset.json's diff"
+        expected == printed,
+        "the kit's tables changed; if on purpose, run `make bless` and review kit/{name}'s diff"
     );
 }
 
