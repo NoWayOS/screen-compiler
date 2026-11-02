@@ -152,7 +152,23 @@ or on the host with `IN=host`):
 make run ARGS="check fixtures/welcome.tsx"
 make run ARGS="convert fixtures/welcome.tsx" > welcome.rs   # the Rust, written to a file
 make run ARGS="audit fixtures"                               # how much of a folder converts
+make run ARGS="subset"                                       # the subset as data (JSON)
 ```
+
+`screen-compiler subset` prints the subset as data, from the tables the
+analyser checks against (`crates/screen-compiler-analyse/src/kit.rs`): every
+component of the kit, what it holds between its tags, the props and style
+properties it takes, which props it must be given, and the values each
+accepts - its keywords, its range, whether a design token or a spacing token
+may stand for it - and the theme's colours and spacing tokens.
+`kit/subset.json` is that output, committed; `make test` fails if it differs
+(`make bless` rewrites it), and fails if the analyser disagrees with the
+tables: each component must convert with its required props and not without
+any of them, every value listed must convert, and values outside the lists,
+and props and properties the tables leave out, must be refused. The
+website's list of what converts is generated from a copy of
+`kit/subset.json`; this file's tables follow it, and a change to the kit's
+tables changes them in the same commit.
 
 `screen-compiler audit DIR` is the coverage report: it counts every construct
 written in the `.tsx` files under `DIR` - elements, props, style properties,

@@ -28,14 +28,19 @@
 //!   become a group the application shows or hides, each named after its
 //!   prop. A condition is one prop, and what it shows one element.
 //!
+//! Every component, prop and style property, with the values each takes,
+//! is in the kit's tables ([`KitComponent::props`], [`KitComponent::style`]),
+//! which the walk checks against; [`subset::json`] prints them as data.
+//!
 
 #![deny(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
 
 pub mod audit;
 mod kit;
 mod lower;
+pub mod subset;
 
-pub use kit::KitComponent;
+pub use kit::{Children, KitComponent, Prop, StyleProperty, Value};
 use screen_compiler_ir::{Diagnostic, Module};
 use screen_compiler_tsx::SourceModule;
 

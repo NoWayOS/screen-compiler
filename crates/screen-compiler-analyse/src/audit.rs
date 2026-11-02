@@ -193,7 +193,7 @@ fn prop_verdict(element: &str, prop: &str) -> Verdict {
         (_, "onClick") => road(Step::DomEvents),
         (_, "className" | "class") => road(Step::CssModules),
         (_, "key") => road(Step::Lists),
-        (Some(kit), prop) if kit.props().contains(&prop) => Verdict::Subset,
+        (Some(kit), prop) if kit.prop(prop).is_some() => Verdict::Subset,
         (Some(KitComponent::TextInput), "type") => road(Step::ImagesAndMasking),
         (
             Some(KitComponent::TextInput | KitComponent::Checkbox | KitComponent::RadioGroup),
@@ -211,13 +211,9 @@ fn prop_verdict(element: &str, prop: &str) -> Verdict {
 
 /// A property of a `style` on `element`.
 fn style_verdict(element: &str, property: &str) -> Verdict {
-    let declared = |property: &str| {
-        KitComponent::ALL
-            .iter()
-            .any(|kit| kit.style_properties().contains(&property))
-    };
+    let declared = |property: &str| KitComponent::ALL.iter().any(|kit| kit.styles(property));
     match KitComponent::from_name(element) {
-        Some(kit) if kit.style_properties().contains(&property) => Verdict::Subset,
+        Some(kit) if kit.styles(property) => Verdict::Subset,
         _ if LAYOUT.contains(&property) => Verdict::Road(Step::CssLayout),
         _ if POSITION.contains(&property) || property == "zIndex" => Verdict::Road(Step::Layering),
         _ if property.starts_with("animation") || property.starts_with("transition") => {

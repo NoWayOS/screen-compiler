@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! Command-line arguments, parsed by hand: three subcommands and one option
+//! Command-line arguments, parsed by hand: four subcommands and one option
 //! do not justify a parser dependency.
 
 use std::ffi::{OsStr, OsString};
@@ -26,6 +26,8 @@ pub enum Command {
         /// The folder whose `.tsx` files are counted.
         dir: PathBuf,
     },
+    /// `screen-compiler subset`
+    Subset,
     /// `screen-compiler --help`
     Help,
     /// `screen-compiler --version`
@@ -136,6 +138,14 @@ pub fn parse(args: &[OsString]) -> Result<Command, ArgError> {
                 dir: dir.ok_or(ArgError::MissingInput)?,
             })
         }
+        Some("subset") => match args.next() {
+            None => Ok(Command::Subset),
+            Some(arg) if matches!(arg.to_str(), Some("-h" | "--help")) => Ok(Command::Help),
+            Some(arg) if lossy(arg).starts_with('-') && arg.len() > 1 => {
+                Err(ArgError::UnknownOption(lossy(arg)))
+            }
+            Some(arg) => Err(ArgError::Unexpected(lossy(arg))),
+        },
         _ => Err(ArgError::UnknownCommand(lossy(first))),
     }
 }
@@ -211,6 +221,20 @@ mod tests {
         assert_eq!(
             run(&["check", "a.tsx", "b.tsx"]),
             Err(ArgError::Unexpected("b.tsx".into()))
+        );
+    }
+
+    #[test]
+    fn subset_takes_no_arguments() {
+        assert_eq!(run(&["subset"]), Ok(Command::Subset));
+        assert_eq!(run(&["subset", "--help"]), Ok(Command::Help));
+        assert_eq!(
+            run(&["subset", "a.tsx"]),
+            Err(ArgError::Unexpected("a.tsx".into()))
+        );
+        assert_eq!(
+            run(&["subset", "--json"]),
+            Err(ArgError::UnknownOption("--json".into()))
         );
     }
 

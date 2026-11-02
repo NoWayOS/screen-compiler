@@ -379,6 +379,21 @@ pub enum InputMode {
 }
 
 impl InputMode {
+    /// Every value the TSX `inputMode` prop takes.
+    pub const NAMES: [&'static str; 4] = ["text", "numeric", "tel", "email"];
+
+    /// The mode a TSX `inputMode` value names: `numeric` and `tel` are
+    /// both digits only.
+    #[must_use]
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "text" => Some(Self::Text),
+            "numeric" | "tel" => Some(Self::Digits),
+            "email" => Some(Self::Email),
+            _ => None,
+        }
+    }
+
     /// The mode's name in outlines and messages.
     #[must_use]
     pub const fn as_str(self) -> &'static str {

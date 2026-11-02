@@ -30,6 +30,9 @@ compiler, not a sandbox.
   targets the contract in `crates/screen-compiler-codegen-rust/src/contract.rs`:
   change the contract and the generator together.
 - Snapshots change only on purpose (`make bless`, then review the diff).
+- The kit's tables (`crates/screen-compiler-analyse/src/kit.rs`) are the subset: a change to
+  what converts changes them, `kit/subset.json` (`make bless`) and the help that lists what
+  converts (`DEVELOPING.md`), in the same change.
   Never approve an image in `contract-check/golden/`: a person does.
 - Screen Compiler's own crates never depend on NoWayOS; only `contract-check/`
   does.

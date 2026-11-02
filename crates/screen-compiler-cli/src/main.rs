@@ -6,6 +6,7 @@
 //! screen-compiler convert IN.tsx [-o OUT.rs]   write Rust to OUT.rs (or standard output)
 //! screen-compiler check IN.tsx                 report what is outside the subset
 //! screen-compiler audit DIR                     how much of a folder of TSX converts
+//! screen-compiler subset                        the subset as data: every component, prop and style property
 //! ```
 //!
 //! Exit status: 0 success; 1 the input cannot be converted (diagnostics on
@@ -37,6 +38,7 @@ Usage:
   screen-compiler convert <INPUT.tsx> [-o <OUTPUT.rs>]
   screen-compiler check <INPUT.tsx>
   screen-compiler audit <DIR>
+  screen-compiler subset
   screen-compiler --help | --version
 
 Commands:
@@ -48,6 +50,9 @@ Commands:
             subset, on the road towards React and CSS, out by design or
             unknown; and which files convert. Names constructs, quotes no
             code. Run it only on code you trust.
+  subset    Print the subset as JSON: every component, the props and
+            style properties it takes and the values each accepts, the
+            theme's colours and its spacing tokens.
 
 Exit status: 0 success, 1 not convertible (see diagnostics), 2 usage or I/O error.
 ";
@@ -62,6 +67,7 @@ fn main() -> ExitCode {
         Ok(Command::Convert { input, output }) => convert(&input, output.as_deref()),
         Ok(Command::Check { input }) => check(&input),
         Ok(Command::Audit { dir }) => audit(&dir),
+        Ok(Command::Subset) => emit_stdout(&screen_compiler_analyse::subset::json()),
         Err(error) => {
             let error = error.to_string();
             eprint_best_effort(&format!(

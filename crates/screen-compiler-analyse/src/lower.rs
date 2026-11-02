@@ -2001,7 +2001,7 @@ impl Lower<'_, '_, '_> {
                 return style;
             }
         };
-        let allowed = component.style_properties();
+        let allowed = component.style_names();
         let mut seen: Vec<&str> = Vec::new();
         for prop in props {
             let key = prop.key.as_str();
@@ -2052,12 +2052,8 @@ impl Lower<'_, '_, '_> {
                     style.text_align = self.keyword(
                         key,
                         &prop.value,
-                        &["left", "start", "center", "right", "end"],
-                        |v| match v {
-                            "left" => Some(TextAlign::Start),
-                            "right" => Some(TextAlign::End),
-                            other => TextAlign::parse(other),
-                        },
+                        &TextAlign::STYLE_NAMES,
+                        TextAlign::parse_style,
                     );
                 }
                 "backgroundColor" => style.look.fill = self.theme_colour(key, &prop.value),
@@ -2289,7 +2285,7 @@ impl Lower<'_, '_, '_> {
                 continue;
             }
             seen.push(name);
-            if !component.props().contains(&name) {
+            if component.prop(name).is_none() {
                 let help = component.unknown_prop_help(name);
                 self.cx.error_help(
                     Code::UnknownProp,
@@ -2650,20 +2646,16 @@ impl Lower<'_, '_, '_> {
             );
             return None;
         };
-        match mode {
-            "text" => Some(InputMode::Text),
-            "numeric" | "tel" => Some(InputMode::Digits),
-            "email" => Some(InputMode::Email),
-            other => {
-                self.cx.error_help(
-                    Code::InvalidValue,
-                    at,
-                    format!("inputMode \"{other}\" is not supported"),
-                    help,
-                );
-                None
-            }
+        let parsed = InputMode::parse(mode);
+        if parsed.is_none() {
+            self.cx.error_help(
+                Code::InvalidValue,
+                at,
+                format!("inputMode \"{mode}\" is not supported"),
+                help,
+            );
         }
+        parsed
     }
 
     /// `options={["…", …]}`: 1 to [`MAX_RADIO_OPTIONS`] string literals.

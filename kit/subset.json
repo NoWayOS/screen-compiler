@@ -1,0 +1,256 @@
+{
+  "module": "nowayos:kit",
+  "components": [
+    {
+      "name": "Screen",
+      "children": "one-element",
+      "props": [],
+      "style": []
+    },
+    {
+      "name": "Column",
+      "children": "elements",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "gap", "required": false, "value": { "kind": "length" } },
+        { "name": "padding", "required": false, "value": { "kind": "length" } },
+        { "name": "style", "required": false, "value": { "kind": "style" } }
+      ],
+      "style": [
+        { "name": "gap", "value": { "kind": "length" } },
+        { "name": "padding", "value": { "kind": "length" } },
+        { "name": "width", "value": { "kind": "size" } },
+        { "name": "height", "value": { "kind": "size" } },
+        { "name": "minWidth", "value": { "kind": "size" } },
+        { "name": "maxWidth", "value": { "kind": "size" } },
+        { "name": "alignItems", "value": { "kind": "choice", "values": ["flex-start", "start", "center", "flex-end", "end", "stretch"] } },
+        { "name": "justifyContent", "value": { "kind": "choice", "values": ["flex-start", "start", "center", "flex-end", "end", "space-between"] } },
+        { "name": "backgroundColor", "value": { "kind": "colour" } },
+        { "name": "borderColor", "value": { "kind": "colour" } },
+        { "name": "borderWidth", "value": { "kind": "whole", "least": 0, "most": 16, "token": false } },
+        { "name": "borderRadius", "value": { "kind": "whole", "least": 0, "most": 64, "token": false } }
+      ]
+    },
+    {
+      "name": "Row",
+      "children": "elements",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "gap", "required": false, "value": { "kind": "length" } },
+        { "name": "padding", "required": false, "value": { "kind": "length" } },
+        { "name": "style", "required": false, "value": { "kind": "style" } }
+      ],
+      "style": [
+        { "name": "gap", "value": { "kind": "length" } },
+        { "name": "padding", "value": { "kind": "length" } },
+        { "name": "width", "value": { "kind": "size" } },
+        { "name": "height", "value": { "kind": "size" } },
+        { "name": "minWidth", "value": { "kind": "size" } },
+        { "name": "maxWidth", "value": { "kind": "size" } },
+        { "name": "alignItems", "value": { "kind": "choice", "values": ["flex-start", "start", "center", "flex-end", "end", "stretch"] } },
+        { "name": "justifyContent", "value": { "kind": "choice", "values": ["flex-start", "start", "center", "flex-end", "end", "space-between"] } },
+        { "name": "backgroundColor", "value": { "kind": "colour" } },
+        { "name": "borderColor", "value": { "kind": "colour" } },
+        { "name": "borderWidth", "value": { "kind": "whole", "least": 0, "most": 16, "token": false } },
+        { "name": "borderRadius", "value": { "kind": "whole", "least": 0, "most": 64, "token": false } }
+      ]
+    },
+    {
+      "name": "Text",
+      "children": "text-or-prop",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "role", "required": false, "value": { "kind": "choice", "values": ["display", "title", "heading", "body", "label", "caption"] } },
+        { "name": "weight", "required": false, "value": { "kind": "choice", "values": ["regular", "bold"] } },
+        { "name": "lines", "required": false, "value": { "kind": "whole", "least": 1, "most": 8, "token": false } },
+        { "name": "align", "required": false, "value": { "kind": "choice", "values": ["start", "center", "end"] } },
+        { "name": "style", "required": false, "value": { "kind": "style" } }
+      ],
+      "style": [
+        { "name": "color", "value": { "kind": "colour" } },
+        { "name": "textAlign", "value": { "kind": "choice", "values": ["left", "start", "center", "right", "end"] } }
+      ]
+    },
+    {
+      "name": "Button",
+      "children": "text",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "onPress", "required": true, "value": { "kind": "action" } },
+        { "name": "variant", "required": false, "value": { "kind": "choice", "values": ["primary", "secondary", "quiet"] } },
+        { "name": "style", "required": false, "value": { "kind": "style" } }
+      ],
+      "style": [
+        { "name": "backgroundColor", "value": { "kind": "colour" } },
+        { "name": "color", "value": { "kind": "colour" } }
+      ]
+    },
+    {
+      "name": "TextInput",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": true, "value": { "kind": "id" } },
+        { "name": "placeholder", "required": false, "value": { "kind": "text" } },
+        { "name": "maxLength", "required": false, "value": { "kind": "whole", "least": 1, "most": 64, "token": true } },
+        { "name": "inputMode", "required": false, "value": { "kind": "choice", "values": ["text", "numeric", "tel", "email"] } }
+      ],
+      "style": []
+    },
+    {
+      "name": "Spacer",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "size", "required": false, "value": { "kind": "length" } }
+      ],
+      "style": []
+    },
+    {
+      "name": "Checkbox",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": true, "value": { "kind": "id" } },
+        { "name": "label", "required": true, "value": { "kind": "text" } }
+      ],
+      "style": []
+    },
+    {
+      "name": "RadioGroup",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": true, "value": { "kind": "id" } },
+        { "name": "options", "required": true, "value": { "kind": "options", "most": 8 } }
+      ],
+      "style": []
+    },
+    {
+      "name": "Card",
+      "children": "elements",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "gap", "required": false, "value": { "kind": "length" } },
+        { "name": "padding", "required": false, "value": { "kind": "length" } },
+        { "name": "style", "required": false, "value": { "kind": "style" } }
+      ],
+      "style": [
+        { "name": "gap", "value": { "kind": "length" } },
+        { "name": "padding", "value": { "kind": "length" } },
+        { "name": "width", "value": { "kind": "size" } },
+        { "name": "height", "value": { "kind": "size" } },
+        { "name": "minWidth", "value": { "kind": "size" } },
+        { "name": "maxWidth", "value": { "kind": "size" } },
+        { "name": "alignItems", "value": { "kind": "choice", "values": ["flex-start", "start", "center", "flex-end", "end", "stretch"] } },
+        { "name": "justifyContent", "value": { "kind": "choice", "values": ["flex-start", "start", "center", "flex-end", "end", "space-between"] } },
+        { "name": "backgroundColor", "value": { "kind": "colour" } },
+        { "name": "borderColor", "value": { "kind": "colour" } },
+        { "name": "borderWidth", "value": { "kind": "whole", "least": 0, "most": 16, "token": false } },
+        { "name": "borderRadius", "value": { "kind": "whole", "least": 0, "most": 64, "token": false } }
+      ]
+    },
+    {
+      "name": "Notice",
+      "children": "elements",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "gap", "required": false, "value": { "kind": "length" } },
+        { "name": "padding", "required": false, "value": { "kind": "length" } },
+        { "name": "tone", "required": true, "value": { "kind": "choice", "values": ["success", "caution", "warning"] } },
+        { "name": "style", "required": false, "value": { "kind": "style" } }
+      ],
+      "style": [
+        { "name": "gap", "value": { "kind": "length" } },
+        { "name": "padding", "value": { "kind": "length" } },
+        { "name": "width", "value": { "kind": "size" } },
+        { "name": "height", "value": { "kind": "size" } },
+        { "name": "minWidth", "value": { "kind": "size" } },
+        { "name": "maxWidth", "value": { "kind": "size" } },
+        { "name": "alignItems", "value": { "kind": "choice", "values": ["flex-start", "start", "center", "flex-end", "end", "stretch"] } },
+        { "name": "justifyContent", "value": { "kind": "choice", "values": ["flex-start", "start", "center", "flex-end", "end", "space-between"] } },
+        { "name": "backgroundColor", "value": { "kind": "colour" } },
+        { "name": "borderColor", "value": { "kind": "colour" } },
+        { "name": "borderWidth", "value": { "kind": "whole", "least": 0, "most": 16, "token": false } },
+        { "name": "borderRadius", "value": { "kind": "whole", "least": 0, "most": 64, "token": false } }
+      ]
+    },
+    {
+      "name": "HeaderBar",
+      "children": "elements",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "gap", "required": false, "value": { "kind": "length" } },
+        { "name": "padding", "required": false, "value": { "kind": "length" } },
+        { "name": "style", "required": false, "value": { "kind": "style" } }
+      ],
+      "style": [
+        { "name": "gap", "value": { "kind": "length" } },
+        { "name": "padding", "value": { "kind": "length" } },
+        { "name": "width", "value": { "kind": "size" } },
+        { "name": "height", "value": { "kind": "size" } },
+        { "name": "minWidth", "value": { "kind": "size" } },
+        { "name": "maxWidth", "value": { "kind": "size" } },
+        { "name": "alignItems", "value": { "kind": "choice", "values": ["flex-start", "start", "center", "flex-end", "end", "stretch"] } },
+        { "name": "justifyContent", "value": { "kind": "choice", "values": ["flex-start", "start", "center", "flex-end", "end", "space-between"] } },
+        { "name": "backgroundColor", "value": { "kind": "colour" } },
+        { "name": "borderColor", "value": { "kind": "colour" } },
+        { "name": "borderWidth", "value": { "kind": "whole", "least": 0, "most": 16, "token": false } },
+        { "name": "borderRadius", "value": { "kind": "whole", "least": 0, "most": 64, "token": false } }
+      ]
+    },
+    {
+      "name": "ProgressBar",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "value", "required": true, "value": { "kind": "prop" } }
+      ],
+      "style": []
+    },
+    {
+      "name": "Icon",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "name", "required": true, "value": { "kind": "choice", "values": ["clipboard-list", "fuel", "house", "message-square", "shield-check", "user-check"] } }
+      ],
+      "style": []
+    },
+    {
+      "name": "ScrollView",
+      "children": "one-element",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } }
+      ],
+      "style": []
+    },
+    {
+      "name": "Select",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": true, "value": { "kind": "id" } },
+        { "name": "placeholder", "required": false, "value": { "kind": "text" } },
+        { "name": "options", "required": true, "value": { "kind": "options", "most": 64 } },
+        { "name": "rows", "required": false, "value": { "kind": "whole", "least": 3, "most": 8, "token": false } }
+      ],
+      "style": []
+    },
+    {
+      "name": "Keyboard",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } }
+      ],
+      "style": []
+    },
+    {
+      "name": "FieldError",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "for", "required": true, "value": { "kind": "field-id" } }
+      ],
+      "style": []
+    }
+  ],
+  "colours": ["background", "text", "text-muted", "placeholder", "button", "button-text", "input", "input-border", "focus", "error"],
+  "space": ["xs", "sm", "md", "lg", "xl"]
+}
