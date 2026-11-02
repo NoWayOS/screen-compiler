@@ -4,12 +4,15 @@ What Screen Compiler accepts, how to build and test it, and the contract it targ
 
 It is **not** a general React compiler: it converts a declared subset exactly
 and reports everything else with its line and column. It never approximates.
+The subset grows, a construct at a time, towards the React and CSS that real
+interfaces use; what needs JavaScript or a browser on the device - state,
+hooks and effects, raw colours, animation - stays out.
 
 ## Status
 
-**Subset v0**, and the first parts of **subset v1**: TSX fixture → parse (`oxc_parser`) →
+**Subset v0** and **subset v1**: TSX fixture → parse (`oxc_parser`) →
 subset check → UI IR → deterministic Rust. The generated Rust targets a
-**provisional contract** for NoWayOS's UI builder (v6), which `nowayos-ui`'s
+**provisional contract** for NoWayOS's UI builder (v12), which `nowayos-ui`'s
 `builder` module implements. `make contract-check`, part of `make ci`, builds every generated
 screen against the real `nowayos-ui` from a sibling nowayos clone, for the
 host and `aarch64-unknown-none`, builds each on a real tree, lays it out at
@@ -34,7 +37,7 @@ its approved image in `contract-check/golden/` pixel for pixel. See
 | `<Spacer />`, `<Spacer size={N} />` | flexible or fixed |
 | `id="…"` on any element | exposed as a handle in generated code |
 
-## Subset v1, so far
+## Subset v1
 
 | Accepted | Notes |
 | --- | --- |
@@ -43,13 +46,20 @@ its approved image in `contract-check/golden/` pixel for pixel. See
 | `{props.ready ? <X /> : <Y />}`, or `: null` | a group choosing between the two, `b.either(groups::READY, x, y)`: `<Y />` shows at first |
 | `<TextInput id="phone" placeholder="…" maxLength={15} inputMode="tel" />` | `maxLength` 1–64 bytes, a number or a token (default 64); `inputMode` `text` (the default), `numeric` or `tel` (both digits only) or `email`. Every text input becomes `b.input(fields::PHONE, ui::Input::new()…)`, never v0's `text_input`; the runtime refuses a key outside its mode or beyond its length |
 | `<Checkbox id="remind" label="…" />` | `b.checkbox(fields::REMIND, "…")`: a literal label of at most 256 bytes; `id` required |
-| `<RadioGroup id="when" options={["…", "…"]} />` | `b.radio_group(fields::WHEN, &["…", "…"])`: 1 to 8 literal options, each at most 256 bytes (more needs the list picker, not built yet); `id` required |
+| `<RadioGroup id="when" options={["…", "…"]} />` | `b.radio_group(fields::WHEN, &["…", "…"])`: 1 to 8 literal options, each at most 256 bytes (more is refused, with help naming `<Select>`); `id` required |
 | `<Button variant="secondary" onPress={…}>Back</Button>` | a button in a variant (contract v3): `variant` is `primary` (the default), `secondary` or `quiet`. `b.button_with("Back", actions::BACK, ui::ButtonVariant::Secondary)`; a primary button stays `b.button` |
 | `<Card>…</Card>`, `<Notice tone="success">…</Notice>`, `<HeaderBar>…</HeaderBar>` | a column (Card, Notice) or a row (HeaderBar) drawn on a surface (contract v3), with `gap` and `padding` as for `Column` and `Row`; `tone` is `success`, `caution` or `warning`, and a notice needs one. `b.column_on(ui::Surface::Card, …)`, `b.row_on(ui::Surface::Header, …)` |
 | `<Text role="title">…</Text>`, `<Text weight="bold">…</Text>` | text in a role of the theme's type scale (contract v2): `role` is `display`, `title`, `heading`, `body` (the default), `label` or `caption`, and `weight` `regular` or `bold`; display, title and heading are Bold only. `b.text_styled("…", ui::TextStyle::new(ui::TextRole::Title))`, or `b.slot_styled(…)` for a prop; body text in Regular stays `b.text` |
 | `<Text lines={3}>…</Text>` | text that wraps onto up to N lines, 1 to 8 (contract v4): breaks after spaces at the node's width, which layout gives it first, then the height of its lines. `.lines(N)` on its `TextStyle`, through `b.text_styled` or `b.slot_styled`; more than 8, or anything but a whole number, is refused where written |
 | `<ProgressBar value={props.fuelled} />` | a bar the application fills (contract v5): `b.progress(slots::FUELLED)`, its number shared with the slots'; the application sets how far it shows with `set_progress(slot, done, whole)`. `value` must be a prop, and a prop fills one slot or bar |
 | `<Icon name="fuel" />` | one of Lucide's icons (ISC), drawn from a build-time alpha mask in the colour of text where it stands (contract v6): `b.icon(&ui::icons::FUEL)`, by its static, so a program links only the icons it names. `name` is a literal from `clipboard-list`, `fuel`, `house`, `message-square`, `shield-check` and `user-check`, NoWayOS's set (`make contract-check` holds the two lists the same) |
+| `<Text align="center">…</Text>` | text aligned in its node (contract v7): `align` a literal `start` (the default), `center` or `end`, each wrapped line on its own; `.align(ui::TextAlign::Center)` on its `TextStyle`. Refused on anything but `<Text>` |
+| `import { space } from "nowayos:kit"`; `gap={space.md}`, `padding={space.lg}`, `<Spacer size={space.sm} />` | the theme's spacing tokens (contract v7), `xs` to `xl`, measured by the theme when the screen is laid out: `ui::Layout::new().gap_space(ui::Space::Md)`, `.padding_space(…)`, `b.spacer_space(ui::Space::Sm)`. A number or a screen's own `const` stays fixed; an unknown token, or a token as `maxLength`, is refused. A screen naming a token is also drawn in the large-text theme (`SCREEN.large.png`) |
+| `style={{ … }}` | a declared subset of CSS (contract v8), an object literal of static properties: on `<Column>`, `<Row>`, `<Card>`, `<Notice>` and `<HeaderBar>`, `gap`, `padding`, `width`, `height`, `minWidth`, `maxWidth`, `alignItems`, `justifyContent`, `backgroundColor`, `borderColor`, `borderWidth` (0-16) and `borderRadius` (0-64); on `<Text>`, `color` and `textAlign`; on `<Button>`, `backgroundColor` and `color`. Sizes in layout units or a token; colours by the theme's name (`background`, `text`, `text-muted`, `placeholder`, `button`, `button-text`, `input`, `input-border`, `focus`, `error`), never a value, so the large-text theme recolours the screen; `alignItems` and `justifyContent` take `flex-start`/`start`, `center`, `flex-end`/`end`, `stretch` (and `space-between`), `textAlign` `left`/`start`, `center`, `right`/`end`. `ui::Layout::new().width(N)…align(ui::Align::Center).justify(ui::Justify::SpaceBetween).look(ui::Look::NONE.fill(ui::Colour::Input)…)`, `.colour(…)` on a `TextStyle`, `b.button_look(…)`. Refused where written: a property given both as a prop and in the style, any other property, a value from a prop or computed, a spread or computed key. A screen naming a colour is drawn in the large-text theme too, and every text checked at 4.5:1 in both themes |
+| `<ScrollView id="answers"><Column>…</Column></ScrollView>` | a clipped column that scrolls (contract v9): `b.scroll_view(ui::Layout::new(), column)`. Exactly one child element; a second in a screen, or one inside another, is refused where written. Also drawn scrolled to its end (`SCREEN.scrolled.png`) |
+| `<Select id="kind" placeholder="…" options={[…]} rows={5} />` | a list picker (contract v10): `b.list_picker(fields::KIND, &[…], ui::Picker::new().placeholder("…").rows(5))`. `id` required; 1 to 64 literal options, each checked as other text; `rows` a whole number 3 to 8 (default 5) |
+| `<Keyboard />` | the on-screen keyboard (contract v11): `b.keyboard()`. No children or props but `id`; a second in a screen, or one in a screen with no `<TextInput>`, is refused where written. Also drawn once for each mode its screen's inputs take (`SCREEN.keys-digits.png` and the others) |
+| `<FieldError for="phone" />` | the line where a field's error shows (contract v12): `b.field_error(fields::PHONE)`. `for` names the `id` of a control holding a field on the screen, before or after it; one per field. A line high even while empty; the application sets the errors. Each field's error is set in the shown frame |
 
 Every text input, checkbox and radio group is a field the application reads
 and sets by number: each screen's `fields` module numbers them from 1 in
@@ -72,8 +82,9 @@ options that are not 1 to 8 string literals, and state-bound props such as
 `value`, `checked` and `onChange` (the application reads and sets each field
 by its number).
 
-Everything else — state and hooks, effects, lists (`.map`), CSS (`style`,
-`className`, stylesheet imports), HTML elements, custom components,
+Everything else — state and hooks, effects, lists (`.map`), CSS outside the
+declared `style` subset (`className`, stylesheet imports, any other
+property or value), HTML elements, custom components,
 fragments, spread props, inline handlers, computed text (`{a + b}`, a call, a
 template), other imports (including `import { type … }`: write `import
 type`), control or invisible characters in text, attribute strings that span
@@ -86,12 +97,11 @@ which now convert - and text mixed with a prop, which stays refused.
 `fixtures/parcel-status.tsx` converts with slots and groups, and
 `fixtures/visit-booking.tsx` with every v1 form control built so far, and
 `fixtures/queue-ticket.tsx` with the type scale's roles and Bold, and
-`fixtures/check-in.tsx` with the button variants and the surfaces. `fixtures/unsupported/lost-property-*.tsx` are the three steps
+`fixtures/check-in.tsx` with the button variants and the surfaces. `fixtures/lost-property-*.tsx` are the three steps
 of one synthetic form that together use every control a form-heavy kiosk
 needs: a checkbox, a radio group, a list picker, a scrolling view, field
-errors, several steps and an on-screen keyboard, besides text, buttons and
-text inputs. All three are still refused; their errors are what the rest of
-subset v1 must add.
+errors and an on-screen keyboard, besides text, buttons and text inputs;
+several steps are the application switching screens. All three convert.
 
 ## Layout
 
@@ -174,8 +184,13 @@ trait (children-first, fallible node construction), `Layout`, `Input` and
 and, for text in a role, `TextStyle` and `TextRole`, and for the look of
 buttons and surfaces, `ButtonVariant`, `Surface` and `Tone` (contract v3),
 text wrapped onto several lines, `TextStyle::lines` (contract v4), and
-a progress bar, `progress` (contract v5), and icons, `icon` with the
-`icons` statics (contract v6;
+a progress bar, `progress` (contract v5), icons, `icon` with the
+`icons` statics (contract v6), text alignment, `TextAlign`, and the
+theme's spacing tokens, `Space` (contract v7), the declared style subset's
+`Look`, `Colour`, `Align`, `Justify` and `button_look` (contract v8), a
+scroll view, `scroll_view` (contract v9), a list picker, `list_picker` and
+`Picker` (contract v10), the on-screen keyboard, `keyboard` (contract v11),
+and a field's error line, `field_error` (contract v12;
 earlier versions' calls are unchanged, so screens generated for them still
 build). Their reference definitions are compiled in
 `crates/screen-compiler-codegen-rust/src/contract.rs`, and the test suite compiles
