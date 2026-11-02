@@ -161,12 +161,24 @@ or on the host with `IN=host`):
 ```sh
 make run ARGS="check fixtures/welcome.tsx"
 make run ARGS="convert fixtures/welcome.tsx" > welcome.rs   # the Rust, written to a file
+make run ARGS="audit fixtures"                               # how much of a folder converts
 ```
+
+`screen-compiler audit DIR` is the coverage report: it counts every construct
+written in the `.tsx` files under `DIR` - elements, props, style properties,
+hooks, lists, conditions, imports - as in the subset, on the road towards
+React and CSS (naming the step that would convert it), out by design, or
+unknown, and says which files convert. A construct it does not know is
+unknown, never counted as converting, and a file converts only if `check`
+passes it. It names constructs and quotes no code. Its report on `fixtures/`
+is approved in `crates/screen-compiler-analyse/tests/snapshots/audit-fixtures.txt`
+(`make bless`). Run it only on code you trust: the parser's limits are
+`check`'s.
 
 `screen-compiler convert IN.tsx [-o OUT.rs]` writes Rust to `OUT.rs` or standard
 output; `screen-compiler check IN.tsx` only reports. Exit status: 0 success, 1 not
 convertible (diagnostics on standard error, nothing written), 2 usage or I/O
-error. `OUT.rs` is replaced whole: it is either left as it was or holds the
+error (`audit` exits 0 whatever it finds). `OUT.rs` is replaced whole: it is either left as it was or holds the
 complete new file. Diagnostics read `FILE:LINE:COLUMN: error[code]: message`,
 with control and invisible characters from the source or file name written
 as `\u{…}`.

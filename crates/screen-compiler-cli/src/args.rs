@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! Command-line arguments, parsed by hand: two subcommands and one option
+//! Command-line arguments, parsed by hand: three subcommands and one option
 //! do not justify a parser dependency.
 
 use std::ffi::{OsStr, OsString};
@@ -20,6 +20,11 @@ pub enum Command {
     Check {
         /// The TSX file to check.
         input: PathBuf,
+    },
+    /// `screen-compiler audit DIR`
+    Audit {
+        /// The folder whose `.tsx` files are counted.
+        dir: PathBuf,
     },
     /// `screen-compiler --help`
     Help,
@@ -117,6 +122,18 @@ pub fn parse(args: &[OsString]) -> Result<Command, ArgError> {
             }
             Ok(Command::Check {
                 input: input.ok_or(ArgError::MissingInput)?,
+            })
+        }
+        Some("audit") => {
+            let mut dir = None;
+            for arg in args {
+                match arg.to_str() {
+                    Some("-h" | "--help") => return Ok(Command::Help),
+                    _ => positional(arg, &mut dir)?,
+                }
+            }
+            Ok(Command::Audit {
+                dir: dir.ok_or(ArgError::MissingInput)?,
             })
         }
         _ => Err(ArgError::UnknownCommand(lossy(first))),

@@ -19,6 +19,7 @@ screen-compiler-tsx = { path = "crates/screen-compiler-tsx" }
 # our toolchain pin; every oxc crate moves together. Only screen-compiler-tsx uses them.
 oxc_allocator = "0.133"
 oxc_ast = "0.133"
+oxc_ast_visit = "0.133"
 # Default feature `regular_expression` parses regex literals, which the subset
 # never accepts anyway.
 oxc_parser = { version = "0.133", default-features = false }

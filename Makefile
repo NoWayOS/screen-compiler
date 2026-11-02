@@ -124,6 +124,7 @@ convert-into:
 bless:
 	SCREEN_COMPILER_BLESS=1 $(CARGO) test $(LOCKED) -p screen-compiler-codegen-rust --test snapshot -- generated_rust_matches_the_snapshots
 	SCREEN_COMPILER_BLESS=1 $(CARGO) test $(LOCKED) -p screen-compiler-analyse --test unsupported_fixtures
+	SCREEN_COMPILER_BLESS=1 $(CARGO) test $(LOCKED) -p screen-compiler-analyse --test audit -- the_fixtures_report_is_as_approved
 
 # The screen-compiler tool itself; paths in ARGS are relative to this folder. Silent,
 # so its standard output can be redirected to a file.
