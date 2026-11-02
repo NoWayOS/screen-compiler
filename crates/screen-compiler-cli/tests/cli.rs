@@ -362,6 +362,10 @@ fn subset_prints_the_committed_tables() {
     let committed = fs::read_to_string(workspace().join("kit/subset.json")).unwrap();
     assert_eq!(text(&out.stdout), committed);
     assert!(out.stderr.is_empty(), "{out:?}");
+    let dts = screen_compiler(&workspace(), &["subset", "--dts"]);
+    assert_eq!(dts.status.code(), Some(0), "{dts:?}");
+    let committed = fs::read_to_string(workspace().join("kit/nowayos-kit.d.ts")).unwrap();
+    assert_eq!(text(&dts.stdout), committed);
     let extra = screen_compiler(&workspace(), &["subset", "fixtures"]);
     assert_eq!(extra.status.code(), Some(2));
 }

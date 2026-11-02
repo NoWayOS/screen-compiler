@@ -153,6 +153,7 @@ make run ARGS="check fixtures/welcome.tsx"
 make run ARGS="convert fixtures/welcome.tsx" > welcome.rs   # the Rust, written to a file
 make run ARGS="audit fixtures"                               # how much of a folder converts
 make run ARGS="subset"                                       # the subset as data (JSON)
+make run ARGS="subset --dts"                                 # the same as TypeScript declarations of the kit
 ```
 
 `screen-compiler subset` prints the subset as data, from the tables the
@@ -169,6 +170,19 @@ and props and properties the tables leave out, must be refused. The
 website's list of what converts is generated from a copy of
 `kit/subset.json`; this file's tables follow it, and a change to the kit's
 tables changes them in the same commit.
+
+`screen-compiler subset --dts` writes the same tables as TypeScript
+declarations of `nowayos:kit`, committed as `kit/nowayos-kit.d.ts` and held
+to the tables by `make test` like `kit/subset.json`. Your editor then knows
+the kit: an editor that bundles TypeScript, such as VS Code, flags an unknown
+component or prop, an HTML element, a missing required prop, a keyword, colour
+or number outside the lists, or text where an element must go, as you type -
+no Node.js or TypeScript to install. Put the file beside your screens with a
+`tsconfig.json` like `fixtures/tsconfig.json` (`"jsx": "preserve"`, no React
+types: the declarations bring their own `JSX`). Screen Compiler still has the
+last word: a text's characters, an id's form, where a field error or the
+keyboard may go and the other rules types cannot say are checked when it
+converts.
 
 `screen-compiler audit DIR` is the coverage report: it counts every construct
 written in the `.tsx` files under `DIR` - elements, props, style properties,

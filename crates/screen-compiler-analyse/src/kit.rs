@@ -272,6 +272,35 @@ impl KitComponent {
         }
     }
 
+    /// What it is, in a sentence: for documentation and editors.
+    #[must_use]
+    pub const fn summary(self) -> &'static str {
+        match self {
+            Self::Screen => "The root of every screen: exactly one child element.",
+            Self::Column => "Children stacked vertically.",
+            Self::Row => "Children side by side.",
+            Self::Text => "Text: literal, or one prop the application sets.",
+            Self::Button => "A button that emits an action.",
+            Self::TextInput => "A single-line text field.",
+            Self::Spacer => "Empty space: flexible, or of a fixed size.",
+            Self::Checkbox => "A box the person ticks.",
+            Self::RadioGroup => "One choice of a few options.",
+            Self::Card => "Children stacked vertically on a card.",
+            Self::Notice => "Children stacked vertically on a notice, in a tone.",
+            Self::HeaderBar => "Children side by side on a header bar.",
+            Self::ProgressBar => "A bar the application fills, from a prop.",
+            Self::Icon => "One of Lucide's icons, by name.",
+            Self::ScrollView => {
+                "One child shown through a view that scrolls: at most one in a screen, never nested."
+            }
+            Self::Select => "One choice of up to 64 options in a list that scrolls inside itself.",
+            Self::Keyboard => {
+                "The on-screen keyboard: at most one in a screen, and only in one with a text input."
+            }
+            Self::FieldError => "Where the errors the application sets for a field show.",
+        }
+    }
+
     /// Whether it holds child elements: a column or a row, on a surface or
     /// not.
     #[must_use]
@@ -517,6 +546,12 @@ mod tests {
             assert_eq!(KitComponent::from_name(c.name()), Some(c));
         }
         assert_eq!(KitComponent::from_name("div"), None);
+    }
+
+    #[test]
+    fn the_list_pickers_summary_gives_its_most_options() {
+        let most = screen_compiler_ir::MAX_SELECT_OPTIONS.to_string();
+        assert!(KitComponent::Select.summary().contains(&most));
     }
 
     #[test]

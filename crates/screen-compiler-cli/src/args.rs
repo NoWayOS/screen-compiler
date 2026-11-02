@@ -26,8 +26,11 @@ pub enum Command {
         /// The folder whose `.tsx` files are counted.
         dir: PathBuf,
     },
-    /// `screen-compiler subset`
-    Subset,
+    /// `screen-compiler subset [--dts]`
+    Subset {
+        /// TypeScript declarations of the kit rather than JSON.
+        dts: bool,
+    },
     /// `screen-compiler --help`
     Help,
     /// `screen-compiler --version`
@@ -138,14 +141,23 @@ pub fn parse(args: &[OsString]) -> Result<Command, ArgError> {
                 dir: dir.ok_or(ArgError::MissingInput)?,
             })
         }
-        Some("subset") => match args.next() {
-            None => Ok(Command::Subset),
-            Some(arg) if matches!(arg.to_str(), Some("-h" | "--help")) => Ok(Command::Help),
-            Some(arg) if lossy(arg).starts_with('-') && arg.len() > 1 => {
-                Err(ArgError::UnknownOption(lossy(arg)))
+        Some("subset") => {
+            let mut dts = false;
+            for arg in args {
+                match arg.to_str() {
+                    Some("-h" | "--help") => return Ok(Command::Help),
+                    Some("--dts") if dts => return Err(ArgError::Repeated("--dts")),
+                    Some("--dts") => dts = true,
+                    // `subset` takes no file: `positional` reports an option,
+                    // and anything else is unexpected.
+                    _ => {
+                        positional(arg, &mut None)?;
+                        return Err(ArgError::Unexpected(lossy(arg)));
+                    }
+                }
             }
-            Some(arg) => Err(ArgError::Unexpected(lossy(arg))),
-        },
+            Ok(Command::Subset { dts })
+        }
         _ => Err(ArgError::UnknownCommand(lossy(first))),
     }
 }
@@ -226,7 +238,12 @@ mod tests {
 
     #[test]
     fn subset_takes_no_arguments() {
-        assert_eq!(run(&["subset"]), Ok(Command::Subset));
+        assert_eq!(run(&["subset"]), Ok(Command::Subset { dts: false }));
+        assert_eq!(run(&["subset", "--dts"]), Ok(Command::Subset { dts: true }));
+        assert_eq!(
+            run(&["subset", "--dts", "--dts"]),
+            Err(ArgError::Repeated("--dts"))
+        );
         assert_eq!(run(&["subset", "--help"]), Ok(Command::Help));
         assert_eq!(
             run(&["subset", "a.tsx"]),
