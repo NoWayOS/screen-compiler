@@ -96,6 +96,7 @@ cd screen-compiler
 make test                                    # unit, property, snapshot and CLI tests
 make run ARGS="check fixtures/welcome.tsx"   # check one screen against the subset
 make run ARGS="audit fixtures"               # how much of a folder of TSX converts
+make run ARGS="subset"                       # every component, prop and style property, as JSON
 make contract-check                          # every screen built against NoWayOS's UI and drawn
 ```
 

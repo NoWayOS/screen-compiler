@@ -45,6 +45,10 @@ impl TextRole {
         Self::Caption,
     ];
 
+    /// Every role's TSX `role` value, largest first.
+    pub const NAMES: [&'static str; 6] =
+        ["display", "title", "heading", "body", "label", "caption"];
+
     /// The role a TSX `role` value names: `display`, `title`, `heading`,
     /// `body`, `label` or `caption`.
     #[must_use]
@@ -127,6 +131,9 @@ pub enum Weight {
 }
 
 impl Weight {
+    /// Every value the TSX `weight` prop takes.
+    pub const NAMES: [&'static str; 2] = ["regular", "bold"];
+
     /// The weight a TSX `weight` value names: `regular` or `bold`.
     #[must_use]
     pub fn parse(value: &str) -> Option<Self> {
@@ -165,6 +172,20 @@ impl TextAlign {
 
     /// Every value the TSX `align` prop takes, in order.
     pub const NAMES: [&'static str; 3] = ["start", "center", "end"];
+
+    /// Every value a style's `textAlign` takes: the prop's, and
+    /// `left` and `right` for the start and the end.
+    pub const STYLE_NAMES: [&'static str; 5] = ["left", "start", "center", "right", "end"];
+
+    /// The alignment a style's `textAlign` value names.
+    #[must_use]
+    pub fn parse_style(value: &str) -> Option<Self> {
+        match value {
+            "left" => Some(Self::Start),
+            "right" => Some(Self::End),
+            other => Self::parse(other),
+        }
+    }
 
     /// Its TSX value: `start`, `center` or `end`.
     #[must_use]
@@ -612,6 +633,9 @@ impl ButtonVariant {
     /// Every variant.
     pub const ALL: [Self; 3] = [Self::Primary, Self::Secondary, Self::Quiet];
 
+    /// Every variant's TSX `variant` value.
+    pub const NAMES: [&'static str; 3] = ["primary", "secondary", "quiet"];
+
     /// The variant a TSX `variant` value names: `primary`, `secondary` or
     /// `quiet`.
     #[must_use]
@@ -654,6 +678,9 @@ pub enum Tone {
 impl Tone {
     /// Every tone.
     pub const ALL: [Self; 3] = [Self::Success, Self::Caution, Self::Warning];
+
+    /// Every tone's TSX `tone` value.
+    pub const NAMES: [&'static str; 3] = ["success", "caution", "warning"];
 
     /// The tone a TSX `tone` value names: `success`, `caution` or
     /// `warning`.
@@ -782,6 +809,31 @@ mod tests {
             "ui::Surface::Notice(ui::Tone::Caution)"
         );
         assert_eq!(Surface::Notice(Tone::Warning).outline(), "notice-warning");
+    }
+
+    #[test]
+    fn each_name_table_lists_exactly_the_values_that_parse() {
+        let roles: Vec<&str> = TextRole::ALL.iter().map(|r| r.tsx()).collect();
+        assert_eq!(roles, TextRole::NAMES);
+        let variants: Vec<&str> = ButtonVariant::ALL.iter().map(|v| v.tsx()).collect();
+        assert_eq!(variants, ButtonVariant::NAMES);
+        let tones: Vec<&str> = Tone::ALL.iter().map(|t| t.tsx()).collect();
+        assert_eq!(tones, Tone::NAMES);
+        assert!(Weight::NAMES.iter().all(|w| Weight::parse(w).is_some()));
+        assert!(
+            TextAlign::STYLE_NAMES
+                .iter()
+                .all(|a| TextAlign::parse_style(a).is_some())
+        );
+        assert!(
+            TextAlign::NAMES
+                .iter()
+                .all(|a| TextAlign::parse(a).is_some())
+        );
+        for value in ["", "Bold", "medium", "justify", "middle"] {
+            assert_eq!(Weight::parse(value), None, "{value:?}");
+            assert_eq!(TextAlign::parse_style(value), None, "{value:?}");
+        }
     }
 
     #[test]

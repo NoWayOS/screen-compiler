@@ -354,3 +354,14 @@ fn audit_counts_a_folder_and_quotes_no_code() {
     let missing = screen_compiler(&fixtures(), &["audit", "no-such-folder"]);
     assert_eq!(missing.status.code(), Some(2));
 }
+
+#[test]
+fn subset_prints_the_committed_tables() {
+    let out = screen_compiler(&workspace(), &["subset"]);
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    let committed = fs::read_to_string(workspace().join("kit/subset.json")).unwrap();
+    assert_eq!(text(&out.stdout), committed);
+    assert!(out.stderr.is_empty(), "{out:?}");
+    let extra = screen_compiler(&workspace(), &["subset", "fixtures"]);
+    assert_eq!(extra.status.code(), Some(2));
+}
