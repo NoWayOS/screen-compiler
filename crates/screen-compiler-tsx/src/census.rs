@@ -56,8 +56,12 @@ pub enum Construct {
     MixedText,
     /// A call to a hook: a function whose name is `use` and a capital.
     Hook(String),
-    /// `.map(…)` on anything.
+    /// `.map(…)` on a list with no most: a prop's, or anything else.
     Map,
+    /// `.map(…)` on a list whose length is known at build time: an array
+    /// literal, a top-level `const` array, or one of these or a prop sliced
+    /// with `.slice(0, N)`.
+    BoundedMap,
     /// Any other call: the callee's name, or `.name` for a method.
     Call(String),
     /// A template literal.
@@ -113,6 +117,8 @@ pub struct Census {
     /// function, exported or not. An element of one of these names is the
     /// module's own component, not one from elsewhere.
     pub own_components: BTreeSet<String>,
+    /// The module's top-level `const` arrays, by name.
+    pub own_lists: BTreeSet<String>,
 }
 
 impl Census {
@@ -128,11 +134,40 @@ pub(crate) fn count(program: &Program<'_>) -> Census {
         census: Census {
             counts: BTreeMap::new(),
             own_components: own_components(program),
+            own_lists: own_lists(program),
         },
         functions: 0,
+        bounded_slices: BTreeSet::new(),
     };
     counter.visit_program(program);
     counter.census
+}
+
+/// The names of `program`'s top-level `const` arrays ([`Census::own_lists`]).
+fn own_lists(program: &Program<'_>) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    for statement in &program.body {
+        let declaration = match statement {
+            Statement::ExportNamedDeclaration(decl) if decl.source.is_none() => {
+                decl.declaration.as_ref()
+            }
+            other => other.as_declaration(),
+        };
+        if let Some(Declaration::VariableDeclaration(decl)) = declaration
+            && decl.kind == VariableDeclarationKind::Const
+        {
+            for declarator in &decl.declarations {
+                if let (
+                    BindingPattern::BindingIdentifier(id),
+                    Some(Expression::ArrayExpression(_)),
+                ) = (&declarator.id, &declarator.init)
+                {
+                    names.insert(id.name.as_str().to_owned());
+                }
+            }
+        }
+    }
+    names
 }
 
 /// The names of `program`'s own function components ([`Census::own_components`]).
@@ -186,9 +221,38 @@ struct Counter {
     census: Census,
     /// How many functions the walk is inside.
     functions: usize,
+    /// Where each `.slice(0, N)` a `.map` lists starts: part of that list,
+    /// not a call of its own.
+    bounded_slices: BTreeSet<u32>,
 }
 
 impl Counter {
+    /// What `.map` on `list` is: bounded if its length is known at build
+    /// time; a `.slice(0, N)` it lists is noted, so it is not counted again.
+    fn map_construct(&mut self, list: &Expression<'_>) -> Construct {
+        let mut list = list;
+        while let Expression::ParenthesizedExpression(inner) = list {
+            list = &inner.expression;
+        }
+        match list {
+            Expression::ArrayExpression(_) => Construct::BoundedMap,
+            Expression::Identifier(id) if self.census.own_lists.contains(id.name.as_str()) => {
+                Construct::BoundedMap
+            }
+            Expression::CallExpression(slice)
+                if matches!(&slice.callee, Expression::StaticMemberExpression(member)
+                    if member.property.name.as_str() == "slice")
+                    && matches!(slice.arguments.first().and_then(|a| a.as_expression()),
+                        Some(Expression::NumericLiteral(from)) if from.value == 0.0)
+                    && slice.arguments.len() == 2 =>
+            {
+                self.bounded_slices.insert(slice.span.start);
+                Construct::BoundedMap
+            }
+            _ => Construct::Map,
+        }
+    }
+
     /// What a module specifier names.
     fn import_kind(module: &str) -> ImportKind {
         if module == "nowayos:kit" {
@@ -348,7 +412,13 @@ impl<'a> Visit<'a> for Counter {
             Expression::StaticMemberExpression(member)
                 if member.property.name.as_str() == "map" =>
             {
-                Construct::Map
+                self.map_construct(&member.object)
+            }
+            Expression::StaticMemberExpression(_)
+                if self.bounded_slices.contains(&it.span.start) =>
+            {
+                walk::walk_call_expression(self, it);
+                return;
             }
             Expression::StaticMemberExpression(member) => {
                 Construct::Call(format!(".{}", member.property.name.as_str()))

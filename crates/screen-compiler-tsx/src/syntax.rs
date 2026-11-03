@@ -326,6 +326,18 @@ pub enum Expr {
         /// Where the expression starts (its left operand).
         loc: Loc,
     },
+    /// `list.map(callback)`, or `list.slice(0, most).map(callback)`: a list
+    /// of elements, one for each item.
+    Map {
+        /// The list, as written before `.map` (or `.slice`).
+        list: Box<Expr>,
+        /// `most` of `.slice(0, most)`, if the list is sliced.
+        most: Option<Box<Expr>>,
+        /// The callback, given each item.
+        callback: Box<Function>,
+        /// Where the expression starts.
+        loc: Loc,
+    },
     /// `test ? consequent : alternate`.
     Conditional {
         /// The condition.
@@ -366,6 +378,7 @@ impl Expr {
             | Self::Array { loc, .. }
             | Self::Object { loc, .. }
             | Self::Logical { loc, .. }
+            | Self::Map { loc, .. }
             | Self::Conditional { loc, .. } => *loc,
             Self::Function(f) => f.loc,
             Self::Element(e) => e.loc,
@@ -391,6 +404,7 @@ impl Expr {
             Self::Object { .. } => "an object literal".to_owned(),
             Self::Logical { .. } => "a logical (`&&`, `||`, `??`) expression".to_owned(),
             Self::Conditional { .. } => "a conditional (`?:`) expression".to_owned(),
+            Self::Map { .. } => "a call to `.map()`".to_owned(),
             Self::Other(o) => with_article(&o.kind),
         }
     }

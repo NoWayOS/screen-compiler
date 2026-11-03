@@ -92,28 +92,12 @@ struct Component<'a> {
     loc: Loc,
 }
 
-/// What a screen's parts are expanded from: the file's parts and every
-/// name it declares.
+/// What a screen's parts are expanded from: the file's parts, its `const`
+/// arrays and every name it declares.
 struct Expansion<'p, 's> {
     parts: &'p BTreeMap<&'s str, Part<'s>>,
+    lists: &'p BTreeMap<&'s str, &'s Expr>,
     declared: &'p BTreeSet<String>,
-}
-
-/// The values a function returns, as written, for finding the elements
-/// it uses; what else its body holds is reported when it is converted.
-fn returns(function: &Function) -> Vec<&Expr> {
-    match &function.body {
-        Body::Expr(expr) => vec![expr],
-        Body::Block(statements) => statements
-            .iter()
-            .filter_map(|statement| match statement {
-                Stmt::Return {
-                    value: Some(value), ..
-                } => Some(value),
-                _ => None,
-            })
-            .collect(),
-    }
 }
 
 pub(crate) fn analyse(source: &SourceModule, options: &Options) -> Analysis {
@@ -127,6 +111,7 @@ pub(crate) fn analyse(source: &SourceModule, options: &Options) -> Analysis {
         exported: BTreeMap::new(),
     };
     let mut components = Vec::new();
+    let mut lists = BTreeMap::new();
     // Checked once every declaration is known: exports may come first.
     let mut export_specifiers: Vec<&ExportSpecifier> = Vec::new();
     let mut default_names: Vec<(&str, Loc)> = Vec::new();
@@ -152,6 +137,10 @@ pub(crate) fn analyse(source: &SourceModule, options: &Options) -> Analysis {
                             function,
                             loc: var.loc,
                         });
+                    }
+                    // A list, which `.map` expands at build time.
+                    Some(list @ Expr::Array { .. }) if var.keyword == DeclKeyword::Const => {
+                        lists.insert(var.name.as_str(), list);
                     }
                     _ => cx.token(var),
                 }
@@ -246,7 +235,7 @@ pub(crate) fn analyse(source: &SourceModule, options: &Options) -> Analysis {
     // is used (`parts`); every other is a screen.
     let mut used = BTreeSet::new();
     for component in &components {
-        for returned in returns(component.function) {
+        for returned in parts::returned_values(component.function) {
             parts::element_names(returned, &mut used, 0);
         }
     }
@@ -267,6 +256,7 @@ pub(crate) fn analyse(source: &SourceModule, options: &Options) -> Analysis {
         .collect();
     let file = Expansion {
         parts: &parts,
+        lists: &lists,
         declared: &declared,
     };
     let screens: Vec<Screen> = components
@@ -730,8 +720,13 @@ impl Cx<'_> {
             }
         };
         let returned = self.returned(source_name, function)?;
-        let mut expander = Expander::new(file.parts, file.declared, self.options.limits.max_nodes);
-        let expanded = expander.root(returned);
+        let mut expander = Expander::new(
+            file.parts,
+            file.lists,
+            file.declared,
+            self.options.limits.max_nodes,
+        );
+        let expanded = expander.root(returned, &function.params);
         self.diagnostics.append(&mut expander.diagnostics);
         let element = match &expanded {
             Expr::Element(element) => element,
@@ -959,6 +954,10 @@ struct Lower<'c, 'o, 'a> {
 
 impl Lower<'_, '_, '_> {
     fn lookup(&self, name: &str) -> Option<Binding> {
+        // A prop the expansion made: a list row's group or slot.
+        if let Some(made) = name.strip_prefix(parts::MADE_PROP) {
+            return Some(Binding::Prop(made.to_owned()));
+        }
         match &self.scope {
             Scope::Destructured(bindings) => {
                 if let Some(binding) = bindings.iter().find(|b| b.local == name) {
