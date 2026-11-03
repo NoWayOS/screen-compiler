@@ -117,12 +117,19 @@
 //!   the prop it comes from; and its fields ([`builder::FieldId`]), named
 //!   after the controls' ids. The runtime refuses a field or slot number used
 //!   twice in one screen; groups that share a number, one prop's, show and
-//!   hide together.
+//!   hide together. Likewise its switches ([`builder::SwitchId`], contract
+//!   v13), each with its cases numbered from 0 in the order they are first
+//!   written, as `u8` constants in a module named after the switch.
+//!
+//! Contract v13 adds conditions beyond one prop's truth: `unless`, a child
+//! shown while a group is hidden (`{!props.ready && <X/>}`), and `case` and
+//! `case_or`, a child shown while a switch is on one case
+//! (`{props.step === "review" && <X/>}`, or `? <X/> : <Y/>`).
 //!
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 12;
+pub const VERSION: u32 = 13;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -301,6 +308,21 @@ pub const MAPPINGS: &[Mapping] = &[
         rust: "b.either(groups::READY, x, y)?",
     },
     Mapping {
+        tsx: "{!props.ready && <X />}, or {!props.ready ? <X /> : <Y />} (as {props.ready ? <Y /> : <X />})",
+        ir: "NodeKind::Group(Group { name: ready, children: [X], unless: true })",
+        rust: "b.unless(groups::READY, x)? (contract v13)",
+    },
+    Mapping {
+        tsx: "{props.step === \"review\" && <X />}",
+        ir: "NodeKind::Case(Case { switch: step, when: review, children: [X] })",
+        rust: "b.case(switches::STEP, switches::step::REVIEW, x)?, with pub const STEP: ui::SwitchId = ui::SwitchId::new(N) and pub mod step { pub const REVIEW: u8 = 0; } (contract v13)",
+    },
+    Mapping {
+        tsx: "{props.step === \"review\" ? <X /> : <Y />}",
+        ir: "NodeKind::Case(Case { switch: step, when: review, children: [X, Y] })",
+        rust: "b.case_or(switches::STEP, switches::step::REVIEW, x, y)? (contract v13)",
+    },
+    Mapping {
         tsx: "const SPACE_MD = 16;",
         ir: "Token { name, value }",
         rust: "pub mod tokens { pub const SPACE_MD: u16 = 16; } (used as super::tokens::SPACE_MD)",
@@ -477,6 +499,26 @@ pub mod builder {
         }
 
         /// The group's number.
+        #[must_use]
+        pub const fn get(self) -> u16 {
+            self.0
+        }
+    }
+
+    /// Which switch a case is on (contract v13). Generated screens number
+    /// their switches from 1 in document order and export each as a named
+    /// constant in their `switches` module, its cases beside it.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct SwitchId(u16);
+
+    impl SwitchId {
+        /// The switch with number `value`.
+        #[must_use]
+        pub const fn new(value: u16) -> Self {
+            Self(value)
+        }
+
+        /// The switch's number.
         #[must_use]
         pub const fn get(self) -> u16 {
             self.0
@@ -1286,6 +1328,43 @@ pub mod builder {
             &mut self,
             group: GroupId,
             when_visible: Self::Node,
+            otherwise: Self::Node,
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// `child`, shown only while the application does not make `group`
+        /// visible: shown at first (contract v13).
+        ///
+        /// # Errors
+        ///
+        /// The builder's error, for example when it is full.
+        fn unless(&mut self, group: GroupId, child: Self::Node) -> Result<Self::Node, Self::Error>;
+
+        /// `child`, shown only while the application sets `switch` to the
+        /// case `when`: on no case at first (contract v13). Switches that
+        /// share a number move together.
+        ///
+        /// # Errors
+        ///
+        /// The builder's error, for example when it is full.
+        fn case(
+            &mut self,
+            switch: SwitchId,
+            when: u8,
+            child: Self::Node,
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// `when_matched` while the application sets `switch` to the case
+        /// `when`, and `otherwise` on any other case or none, as at first
+        /// (contract v13).
+        ///
+        /// # Errors
+        ///
+        /// The builder's error, for example when it is full.
+        fn case_or(
+            &mut self,
+            switch: SwitchId,
+            when: u8,
+            when_matched: Self::Node,
             otherwise: Self::Node,
         ) -> Result<Self::Node, Self::Error>;
 

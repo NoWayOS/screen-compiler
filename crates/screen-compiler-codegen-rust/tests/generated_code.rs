@@ -103,6 +103,15 @@ mod fixture_check_in_parts {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_bike_hire {
+    use crate::nowayos_ui;
+    include!("snapshots/bike-hire.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_order_summary {
     use crate::nowayos_ui;
     include!("snapshots/order-summary.rs");
@@ -181,7 +190,8 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 17] = [
+const COMPILED: [&str; 18] = [
+    "bike-hire",
     "check-in",
     "check-in-parts",
     "details-form",
@@ -328,6 +338,36 @@ fn parcel_status_builds_exactly_its_ir_with_groups_and_slots() {
     // No text from a prop is compiled in: the slots hold none.
     let rust = include_str!("snapshots/parcel-status.rs");
     assert!(!rust.contains("lateNotice\")") && rust.contains("b.slot(slots::LATE_NOTICE)"));
+}
+
+#[test]
+fn bike_hire_builds_exactly_its_ir_with_its_switch_and_its_negation() {
+    // Contract v13: a prop negated, and a prop compared with literals.
+    use fixture_bike_hire::bike_hire as screen;
+    let mut recorder = Recorder::with_capacity(64);
+    let nodes = screen::build(&mut recorder).unwrap();
+    assert_eq!(recorder.outline(nodes.root), ir_outline("bike-hire.tsx"));
+    assert_eq!(recorder.roots(), 1, "every node is in the tree");
+    // One switch for the prop, its cases in the order first written.
+    assert_eq!(screen::switches::STEP.get(), 1);
+    assert_eq!(
+        (
+            screen::switches::step::CHOOSE,
+            screen::switches::step::REVIEW,
+            screen::switches::step::PAY
+        ),
+        (0, 1, 2)
+    );
+    assert_eq!(screen::groups::SIGNED_IN.get(), 1);
+    let outline = recorder.outline(nodes.root);
+    for line in [
+        "switch 1 case 0",
+        "switch 1 case 1",
+        "switch 1 case 2",
+        "unless group 1",
+    ] {
+        assert!(outline.contains(line), "{line}:\n{outline}");
+    }
 }
 
 #[test]

@@ -106,6 +106,31 @@ impl Screen {
         actions
     }
 
+    /// The switches this screen's cases are on, in document order, one per
+    /// distinct prop, each with its cases in the order they are first
+    /// written. Generated code numbers switches from 1, and each switch's
+    /// cases from 0, in these orders.
+    #[must_use]
+    pub fn switches(&self) -> Vec<(&Name, Vec<&Name>)> {
+        let mut switches: Vec<(&Name, Vec<&Name>)> = Vec::new();
+        for node in self.nodes() {
+            if let NodeKind::Case(case) = &node.kind {
+                match switches
+                    .iter_mut()
+                    .find(|(name, _)| name.same_words(&case.switch))
+                {
+                    Some((_, cases)) => {
+                        if !cases.iter().any(|when| when.same_words(&case.when)) {
+                            cases.push(&case.when);
+                        }
+                    }
+                    None => switches.push((&case.switch, vec![&case.when])),
+                }
+            }
+        }
+        switches
+    }
+
     /// The groups this screen shows or hides, in document order (depth-first,
     /// pre-order), one per distinct name. Generated code numbers groups from
     /// 1 in this order.
@@ -187,6 +212,7 @@ impl Node {
         match &self.kind {
             NodeKind::Column(c) | NodeKind::Row(c) => &c.children,
             NodeKind::Group(group) => &group.children,
+            NodeKind::Case(case) => &case.children,
             NodeKind::ScrollView { children } => children,
             _ => &[],
         }
@@ -219,7 +245,10 @@ impl Node {
             NodeKind::Progress { .. } => "ProgressBar",
             NodeKind::Icon { .. } => "Icon",
             NodeKind::Group(group) if group.children.len() > 1 => "cond ? ... : ...",
+            NodeKind::Group(group) if group.unless => "!cond && ...",
             NodeKind::Group(_) => "cond && ...",
+            NodeKind::Case(case) if case.children.len() > 1 => "prop === case ? ... : ...",
+            NodeKind::Case(_) => "prop === case && ...",
         }
     }
 }
@@ -327,8 +356,12 @@ pub enum NodeKind {
         slot: Name,
     },
     /// Content the application shows or hides (subset v1):
-    /// `{props.ready && <X/>}` or `{props.ready ? <X/> : <Y/>}`.
+    /// `{props.ready && <X/>}` or `{props.ready ? <X/> : <Y/>}`; and, in
+    /// contract v13, `{!props.ready && <X/>}`.
     Group(Group),
+    /// Content shown while a prop is one case of a few (contract v13):
+    /// `{props.step === "review" && <X/>}` or `… ? <X/> : <Y/>`.
+    Case(Case),
 }
 
 impl NodeKind {
@@ -412,6 +445,21 @@ pub struct Group {
     pub name: Name,
     /// The child shown while the prop is true and, for `cond ? <X/> : <Y/>`,
     /// the child shown while it is not. One or two.
+    pub children: Vec<Node>,
+    /// Whether its one child shows while the prop is false instead:
+    /// `{!props.ready && <X/>}` (contract v13).
+    pub unless: bool,
+}
+
+/// A case: content shown while a prop is one value of a few, its switch.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Case {
+    /// The prop, which names the switch.
+    pub switch: Name,
+    /// The value it is compared with, which names the case.
+    pub when: Name,
+    /// The child shown while the prop is the case and, for `… ? <X/> :
+    /// <Y/>`, the child shown while it is not. One or two.
     pub children: Vec<Node>,
 }
 

@@ -63,3 +63,20 @@ fn a_screen_named_like_the_api_crate_is_refused() {
     assert_eq!(diagnostics.len(), 1, "{diagnostics:#?}");
     assert_eq!(diagnostics[0].code, Code::ReservedName);
 }
+
+#[test]
+fn a_switch_whose_cases_module_would_be_reserved_is_refused() {
+    let screen = |condition: &str| {
+        format!(
+            "import {{ Column, Screen, Text }} from \"nowayos:kit\";\nexport function S(props) {{ return <Screen><Column>{{{condition} && <Text>A</Text>}}</Column></Screen>; }}\n"
+        )
+    };
+    for prop in ["type", "self", "ui"] {
+        let diagnostics = generate(&screen(&format!("props.{prop} === \"a\""))).unwrap_err();
+        assert_eq!(diagnostics.len(), 1, "{prop}: {diagnostics:#?}");
+        assert_eq!(diagnostics[0].code, Code::ReservedName, "{prop}");
+    }
+    // Its cases are constants, never keywords.
+    let rust = generate(&screen("props.kind === \"type\"")).unwrap();
+    assert!(rust.contains("pub const TYPE: u8 = 0;"), "{rust}");
+}

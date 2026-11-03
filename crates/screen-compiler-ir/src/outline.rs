@@ -27,6 +27,7 @@ pub fn outline(module: &Module, screen: &Screen) -> String {
         fields: screen.fields(),
         groups: screen.groups(),
         slots: screen.slots(),
+        switches: screen.switches(),
     };
     let mut out = String::new();
     let mut stack: Vec<(&Node, usize)> = vec![(&screen.root, 0)];
@@ -50,6 +51,7 @@ struct Numbers<'s> {
     fields: Vec<&'s Name>,
     groups: Vec<&'s Name>,
     slots: Vec<&'s Name>,
+    switches: Vec<(&'s Name, Vec<&'s Name>)>,
 }
 
 /// A container's surface in the outline: nothing for none;
@@ -197,7 +199,25 @@ fn describe(module: &Module, numbers: &Numbers<'_>, node: &Node) -> String {
         }
         NodeKind::Progress { slot } => format!("progress slot {}", number(&numbers.slots, slot)),
         NodeKind::Icon { name } => format!("icon {name}"),
+        NodeKind::Group(group) if group.unless => {
+            format!("unless group {}", number(&numbers.groups, &group.name))
+        }
         NodeKind::Group(group) => format!("group {}", number(&numbers.groups, &group.name)),
+        NodeKind::Case(case) => {
+            let (switch, when) = numbers
+                .switches
+                .iter()
+                .zip(1_usize..)
+                .find(|((name, _), _)| name.same_words(&case.switch))
+                .map_or((0, 0), |((_, cases), number)| {
+                    let when = cases
+                        .iter()
+                        .position(|when| when.same_words(&case.when))
+                        .unwrap_or_default();
+                    (number, when)
+                });
+            format!("switch {switch} case {when}")
+        }
         NodeKind::TextInput {
             placeholder,
             max_len,
@@ -271,6 +291,7 @@ mod tests {
             node(NodeKind::Group(crate::Group {
                 name: name(n),
                 children,
+                unless: false,
             }))
         };
         let root = node(NodeKind::Column(Container {

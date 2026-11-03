@@ -516,6 +516,21 @@ impl<'s> Converter<'s> {
                 children: self.children(&fragment.children, inner),
                 loc: self.loc(span),
             },
+            Expression::UnaryExpression(unary) if unary.operator == UnaryOperator::LogicalNot => {
+                Expr::Not {
+                    operand: Box::new(self.expr(&unary.argument, inner)),
+                    loc: self.loc(span),
+                }
+            }
+            Expression::BinaryExpression(binary)
+                if binary.operator == js::BinaryOperator::StrictEquality =>
+            {
+                Expr::Equals {
+                    left: Box::new(self.expr(&binary.left, inner)),
+                    right: Box::new(self.expr(&binary.right, inner)),
+                    loc: self.loc(span),
+                }
+            }
             Expression::UnaryExpression(unary)
                 if unary.operator == UnaryOperator::UnaryNegation
                     && matches!(unary.argument, Expression::NumericLiteral(_)) =>

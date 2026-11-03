@@ -13,7 +13,8 @@
 
 use screen_compiler_codegen_rust::contract::builder::{
     ActionId, Align, ButtonVariant, Colour, FieldId, GroupId, Input, InputMode, Justify, Layout,
-    Look, Picker, SlotId, Space, Surface, TextAlign, TextStyle, Tone, UiBuilder, Weight, icons,
+    Look, Picker, SlotId, Space, Surface, SwitchId, TextAlign, TextStyle, Tone, UiBuilder, Weight,
+    icons,
 };
 
 /// A theme colour's TSX name, as `screen_compiler_ir::outline` writes it.
@@ -417,6 +418,27 @@ impl UiBuilder for Recorder {
         otherwise: NodeRef,
     ) -> Result<NodeRef, RecordError> {
         self.add(format!("group {}", group.get()), &[when_visible, otherwise])
+    }
+
+    fn unless(&mut self, group: GroupId, child: NodeRef) -> Result<NodeRef, RecordError> {
+        self.add(format!("unless group {}", group.get()), &[child])
+    }
+
+    fn case(&mut self, switch: SwitchId, when: u8, child: NodeRef) -> Result<NodeRef, RecordError> {
+        self.add(format!("switch {} case {when}", switch.get()), &[child])
+    }
+
+    fn case_or(
+        &mut self,
+        switch: SwitchId,
+        when: u8,
+        when_matched: NodeRef,
+        otherwise: NodeRef,
+    ) -> Result<NodeRef, RecordError> {
+        self.add(
+            format!("switch {} case {when}", switch.get()),
+            &[when_matched, otherwise],
+        )
     }
 
     fn input(&mut self, field: FieldId, input: Input) -> Result<NodeRef, RecordError> {

@@ -23,7 +23,10 @@
 //! on-screen keyboard (contract v11) is drawn once for each mode its
 //! text inputs take, the first input in that mode focused, so the keyboard
 //! shows that mode's layout: `golden/FIXTURE/SCREEN.keys-MODE.png`, MODE
-//! `text`, `digits` or `email`.
+//! `text`, `digits` or `email`. A converted screen with switches (contract
+//! v13) is drawn once for each case of each, every group visible and slot
+//! filled and that switch set to that case:
+//! `golden/FIXTURE/SCREEN.case-SWITCH-CASE.png`.
 //!
 //! Finding the screens reads the generated code's fixed shape: each screen is
 //! a top-level `pub mod NAME {` holding `pub fn build<B: ui::UiBuilder>(`.
@@ -198,6 +201,34 @@ fn main() -> Result<(), Box<dyn Error>> {
                     images.push(image);
                 }
             }
+            // Each case of each switch.
+            for Switch {
+                number: switch,
+                name,
+                cases,
+            } in switches(&file.source, &screen)
+            {
+                for (when, case) in cases {
+                    writeln!(tests, "    #[test]")?;
+                    writeln!(tests, "    fn {module}_{screen}_case_{name}_{case}() {{")?;
+                    let build = format!("super::build_{module}_{screen}");
+                    match &file.fixture {
+                        Some(fixture) => {
+                            let image = format!("{fixture}/{screen}.case-{name}-{case}.png");
+                            writeln!(
+                                tests,
+                                "        matches_approved_case({build}, &{groups:?}, &{slots:?}, ({switch}, {when}), {image:?});"
+                            )?;
+                            images.push(image);
+                        }
+                        None => writeln!(
+                            tests,
+                            "        frame_case({build}, &{groups:?}, &{slots:?}, ({switch}, {when}));"
+                        )?,
+                    }
+                    writeln!(tests, "    }}")?;
+                }
+            }
             if groups.is_empty()
                 && slots.is_empty()
                 && !screen_names(&file.source, &screen, "b.field_error(")
@@ -255,7 +286,7 @@ mod run {
     use nowayos_display::Rect;
     use nowayos_render_eg::{Theme, render};
     use nowayos_testkit::Framebuffer;
-    use nowayos_ui::{GroupId, NodeId, SlotId, Tree, UiError};
+    use nowayos_ui::{GroupId, NodeId, SlotId, SwitchId, Tree, UiError};
 
     use super::CAPACITY;
 
@@ -267,13 +298,13 @@ mod run {
     /// Builds a screen on a real tree, makes it the root, lays it out in the
     /// viewport with the light theme's font and draws it with that theme.
     fn frame(build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>) -> Framebuffer {
-        frame_in(false, build, &[], &[], false, None, false)
+        frame_in(false, build, &[], &[], None, false, None, false)
     }
 
     /// As `frame`, in the large-text, high-contrast theme, whose spacing
     /// tokens measure half again.
     fn frame_large(build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>) -> Framebuffer {
-        frame_in(true, build, &[], &[], false, None, false)
+        frame_in(true, build, &[], &[], None, false, None, false)
     }
 
     /// As `frame`, with `groups` made visible and each of `slots` given the
@@ -287,7 +318,17 @@ mod run {
         groups: &[u16],
         slots: &[u16],
     ) -> Framebuffer {
-        frame_in(false, build, groups, slots, false, None, true)
+        frame_in(false, build, groups, slots, None, false, None, true)
+    }
+
+    /// As `frame_shown`, with `case`'s switch set to its case.
+    fn frame_case(
+        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        groups: &[u16],
+        slots: &[u16],
+        case: (u16, u8),
+    ) -> Framebuffer {
+        frame_in(false, build, groups, slots, Some(case), false, None, true)
     }
 
     /// Every text a screen draws - in the colours its style names, or its
@@ -313,16 +354,22 @@ mod run {
     }
 
     /// As `frame_shown`, in the light theme, or the large-text,
-    /// high-contrast theme if `large`; if `scrolled`, its scroll view
+    /// high-contrast theme if `large`; given `case`, that switch set to
+    /// that case (contract v13); if `scrolled`, its scroll view
     /// scrolled as far as it goes; given `typing`, the first text
     /// input in that mode focused - scrolled into view - so the on-screen
     /// keyboard shows its layout; and, if `errors`, every field's
     /// error set to "Error from the application".
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "test code: each frame helper above names the arguments it sets"
+    )]
     fn frame_in(
         large: bool,
         build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
         groups: &[u16],
         slots: &[u16],
+        case: Option<(u16, u8)>,
         scrolled: bool,
         typing: Option<nowayos_ui::InputMode>,
         errors: bool,
@@ -337,6 +384,9 @@ mod run {
         tree.set_root(root).unwrap();
         for &group in groups {
             tree.set_visible(GroupId::new(group), true).unwrap();
+        }
+        if let Some((switch, when)) = case {
+            tree.set_case(SwitchId::new(switch), Some(when)).unwrap();
         }
         for &slot in slots {
             let text = std::format!("Text from the application, {slot}");
@@ -423,7 +473,7 @@ const RUN_IMAGES: &str = r#"
         slots: &[u16],
         image: &str,
     ) {
-        let frame = frame_in(false, build, groups, slots, true, None, true);
+        let frame = frame_in(false, build, groups, slots, None, true, None, true);
         if let Err(err) = check_snapshot(&frame, &golden().join(image)) {
             panic!("{err}\nIn screen-compiler, `make bless-images` redraws the approved images.");
         }
@@ -436,7 +486,7 @@ const RUN_IMAGES: &str = r#"
         typing: nowayos_ui::InputMode,
         image: &str,
     ) {
-        let frame = frame_in(false, build, &[], &[], false, Some(typing), false);
+        let frame = frame_in(false, build, &[], &[], None, false, Some(typing), false);
         if let Err(err) = check_snapshot(&frame, &golden().join(image)) {
             panic!("{err}\nIn screen-compiler, `make bless-images` redraws the approved images.");
         }
@@ -462,6 +512,21 @@ const RUN_IMAGES: &str = r#"
         image: &str,
     ) {
         let frame = frame_shown(build, groups, slots);
+        if let Err(err) = check_snapshot(&frame, &golden().join(image)) {
+            panic!("{err}\nIn screen-compiler, `make bless-images` redraws the approved images.");
+        }
+    }
+
+    /// As `matches_approved_shown`, with `case`'s switch set to its case
+    /// (`frame_case`).
+    fn matches_approved_case(
+        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        groups: &[u16],
+        slots: &[u16],
+        case: (u16, u8),
+        image: &str,
+    ) {
+        let frame = frame_case(build, groups, slots, case);
         if let Err(err) = check_snapshot(&frame, &golden().join(image)) {
             panic!("{err}\nIn screen-compiler, `make bless-images` redraws the approved images.");
         }
@@ -586,6 +651,68 @@ fn numbers(source: &str, screen: &str, ty: &str) -> Vec<u16> {
             && let Ok(number) = number.parse()
         {
             found.push(number);
+        }
+    }
+    found
+}
+
+/// A switch of a generated screen (contract v13).
+struct Switch {
+    /// Its number.
+    number: u16,
+    /// The name of its cases' module.
+    name: String,
+    /// Each case's number and name, lowercase.
+    cases: Vec<(u8, String)>,
+}
+
+/// The switches of `screen`, in a file of generated Rust (contract v13):
+/// each one's number and the name of its cases' module, and each case's
+/// number and name, lowercase - from the shape the generator writes,
+/// `pub const STEP: ui::SwitchId = ui::SwitchId::new(1);`, then
+/// `pub mod step {` holding `pub const REVIEW: u8 = 0;`.
+fn switches(source: &str, screen: &str) -> Vec<Switch> {
+    let open = format!("pub mod {screen} {{");
+    let mut inside = false;
+    let mut found: Vec<Switch> = Vec::new();
+    // The switch just numbered, until its cases' module opens; then in it.
+    let mut numbered: Option<u16> = None;
+    let mut in_cases = false;
+    for line in source.lines() {
+        if line == open || line == "}" {
+            inside = line == open;
+            continue;
+        }
+        if !inside {
+            continue;
+        }
+        let text = line.trim();
+        if let Some((_, rest)) = text.split_once("ui::SwitchId::new(")
+            && let Some((number, _)) = rest.split_once(')')
+            && let Ok(number) = number.parse()
+        {
+            numbered = Some(number);
+        } else if let Some(name) = text
+            .strip_prefix("pub mod ")
+            .and_then(|rest| rest.strip_suffix(" {"))
+            && let Some(number) = numbered.take()
+        {
+            found.push(Switch {
+                number,
+                name: name.to_owned(),
+                cases: Vec::new(),
+            });
+            in_cases = true;
+        } else if in_cases && text == "}" {
+            in_cases = false;
+        } else if in_cases
+            && let Some(rest) = text.strip_prefix("pub const ")
+            && let Some((name, rest)) = rest.split_once(": u8 = ")
+            && let Some(when) = rest.strip_suffix(';')
+            && let Ok(when) = when.parse()
+            && let Some(switch) = found.last_mut()
+        {
+            switch.cases.push((when, name.to_ascii_lowercase()));
         }
     }
     found

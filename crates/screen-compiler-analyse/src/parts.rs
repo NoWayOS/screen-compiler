@@ -570,6 +570,38 @@ impl<'p, 's> Expander<'p, 's> {
         out
     }
 
+    /// A condition with the part's props substituted, decided where an
+    /// omitted prop, `undefined`, decides it: `undefined` is false,
+    /// `!undefined` true and `undefined === "review"` false.
+    fn truth(&mut self, using: &Use<'_>, test: &Expr, depth: usize) -> Truth {
+        let inner = depth.saturating_add(1);
+        match test {
+            Expr::Not { operand, loc } => match self.subst_expr(using, operand, inner) {
+                None => Truth::Always,
+                Some(operand) => Truth::Unknown(Expr::Not {
+                    operand: Box::new(operand),
+                    loc: *loc,
+                }),
+            },
+            Expr::Equals { left, right, loc } => {
+                let left_given = self.subst_expr(using, left, inner);
+                let right_given = self.subst_expr(using, right, inner);
+                match (left_given, right_given) {
+                    (None, Some(Expr::Str { .. })) | (Some(Expr::Str { .. }), None) => Truth::Never,
+                    // Anything else the walk judges, `undefined` as `null`.
+                    (left_given, right_given) => Truth::Unknown(Expr::Equals {
+                        left: Box::new(left_given.unwrap_or(Expr::Null { loc: left.loc() })),
+                        right: Box::new(right_given.unwrap_or(Expr::Null { loc: right.loc() })),
+                        loc: *loc,
+                    }),
+                }
+            }
+            other => self
+                .subst_expr(using, other, inner)
+                .map_or(Truth::Never, Truth::Unknown),
+        }
+    }
+
     /// What one item shows, expanded.
     fn shown(&mut self, shown: Expr, depth: usize) -> Vec<Child> {
         match shown {
@@ -771,7 +803,15 @@ impl<'p, 's> Expander<'p, 's> {
                 right,
                 loc,
             } => {
-                let left = self.subst_expr(using, left, inner);
+                let left = if *op == LogicalOp::And {
+                    match self.truth(using, left, inner) {
+                        Truth::Never => return None,
+                        Truth::Always => return self.subst_expr(using, right, inner),
+                        Truth::Unknown(left) => Some(left),
+                    }
+                } else {
+                    self.subst_expr(using, left, inner)
+                };
                 let right = self.subst_expr(using, right, inner);
                 match (op, left, right) {
                     // `undefined && x` and `x && undefined` show nothing.
@@ -799,9 +839,11 @@ impl<'p, 's> Expander<'p, 's> {
                 let alternate = self
                     .subst_expr(using, alternate, inner)
                     .unwrap_or_else(|| null(alternate.loc()));
-                // `undefined ? a : b` is `b`.
-                let Some(test) = self.subst_expr(using, test, inner) else {
-                    return Some(alternate);
+                // `undefined ? a : b` is `b`, `!undefined ? a : b` is `a`.
+                let test = match self.truth(using, test, inner) {
+                    Truth::Never => return Some(alternate),
+                    Truth::Always => return Some(consequent),
+                    Truth::Unknown(test) => test,
                 };
                 Expr::Conditional {
                     test: Box::new(test),
@@ -889,6 +931,26 @@ impl<'p, 's> Expander<'p, 's> {
                     loc: *loc,
                 }
             }
+            // `!undefined` is true, which the subset cannot hold: the walk
+            // refuses a `null` where it stands.
+            Expr::Not { operand, loc } => Expr::Not {
+                operand: Box::new(
+                    self.subst_expr(using, operand, inner)
+                        .unwrap_or(Expr::Null { loc: operand.loc() }),
+                ),
+                loc: *loc,
+            },
+            Expr::Equals { left, right, loc } => Expr::Equals {
+                left: Box::new(
+                    self.subst_expr(using, left, inner)
+                        .unwrap_or(Expr::Null { loc: left.loc() }),
+                ),
+                right: Box::new(
+                    self.subst_expr(using, right, inner)
+                        .unwrap_or(Expr::Null { loc: right.loc() }),
+                ),
+                loc: *loc,
+            },
             // Refused by the walk wherever it stands; nothing inside is
             // substituted.
             Expr::Function(_) => expr.clone(),
@@ -1014,6 +1076,11 @@ pub(crate) fn element_names<'e>(expr: &'e Expr, out: &mut BTreeSet<&'e str>, dep
                 element_names(&prop.value, out, inner);
             }
         }
+        Expr::Not { operand, .. } => element_names(operand, out, inner),
+        Expr::Equals { left, right, .. } => {
+            element_names(left, out, inner);
+            element_names(right, out, inner);
+        }
         Expr::Map { list, callback, .. } => {
             element_names(list, out, inner);
             for returned in returned_values(callback) {
@@ -1028,6 +1095,16 @@ pub(crate) fn element_names<'e>(expr: &'e Expr, out: &mut BTreeSet<&'e str>, dep
         | Expr::Null { .. }
         | Expr::Other(_) => {}
     }
+}
+
+/// A condition as a part's use leaves it.
+enum Truth {
+    /// False at build time: an omitted prop, `undefined`.
+    Never,
+    /// True at build time: `!undefined`.
+    Always,
+    /// The application's to decide.
+    Unknown(Expr),
 }
 
 /// The values a function returns, as written.
