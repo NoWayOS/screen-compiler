@@ -194,9 +194,21 @@ fn describe(module: &Module, numbers: &Numbers<'_>, node: &Node) -> String {
                 looked(*look)
             )
         }
-        NodeKind::Slot { slot, style } => {
-            format!("slot {}{}", number(&numbers.slots, slot), styled(*style))
-        }
+        NodeKind::Slot {
+            slot,
+            style,
+            template,
+        } => format!(
+            "slot {}{}{}",
+            number(&numbers.slots, slot),
+            styled(*style),
+            template
+                .as_ref()
+                .map_or_else(String::new, |template| format!(
+                    " between {:?} and {:?}",
+                    template.before, template.after
+                ))
+        ),
         NodeKind::Progress { slot } => format!("progress slot {}", number(&numbers.slots, slot)),
         NodeKind::Icon { name } => format!("icon {name}"),
         NodeKind::Group(group) if group.unless => {
@@ -301,6 +313,7 @@ mod tests {
                     vec![node(NodeKind::Slot {
                         slot: name("note"),
                         style: TextStyle::new(TextRole::Display),
+                        template: None,
                     })],
                 ),
                 group(
@@ -309,6 +322,7 @@ mod tests {
                         node(NodeKind::Slot {
                             slot: name("when"),
                             style: TextStyle::BODY,
+                            template: None,
                         }),
                         node(NodeKind::Spacer { size: None }),
                     ],

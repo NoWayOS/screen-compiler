@@ -112,6 +112,24 @@ mod fixture_bike_hire {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_table_ready {
+    use crate::nowayos_ui;
+    include!("snapshots/table-ready.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
+mod fixture_form_controls {
+    use crate::nowayos_ui;
+    include!("snapshots/form-controls.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_order_summary {
     use crate::nowayos_ui;
     include!("snapshots/order-summary.rs");
@@ -190,12 +208,13 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 18] = [
+const COMPILED: [&str; 20] = [
     "bike-hire",
     "check-in",
     "check-in-parts",
     "details-form",
     "edge-names",
+    "form-controls",
     "fuelling",
     "lost-property-1-item",
     "lost-property-2-contact",
@@ -206,6 +225,7 @@ const COMPILED: [&str; 18] = [
     "parking-paid",
     "parcel-status",
     "queue-ticket",
+    "table-ready",
     "tiles",
     "visit-booking",
     "welcome",
@@ -368,6 +388,27 @@ fn bike_hire_builds_exactly_its_ir_with_its_switch_and_its_negation() {
     ] {
         assert!(outline.contains(line), "{line}:\n{outline}");
     }
+}
+
+#[test]
+fn table_ready_builds_exactly_its_ir_with_literals_around_its_slots() {
+    // Contract v14: one prop between literal text, compiled in.
+    use fixture_table_ready::table_ready as screen;
+    let mut recorder = Recorder::with_capacity(64);
+    let nodes = screen::build(&mut recorder).unwrap();
+    assert_eq!(recorder.outline(nodes.root), ir_outline("table-ready.tsx"));
+    assert_eq!(recorder.roots(), 1, "every node is in the tree");
+    let outline = recorder.outline(nodes.root);
+    for line in [
+        "slot 1 role=heading weight=bold between \"Hello, \" and \"!\"",
+        "slot 2 between \"\" and \" guests on this booking\"",
+        "slot 4 role=display weight=bold between \"TABLE \" and \"\"",
+    ] {
+        assert!(outline.contains(line), "{line}:\n{outline}");
+    }
+    // Only the prop's part is the application's: its name is in no literal.
+    let rust = include_str!("snapshots/table-ready.rs");
+    assert!(rust.contains("b.slot_template(slots::COUNT, &ui::Template { before: \"\", after: \" guests on this booking\" })"));
 }
 
 #[test]

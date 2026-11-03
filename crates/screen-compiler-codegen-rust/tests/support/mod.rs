@@ -13,8 +13,8 @@
 
 use screen_compiler_codegen_rust::contract::builder::{
     ActionId, Align, ButtonVariant, Colour, FieldId, GroupId, Input, InputMode, Justify, Layout,
-    Look, Picker, SlotId, Space, Surface, SwitchId, TextAlign, TextStyle, Tone, UiBuilder, Weight,
-    icons,
+    Look, Picker, SlotId, Space, Surface, SwitchId, Template, TextAlign, TextStyle, Tone,
+    UiBuilder, Weight, icons,
 };
 
 /// A theme colour's TSX name, as `screen_compiler_ir::outline` writes it.
@@ -347,6 +347,50 @@ impl UiBuilder for Recorder {
             return Err(RecordError::Duplicate);
         }
         let node = self.add(format!("progress slot {}", slot.get()), &[])?;
+        self.slots.push(slot.get());
+        Ok(node)
+    }
+
+    fn slot_template(
+        &mut self,
+        slot: SlotId,
+        template: &'static Template,
+    ) -> Result<NodeRef, RecordError> {
+        if self.slots.contains(&slot.get()) {
+            return Err(RecordError::Duplicate);
+        }
+        let node = self.add(
+            format!(
+                "slot {} between {:?} and {:?}",
+                slot.get(),
+                template.before,
+                template.after
+            ),
+            &[],
+        )?;
+        self.slots.push(slot.get());
+        Ok(node)
+    }
+
+    fn slot_template_styled(
+        &mut self,
+        slot: SlotId,
+        template: &'static Template,
+        style: TextStyle,
+    ) -> Result<NodeRef, RecordError> {
+        if self.slots.contains(&slot.get()) {
+            return Err(RecordError::Duplicate);
+        }
+        let node = self.add(
+            format!(
+                "slot {}{} between {:?} and {:?}",
+                slot.get(),
+                styled(style),
+                template.before,
+                template.after
+            ),
+            &[],
+        )?;
         self.slots.push(slot.get());
         Ok(node)
     }

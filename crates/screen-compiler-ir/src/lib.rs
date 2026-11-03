@@ -253,6 +253,20 @@ impl Node {
     }
 }
 
+/// The literal text around a slot's (contract v14): `before` and `after`,
+/// together at most [`MAX_TEMPLATE_BYTES`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Template {
+    /// The text before the prop's.
+    pub before: String,
+    /// The text after it.
+    pub after: String,
+}
+
+/// The most bytes a slot's literal text takes, before and after together:
+/// NoWayOS's `TEMPLATE_CAPACITY`.
+pub const MAX_TEMPLATE_BYTES: usize = 64;
+
 /// The element kinds of the subset.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NodeKind {
@@ -335,12 +349,16 @@ pub enum NodeKind {
         children: Vec<Node>,
     },
     /// One line of text the application sets at run time (subset v1):
-    /// `<Text>{props.name}</Text>`. Never text compiled in from the source.
+    /// `<Text>{props.name}</Text>`, or between literal text compiled in
+    /// (contract v14): `<Text>Hello, {props.name}!</Text>`. Never the
+    /// prop's text compiled in from the source.
     Slot {
         /// The prop the text comes from, which names the slot.
         slot: Name,
         /// Its role and weight, as for [`NodeKind::Text`].
         style: TextStyle,
+        /// The literal text around the prop's, if any.
+        template: Option<Template>,
     },
     /// One of the icons: `<Icon name="fuel" />`, a name from
     /// [`ICON_NAMES`].

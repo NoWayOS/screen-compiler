@@ -135,7 +135,9 @@ fn the_road_takes_the_constructs_its_steps_name() {
     // know how many rows it may show.
     assert_eq!(road(Construct::BoundedMap), Verdict::Subset);
     assert!(matches!(road(Construct::Map), Verdict::Out(_)));
-    assert_eq!(road(Construct::MixedText), Verdict::Road(Step::MixedText));
+    // Text mixing literals with a prop converts (one prop per text).
+    assert_eq!(road(Construct::MixedText), Verdict::Subset);
+    assert_eq!(road(Construct::Template), Verdict::Subset);
     // A prop negated, or `===` a string literal (a switch's case), converts;
     // other comparisons and statements are the application's.
     assert_eq!(road(Construct::Unary("!")), Verdict::Subset);

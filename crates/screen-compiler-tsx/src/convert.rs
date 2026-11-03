@@ -17,7 +17,7 @@ use crate::lines::LineIndex;
 use crate::syntax::{
     Attr, AttrValue, Body, Child, DeclKeyword, Element, ElementName, Export, ExportSpecifier, Expr,
     Function, FunctionDecl, Import, ImportBinding, Item, LogicalOp, ObjectProp, Other, Params,
-    PropBinding, SourceModule, Stmt, VarDecl,
+    PropBinding, SourceModule, Stmt, TemplatePiece, VarDecl,
 };
 
 /// JSX nesting deeper than this is not converted (the stack stays bounded);
@@ -514,6 +514,27 @@ impl<'s> Converter<'s> {
             },
             Expression::JSXFragment(fragment) => Expr::Fragment {
                 children: self.children(&fragment.children, inner),
+                loc: self.loc(span),
+            },
+            Expression::TemplateLiteral(template) => Expr::Template {
+                pieces: template
+                    .quasis
+                    .iter()
+                    .map(|quasi| TemplatePiece {
+                        text: quasi
+                            .value
+                            .cooked
+                            .as_ref()
+                            .filter(|_| !quasi.lone_surrogates)
+                            .map(|cooked| cooked.as_str().to_owned()),
+                        loc: self.loc(quasi.span),
+                    })
+                    .collect(),
+                exprs: template
+                    .expressions
+                    .iter()
+                    .map(|expr| self.expr(expr, inner))
+                    .collect(),
                 loc: self.loc(span),
             },
             Expression::UnaryExpression(unary) if unary.operator == UnaryOperator::LogicalNot => {

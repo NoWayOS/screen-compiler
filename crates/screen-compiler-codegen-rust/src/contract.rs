@@ -121,6 +121,10 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v14 adds `slot_template` and `slot_template_styled`: a slot
+//! between literal text compiled in (`<Text>Hello, {props.name}!</Text>`),
+//! the literals a static `Template`, the application setting only its part.
+//!
 //! Contract v13 adds conditions beyond one prop's truth: `unless`, a child
 //! shown while a group is hidden (`{!props.ready && <X/>}`), and `case` and
 //! `case_or`, a child shown while a switch is on one case
@@ -129,7 +133,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 13;
+pub const VERSION: u32 = 14;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -291,6 +295,11 @@ pub const MAPPINGS: &[Mapping] = &[
         tsx: "<Text>{props.name}</Text> (the prop alone)",
         ir: "NodeKind::Slot { slot: name }",
         rust: "b.slot(slots::NAME)?, with pub const NAME: ui::SlotId = ui::SlotId::new(N)",
+    },
+    Mapping {
+        tsx: "<Text>Hello, {props.name}!</Text>, or {`Hello, ${props.name}!`} (one prop between literal text)",
+        ir: "NodeKind::Slot { slot: name, template: Some(Template { before: \"Hello, \", after: \"!\" }) }",
+        rust: "b.slot_template(slots::NAME, &ui::Template { before: \"Hello, \", after: \"!\" })?, or b.slot_template_styled(..., style)? (contract v14)",
     },
     Mapping {
         tsx: "<Text role=\"display\">{props.ticket}</Text>",
@@ -503,6 +512,17 @@ pub mod builder {
         pub const fn get(self) -> u16 {
             self.0
         }
+    }
+
+    /// Literal text compiled in around a slot's (contract v14): the
+    /// literals show from the first frame, and the application sets only
+    /// its part.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct Template {
+        /// The text before the slot's.
+        pub before: &'static str,
+        /// The text after it.
+        pub after: &'static str,
     }
 
     /// Which switch a case is on (contract v13). Generated screens number
@@ -1242,6 +1262,31 @@ pub mod builder {
         fn text_styled(
             &mut self,
             text: &'static str,
+            style: TextStyle,
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// A slot between `template`'s literal text, which shows from the
+        /// first frame (contract v14); the application sets only its part.
+        ///
+        /// # Errors
+        ///
+        /// As `slot`.
+        fn slot_template(
+            &mut self,
+            slot: SlotId,
+            template: &'static Template,
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// A templated slot set in `style`'s role and weight (contract
+        /// v14).
+        ///
+        /// # Errors
+        ///
+        /// As `slot`.
+        fn slot_template_styled(
+            &mut self,
+            slot: SlotId,
+            template: &'static Template,
             style: TextStyle,
         ) -> Result<Self::Node, Self::Error>;
 

@@ -246,6 +246,16 @@ pub enum Stmt {
     Other(Other),
 }
 
+/// A piece of a template literal's text.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TemplatePiece {
+    /// The text, its escapes read; `None` where an escape is not valid or
+    /// leaves a lone surrogate.
+    pub text: Option<String>,
+    /// Where it starts.
+    pub loc: Loc,
+}
+
 /// An expression, as far as the subset uses them.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
@@ -326,6 +336,16 @@ pub enum Expr {
         /// Where the expression starts (its left operand).
         loc: Loc,
     },
+    /// `` `Hello, ${name}!` ``: a template literal, its text in pieces
+    /// with one expression between each two.
+    Template {
+        /// The text, one piece more than `exprs`.
+        pieces: Vec<TemplatePiece>,
+        /// The expressions between the pieces.
+        exprs: Vec<Expr>,
+        /// Where it starts (its backtick).
+        loc: Loc,
+    },
     /// `!operand`.
     Not {
         /// What is negated.
@@ -396,6 +416,7 @@ impl Expr {
             | Self::Logical { loc, .. }
             | Self::Map { loc, .. }
             | Self::Not { loc, .. }
+            | Self::Template { loc, .. }
             | Self::Equals { loc, .. }
             | Self::Conditional { loc, .. } => *loc,
             Self::Function(f) => f.loc,
@@ -424,6 +445,7 @@ impl Expr {
             Self::Conditional { .. } => "a conditional (`?:`) expression".to_owned(),
             Self::Map { .. } => "a call to `.map()`".to_owned(),
             Self::Not { .. } => "a `!` expression".to_owned(),
+            Self::Template { .. } => "a template literal".to_owned(),
             Self::Equals { .. } => "a `===` comparison".to_owned(),
             Self::Other(o) => with_article(&o.kind),
         }

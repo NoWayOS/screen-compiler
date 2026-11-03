@@ -6,9 +6,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use screen_compiler_ir::{
     AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Group, ICON_NAMES,
     InputMode, Justify, Length, Loc, Look, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LABEL_BYTES,
-    MAX_LINES, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, Module, Name, Node, NodeKind,
-    SELECT_ROWS, Screen, Space, Surface, TextAlign, TextRole, TextStyle, Token, Tone, Weight,
-    has_errors, sort_diagnostics, special_char, validate,
+    MAX_LINES, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, MAX_TEMPLATE_BYTES, Module, Name,
+    Node, NodeKind, SELECT_ROWS, Screen, Space, Surface, Template, TextAlign, TextRole, TextStyle,
+    Token, Tone, Weight, has_errors, sort_diagnostics, special_char, validate,
 };
 use screen_compiler_tsx::SourceModule;
 use screen_compiler_tsx::syntax::{
@@ -857,6 +857,9 @@ enum PropRef {
 enum PropText {
     /// One prop alone: a slot named after it.
     Slot(Name),
+    /// One prop between literal text (contract v14): a slot named after
+    /// it, the literals compiled in.
+    Template(Name, Template),
     /// One prop alone that cannot name a slot, or a name that is not a
     /// prop: already reported.
     Invalid,
@@ -956,6 +959,14 @@ enum Test {
         /// The literal, which names the case.
         when: Name,
     },
+}
+
+/// A piece of a `<Text>`'s content.
+enum TextPiece<'e> {
+    /// Literal text, and where it is written.
+    Literal(&'e str, Loc),
+    /// An expression.
+    Expr(&'e Expr),
 }
 
 /// Lowering of one screen.
@@ -1167,10 +1178,17 @@ impl Lower<'_, '_, '_> {
             }
             KitComponent::Text => {
                 let style = self.text_style(&props);
-                match self.prop_text(element) {
+                let role = style.map_or(TextRole::Body, |style| style.role);
+                match self.prop_text(element, role) {
                     PropText::Slot(slot) => NodeKind::Slot {
                         slot,
                         style: style?,
+                        template: None,
+                    },
+                    PropText::Template(slot, template) => NodeKind::Slot {
+                        slot,
+                        style: style?,
+                        template: Some(template),
                     },
                     PropText::Invalid => return None,
                     PropText::Literal => {
@@ -1676,25 +1694,121 @@ impl Lower<'_, '_, '_> {
         }
     }
 
-    /// A `<Text>` whose only content is a prop (subset v1): a slot the
-    /// application fills. Anything else is literal text, or reported by
-    /// [`literal_text`](Self::literal_text).
-    fn prop_text(&mut self, element: &Element) -> PropText {
-        let mut content = element
-            .children
+    /// A `<Text>` whose content is a prop (subset v1), alone or between
+    /// literal text, written in JSX or as a template literal (contract
+    /// v14): a slot the application fills. Text with no expression in it is
+    /// literal text, and anything else is reported by
+    /// [`literal_text`](Self::literal_text) - but a text with more than one
+    /// prop, reported here.
+    fn prop_text(&mut self, element: &Element, role: TextRole) -> PropText {
+        // The content, piece by piece: literal text, or an expression.
+        let mut pieces: Vec<TextPiece<'_>> = Vec::new();
+        for child in &element.children {
+            match child {
+                Child::Empty { .. } => {}
+                Child::Text { value, loc } | Child::Expr(Expr::Str { value, loc }) => {
+                    pieces.push(TextPiece::Literal(value, *loc));
+                }
+                Child::Expr(Expr::Template {
+                    pieces: texts,
+                    exprs,
+                    ..
+                }) => {
+                    for (at, text) in texts.iter().enumerate() {
+                        let Some(value) = &text.text else {
+                            return PropText::Literal;
+                        };
+                        pieces.push(TextPiece::Literal(value, text.loc));
+                        match exprs.get(at) {
+                            Some(Expr::Str { value, loc }) => {
+                                pieces.push(TextPiece::Literal(value, *loc));
+                            }
+                            Some(expr) => pieces.push(TextPiece::Expr(expr)),
+                            None => {}
+                        }
+                    }
+                }
+                Child::Expr(expr) => pieces.push(TextPiece::Expr(expr)),
+                _ => return PropText::Literal,
+            }
+        }
+        let exprs: Vec<&Expr> = pieces
             .iter()
-            .filter(|child| !matches!(child, Child::Empty { .. }));
-        let (Some(Child::Expr(expr)), None) = (content.next(), content.next()) else {
+            .filter_map(|piece| match piece {
+                TextPiece::Expr(expr) => Some(*expr),
+                TextPiece::Literal(..) => None,
+            })
+            .collect();
+        // Literal text; or an expression only `literal_text` reports.
+        if exprs.is_empty()
+            || exprs
+                .iter()
+                .any(|expr| !matches!(expr, Expr::Ident { .. } | Expr::Member { .. }))
+        {
+            return PropText::Literal;
+        }
+        let mut props = Vec::new();
+        for expr in &exprs {
+            match self.prop_of(expr, "text from the application") {
+                PropRef::Prop(key, loc) => props.push((key, loc)),
+                PropRef::Reported | PropRef::NotAProp => return PropText::Invalid,
+            }
+        }
+        if let Some((key, loc)) = props.get(1) {
+            self.cx.error_help(
+                Code::Unsupported,
+                *loc,
+                format!("`{key}` is a second prop in one <Text>; a text holds one prop at most"),
+                "give each prop its text: <Row><Text>{props.a}</Text><Text> of {props.b}</Text></Row>, or join them in the application",
+            );
+            return PropText::Invalid;
+        }
+        let Some((key, loc)) = props.into_iter().next() else {
             return PropText::Literal;
         };
-        match self.prop_of(expr, "text from the application") {
-            PropRef::Prop(key, loc) => match self.prop_name(&key, loc, "name a slot") {
-                Some(slot) => PropText::Slot(slot),
-                None => PropText::Invalid,
-            },
-            PropRef::Reported => PropText::Invalid,
-            PropRef::NotAProp => PropText::Literal,
+        let Some(slot) = self.prop_name(&key, loc, "name a slot") else {
+            return PropText::Invalid;
+        };
+        // The literal text either side of the prop, checked as any text.
+        let mut template = Template {
+            before: String::new(),
+            after: String::new(),
+        };
+        let mut ok = true;
+        let mut after = false;
+        for piece in &pieces {
+            match piece {
+                TextPiece::Expr(_) => after = true,
+                TextPiece::Literal(value, at) => {
+                    ok &= self.visible_text("<Text>", value, *at)
+                        && self.drawn_text("<Text>", value, *at, role);
+                    if after {
+                        template.after.push_str(value);
+                    } else {
+                        template.before.push_str(value);
+                    }
+                }
+            }
         }
+        if !ok {
+            return PropText::Invalid;
+        }
+        if template.before.is_empty() && template.after.is_empty() {
+            return PropText::Slot(slot);
+        }
+        let bytes = template.before.len().saturating_add(template.after.len());
+        if bytes > MAX_TEMPLATE_BYTES {
+            self.cx.error_help(
+                Code::Limit,
+                element.loc,
+                format!(
+                    "the literal text around `{key}` is {bytes} bytes; at most {MAX_TEMPLATE_BYTES}"
+                ),
+                "put the rest in a <Text> of its own",
+            );
+            return PropText::Invalid;
+        }
+        PropText::Template(slot, template)
     }
 
     /// Children of an element that is not converted: report what is inside.
@@ -1814,6 +1928,9 @@ impl Lower<'_, '_, '_> {
     ) -> Option<String> {
         let mut text = String::new();
         let mut ok = true;
+        // A prop left unreported here, as something beside it is.
+        let mut beside = false;
+        let reported = self.cx.diagnostics.len();
         for child in &element.children {
             match child {
                 Child::Text { value, loc } | Child::Expr(Expr::Str { value, loc }) => {
@@ -1836,21 +1953,70 @@ impl Lower<'_, '_, '_> {
                     ok = false;
                     self.not_text(component, e);
                 }
-                Child::Expr(expr @ (Expr::Ident { .. } | Expr::Member { .. }))
+                // A prop beside something else that is reported: the text
+                // with one prop converts once that goes (`prop_text`).
+                Child::Expr(Expr::Ident { .. } | Expr::Member { .. })
                     if component == KitComponent::Text =>
                 {
                     ok = false;
-                    self.cx.error_help(
-                        Code::Unsupported,
-                        expr.loc(),
-                        format!("text mixed with {} is not supported", expr.describe()),
-                        "a prop's text is a <Text> of its own: <Row><Text>Label:</Text><Text>{props.value}</Text></Row>",
-                    );
+                    beside = true;
+                }
+                // A template literal with no expression is literal text; one
+                // with any is reported here only beside something else.
+                Child::Expr(Expr::Template { pieces, exprs, .. })
+                    if component == KitComponent::Text =>
+                {
+                    for (at, piece) in pieces.iter().enumerate() {
+                        // The piece, then the string or prop after it.
+                        let literal = match exprs.get(at) {
+                            Some(Expr::Str { value, loc }) => Some((value, *loc)),
+                            _ => None,
+                        };
+                        for (value, loc) in piece
+                            .text
+                            .as_ref()
+                            .map(|value| (value, piece.loc))
+                            .into_iter()
+                            .chain(literal)
+                        {
+                            if self.visible_text(&format!("<{component}>"), value, loc)
+                                && self.drawn_text(&format!("<{component}>"), value, loc, role)
+                            {
+                                text.push_str(value);
+                            } else {
+                                ok = false;
+                            }
+                        }
+                        if piece.text.is_none() {
+                            ok = false;
+                            self.cx.error(
+                                Code::Unsupported,
+                                piece.loc,
+                                "a template literal's escape that is not text is not supported",
+                            );
+                        }
+                        match exprs.get(at) {
+                            None | Some(Expr::Str { .. }) => {}
+                            Some(Expr::Ident { .. } | Expr::Member { .. }) => {
+                                ok = false;
+                                beside = true;
+                            }
+                            Some(expr) => {
+                                ok = false;
+                                self.cx.error_help(
+                                    Code::Unsupported,
+                                    expr.loc(),
+                                    format!("{} inside <{component}> is not supported", expr.describe()),
+                                    "text is literal, with at most one prop: <Text>Hello, {props.name}!</Text>",
+                                );
+                            }
+                        }
+                    }
                 }
                 Child::Expr(other) => {
                     ok = false;
                     let help = if component == KitComponent::Text {
-                        "text is literal, or one prop alone: <Text>{props.value}</Text>"
+                        "text is literal, with at most one prop: <Text>Hello, {props.name}!</Text>"
                     } else {
                         "a button's label is literal text"
                     };
@@ -1872,6 +2038,15 @@ impl Lower<'_, '_, '_> {
             }
         }
         if !ok {
+            // Never refused in silence: a prop is left to what beside it
+            // is reported, and something always is.
+            if beside && self.cx.diagnostics.len() == reported {
+                self.cx.error(
+                    Code::Internal,
+                    element.loc,
+                    format!("<{component}>'s text was refused with no reason given; please report this input"),
+                );
+            }
             return None;
         }
         if text.is_empty() {

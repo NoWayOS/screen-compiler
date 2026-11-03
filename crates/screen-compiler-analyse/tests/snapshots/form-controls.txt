@@ -1,2 +1,0 @@
-form-controls.tsx:22:29: error[unsupported]: text mixed with `props.placesLeft` is not supported
-  help: a prop's text is a <Text> of its own: <Row><Text>Label:</Text><Text>{props.value}</Text></Row>

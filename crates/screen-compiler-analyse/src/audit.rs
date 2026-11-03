@@ -33,8 +33,6 @@ pub const MAX_FILES: usize = 10_000;
 pub enum Step {
     /// A screen's own components written in other files.
     Components,
-    /// Text mixing literals and props.
-    MixedText,
     /// More of CSS layout: flex growth, margins, per-side padding.
     CssLayout,
     /// React DOM's event names, and arrows that only call a prop.
@@ -55,7 +53,6 @@ impl Step {
     pub const fn name(self) -> &'static str {
         match self {
             Self::Components => "your own components from other files",
-            Self::MixedText => "text mixing literals and props",
             Self::CssLayout => "more of CSS layout",
             Self::DomEvents => "React DOM's event names",
             Self::HtmlElements => "common HTML elements",
@@ -156,7 +153,7 @@ pub fn verdict_in(construct: &Construct, own: &BTreeSet<String>) -> Verdict {
         Construct::SpreadProp => Verdict::Out(SPREAD),
         Construct::Style { element, property } => style_verdict(element, property),
         Construct::ComputedStyle => Verdict::Out(COMPUTED_STYLE),
-        Construct::MixedText | Construct::Template => Verdict::Road(Step::MixedText),
+        Construct::MixedText | Construct::Template => Verdict::Subset,
         Construct::Hook(_) | Construct::Class => Verdict::Out(STATE),
         Construct::BoundedMap => Verdict::Subset,
         Construct::Map => Verdict::Out(UNBOUNDED),

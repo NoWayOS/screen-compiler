@@ -933,6 +933,22 @@ impl<'p, 's> Expander<'p, 's> {
             }
             // `!undefined` is true, which the subset cannot hold: the walk
             // refuses a `null` where it stands.
+            // In a template literal an omitted prop is the text
+            // "undefined", as JavaScript writes it.
+            Expr::Template { pieces, exprs, loc } => Expr::Template {
+                pieces: pieces.clone(),
+                exprs: exprs
+                    .iter()
+                    .map(|expr| {
+                        self.subst_expr(using, expr, inner)
+                            .unwrap_or_else(|| Expr::Str {
+                                value: "undefined".to_owned(),
+                                loc: expr.loc(),
+                            })
+                    })
+                    .collect(),
+                loc: *loc,
+            },
             Expr::Not { operand, loc } => Expr::Not {
                 operand: Box::new(
                     self.subst_expr(using, operand, inner)
@@ -1077,6 +1093,11 @@ pub(crate) fn element_names<'e>(expr: &'e Expr, out: &mut BTreeSet<&'e str>, dep
             }
         }
         Expr::Not { operand, .. } => element_names(operand, out, inner),
+        Expr::Template { exprs, .. } => {
+            for expr in exprs {
+                element_names(expr, out, inner);
+            }
+        }
         Expr::Equals { left, right, .. } => {
             element_names(left, out, inner);
             element_names(right, out, inner);
