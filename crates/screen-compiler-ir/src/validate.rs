@@ -4,8 +4,8 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    Code, Diagnostic, Length, Loc, MAX_LINES, Module, Name, NodeKind, Screen, TextRole, TextStyle,
-    Weight,
+    Code, Diagnostic, Length, Loc, MAX_LINES, MAX_TEMPLATE_BYTES, Module, Name, NodeKind, Screen,
+    TextRole, TextStyle, Weight,
 };
 
 /// The deepest element nesting the IR accepts. The analyser's own default
@@ -235,6 +235,11 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
         }
         let (texts, role): (Vec<&str>, TextRole) = match &node.kind {
             NodeKind::Text { text, style } => (vec![text], style.role),
+            NodeKind::Slot {
+                style,
+                template: Some(template),
+                ..
+            } => (vec![&template.before, &template.after], style.role),
             NodeKind::Button { label, .. } | NodeKind::Checkbox { label } => {
                 (vec![label], TextRole::Body)
             }
@@ -273,6 +278,22 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
                     u32::from(c)
                 ),
             ));
+        }
+        if let NodeKind::Slot {
+            template: Some(template),
+            ..
+        } = &node.kind
+        {
+            let bytes = template.before.len().saturating_add(template.after.len());
+            if bytes > MAX_TEMPLATE_BYTES {
+                diagnostics.push(Diagnostic::error(
+                    Code::Limit,
+                    node.loc,
+                    format!(
+                        "a <Text>'s literal text around its prop is {bytes} bytes; at most {MAX_TEMPLATE_BYTES}"
+                    ),
+                ));
+            }
         }
         if let NodeKind::Slot { slot, .. } | NodeKind::Progress { slot } = &node.kind
             && let Some(first) = slots.insert(slot, node.loc)
@@ -620,6 +641,7 @@ mod tests {
             NodeKind::Slot {
                 slot: name("ticket"),
                 style: regular_title,
+                template: None,
             },
             None,
         );
@@ -698,6 +720,7 @@ mod tests {
                 NodeKind::Slot {
                     slot: name(n),
                     style: TextStyle::BODY,
+                    template: None,
                 },
                 None,
             )

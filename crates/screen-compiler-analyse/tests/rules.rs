@@ -256,10 +256,11 @@ fn screen_holds_exactly_one_element_and_only_at_the_root() {
 fn text_is_literal_and_lives_in_text() {
     let e = error(&screen("<Column>loose text</Column>"));
     assert_eq!((e.code, e.loc), (Code::InvalidChildren, at(2, 65)));
-    // A prop alone is a slot (subset v1); mixed with text it is refused.
-    let e = error(&screen("<Text>Hi {onGo}</Text>"));
-    assert_eq!((e.code, e.loc), (Code::Unsupported, at(2, 67)));
-    assert!(e.help.as_ref().unwrap().contains("<Text> of its own"));
+    // A prop alone is a slot (subset v1), or between literal text
+    // (contract v14, tests/text.rs); a second prop is refused where written.
+    let e = error(&screen("<Text>Hi {onGo} and {onBack}</Text>"));
+    assert_eq!((e.code, e.loc), (Code::Unsupported, at(2, 78)));
+    assert!(e.help.as_ref().unwrap().contains("give each prop its text"));
     let e = error(&screen("<Text>{elsewhere}</Text>"));
     assert_eq!((e.code, e.loc), (Code::UnknownName, at(2, 64)));
     let e = error(&screen("<Text>Hi <Button onPress={onGo}>x</Button></Text>"));
@@ -350,23 +351,28 @@ fn a_prop_alone_in_text_is_a_slot_the_application_fills() {
     let module = ok(&props_screen("<Text>{props.lateNotice}</Text>"));
     let slots = module.screens[0].slots();
     assert_eq!(slots[0].source(), "lateNotice");
-    // Mixed with text, beside spaces React keeps, or twice: refused where
-    // written.
-    for (body, code, marker) in [
+    // Mixed with text, or beside spaces React keeps, it is between
+    // literal text (contract v14); a template literal of the prop alone is
+    // the prop.
+    for (body, outline) in [
         (
             "<Text>Tries left: {props.left}</Text>",
-            Code::Unsupported,
-            "props.left",
+            "slot 1 between \"Tries left: \" and \"\"\n",
         ),
         (
             "<Text> {props.left}</Text>",
-            Code::Unsupported,
-            "props.left",
+            "slot 1 between \" \" and \"\"\n",
         ),
+        ("<Text>{`${props.left}`}</Text>", "slot 1\n"),
+    ] {
+        assert_eq!(ok_outline(&props_screen(body)), outline, "{body}");
+    }
+    // Twice, or with anything else: refused where written.
+    for (body, code, marker) in [
         (
             "<Text>{props.left}{props.right}</Text>",
             Code::Unsupported,
-            "props.left",
+            "props.right",
         ),
         ("<Text>{props}</Text>", Code::InvalidValue, "props}"),
         ("<Text>{other.left}</Text>", Code::UnknownName, "other"),
@@ -375,7 +381,11 @@ fn a_prop_alone_in_text_is_a_slot_the_application_fills() {
             Code::Unsupported,
             "props.a",
         ),
-        ("<Text>{`${props.a}`}</Text>", Code::Unsupported, "`"),
+        (
+            "<Text>{`${props.a()}`}</Text>",
+            Code::Unsupported,
+            "props.a",
+        ),
     ] {
         let all = errors(&props_screen(body));
         let loc = at(2, column_of(body, marker));
@@ -1465,7 +1475,7 @@ const PIECES: [Piece; 33] = [
     unsupported("<Button onClick={onGo}>Go</Button>", Code::UnknownProp, 8),
     unsupported("<div>x</div>", Code::UnknownElement, 0),
     unsupported("<Text>{name}</Text>", Code::UnknownName, 7),
-    unsupported("<Text>Go: {onGo}</Text>", Code::Unsupported, 11),
+    unsupported("<Text>{onGo} and {onBack}</Text>", Code::Unsupported, 18),
     unsupported("{items.map((i) => <Text>{i}</Text>)}", Code::Unsupported, 1),
     supported("{onGo && <Text>x</Text>}", 2),
     supported("{onBack ? <Text>a</Text> : null}", 2),

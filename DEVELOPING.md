@@ -41,7 +41,8 @@ its approved image in `contract-check/golden/` pixel for pixel. See
 
 | Accepted | Notes |
 | --- | --- |
-| `<Text>{props.name}</Text>`, or `<Text>{name}</Text>` with `name` destructured | text the application sets at run time: a **slot**, `b.slot(slots::NAME)`, never text compiled in. The prop must be the text's only content (`Name: {props.name}` is refused: write two `Text` elements); one slot per prop on a screen |
+| `<Text>{props.name}</Text>`, or `<Text>{name}</Text>` with `name` destructured | text the application sets at run time: a **slot**, `b.slot(slots::NAME)`, never text compiled in; one slot per prop on a screen |
+| `<Text>Hello, {props.name}!</Text>`, `<Text>{props.count} items</Text>`, or `` <Text>{`Hello, ${props.name}!`}</Text> `` | a slot **between literal text** compiled in (contract v14): `b.slot_template(slots::NAME, &ui::Template { before: "Hello, ", after: "!" })`, or `b.slot_template_styled(…, style)` in a role. The literals show from the first frame, the application sets only the prop's part (at most 64 bytes, as any slot), and the whole is measured, wrapped and aligned as one text. JSX text, string expressions and a template literal's text may mix; the literals take at most 64 bytes together and are checked as any text in the role. In a component of the file, a literal given for the prop joins the text, and an omitted one is nothing in JSX and `undefined` in a template literal, as React shows them. Refused where written: a second prop in one text (write a `<Text>` for each, or join them in the application), and any other expression (`{a + b}`, a call). `fixtures/table-ready.tsx` has each form |
 | `{props.ready && <X />}` | a **group** the application shows or hides, `b.group(groups::READY, x)`: hidden at first, and then taking no space |
 | `{props.ready ? <X /> : <Y />}`, or `: null` | a group choosing between the two, `b.either(groups::READY, x, y)`: `<Y />` shows at first |
 | `{!props.ready && <X />}`, or `{props.ready ? null : <X />}` | the prop's group negated (contract v13), `b.unless(groups::READY, x)`: shown at first, and while the application hides the group; it shares the prop's group number. `{!props.ready ? <X /> : <Y />}` is `{props.ready ? <Y /> : <X />}` |
@@ -74,8 +75,8 @@ share its number and show and hide together. Each screen's `groups` and
 `actions` does. Refused, each with its position: any other condition
 (`props.n > 0`, `a && b`, a call; `!` a prop and `===` a string literal are
 contract v13's, above), `||` and `??`, a condition inside a condition, text or a fragment of
-several elements as what a condition shows, a condition as a screen's one child, text mixed with
-a prop, the same prop as the text of two elements, two props whose names
+several elements as what a condition shows, a condition as a screen's one child, a second prop
+in one text, the same prop as the text of two elements, two props whose names
 give one group or slot name (`isReady` and `is_ready`, as for actions); a
 character in any text that the glyph atlases of its role do not draw -
 outside printable Latin-1, or, in the display role, anything but the digits,
@@ -89,15 +90,15 @@ by its number).
 Everything else — state and hooks, effects, lists other than the above, CSS outside the
 declared `style` subset (`className`, stylesheet imports, any other
 property or value), HTML elements, components imported from other files
-or packages, spread props, inline handlers, computed text (`{a + b}`, a call, a
-template), other imports (including `import { type … }`: write `import
+or packages, spread props, inline handlers, computed text (`{a + b}`, a call,
+a second prop in one text), other imports (including `import { type … }`: write `import
 type`), control or invisible characters in text, attribute strings that span
 lines, and anything that is a syntax error in a module — is reported as an
 error with its position, and nothing is written. `fixtures/unsupported/web-search.tsx`
-shows most of them; `fixtures/unsupported/form-controls.tsx` shows what form
-screens needed beyond subset v0 - conditional rendering, text from a prop, a
-length limit and an input mode on a text input, a checkbox and a radio group,
-which now convert - and text mixed with a prop, which stays refused.
+shows most of them. `fixtures/form-controls.tsx` shows what form screens
+needed beyond subset v0 - conditional rendering, text from a prop, a length
+limit and an input mode on a text input, a checkbox and a radio group - and
+converts since text could mix literals and a prop (contract v14).
 `fixtures/parcel-status.tsx` converts with slots and groups, and
 `fixtures/visit-booking.tsx` with every v1 form control built so far, and
 `fixtures/queue-ticket.tsx` with the type scale's roles and Bold, and

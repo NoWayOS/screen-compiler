@@ -21,8 +21,9 @@ pub enum Children {
     One,
     /// Elements, in order.
     Elements,
-    /// Literal text, or one prop of the component, which becomes a slot
-    /// the application sets.
+    /// Literal text, with at most one prop of the component in it, which
+    /// becomes a slot the application sets: alone, or between the literal
+    /// text (contract v14).
     TextOrProp,
     /// Literal text: a button's label.
     Text,

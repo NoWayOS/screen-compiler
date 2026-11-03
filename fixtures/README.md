@@ -23,7 +23,10 @@ customer, and none may be added from one.
   `bike-hire.tsx` has contract v13's conditions: a note shown while a prop
   is not set, and a step prop compared with three literals, one switch whose
   cases `make contract-check` draws one by one (`bike_hire.case-step-pay.png`
-  and the others). `notice-board.tsx` wraps text onto
+  and the others); `table-ready.tsx` has contract v14's text mixing
+  literal words with one prop, in JSX and as a template literal, in the
+  heading, body and display roles; `form-controls.tsx`, once refused, has
+  converted since text could mix literals and a prop. `notice-board.tsx` wraps text onto
   several lines: static text in a notice and a slot in a card;
   `fuelling.tsx` live figures in slots and a progress bar; `tiles.tsx`
   icons on a header bar and on cards; `order-ready.tsx` text aligned

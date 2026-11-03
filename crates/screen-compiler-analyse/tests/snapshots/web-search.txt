@@ -12,8 +12,8 @@ web-search.tsx:14:35: error[unknown-prop]: `background` is not a style property 
   help: <Column>'s style takes gap, padding, width, height, minWidth, maxWidth, alignItems, justifyContent, backgroundColor, borderColor, borderWidth, borderRadius
 web-search.tsx:15:9: error[unknown-element]: HTML element <h1> is not supported
   help: use the kit's elements: Column, Row, Text, Button, TextInput, Spacer, Checkbox, RadioGroup, Card, Notice, HeaderBar, ProgressBar, Icon, ScrollView, Select, Keyboard or FieldError
-web-search.tsx:16:28: error[unsupported]: text mixed with `query` is not supported
-  help: a prop's text is a <Text> of its own: <Row><Text>Label:</Text><Text>{props.value}</Text></Row>
+web-search.tsx:16:28: error[unknown-name]: `query` is not a prop of the component
+  help: text from the application must be a prop: take it as one, function Screen({ query }) { … }
 web-search.tsx:17:10: error[unsupported]: the list `results` has no most: the screen must know how many rows it may show
   help: write results.slice(0, 5).map(…): at most 5 rows, which the application fills
 web-search.tsx:18:10: error[unsupported]: a binary expression as a condition is not supported

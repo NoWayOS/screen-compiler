@@ -1,16 +1,15 @@
-screen-compiler audit: 20 files
-  convert                18  90.0%
-  do not convert          2
+screen-compiler audit: 21 files
+  convert                20  95.2%
+  do not convert          1
   cannot be read          0
 
-constructs            683
-  in the subset       669  97.9%
-  on the road           6  0.8%
+constructs            702
+  in the subset       690  98.2%
+  on the road           4  0.5%
   out by design         4  0.5%
   unknown               4  0.5%
 
 on the road
-  text mixing literals and props           2 in 2 files
   React DOM's event names                  2 in 1 file
   common HTML elements                     1 in 1 file
   CSS modules                              1 in 1 file
@@ -37,6 +36,7 @@ files
   check-in.tsx  converts
   details-form.tsx  converts
   edge-names.tsx  converts
+  form-controls.tsx  converts
   fuelling.tsx  converts
   lost-property-1-item.tsx  converts
   lost-property-2-contact.tsx  converts
@@ -47,8 +47,8 @@ files
   parcel-status.tsx  converts
   parking-paid.tsx  converts
   queue-ticket.tsx  converts
+  table-ready.tsx  converts
   tiles.tsx  converts
-  unsupported/form-controls.tsx  does not convert: 1 on the road, 0 out by design, 0 unknown
-  unsupported/web-search.tsx  does not convert: 5 on the road, 4 out by design, 4 unknown
+  unsupported/web-search.tsx  does not convert: 4 on the road, 4 out by design, 4 unknown
   visit-booking.tsx  converts
   welcome.tsx  converts
