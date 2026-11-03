@@ -53,11 +53,12 @@ pub enum Value {
     FieldId,
     /// A string literal.
     Text,
-    /// A whole number of layout units, a design token the screen
-    /// declares, or one of the theme's spacing tokens (`space.md`).
+    /// A whole number of layout units (`16`, or CSS's `"16px"`), a design
+    /// token the screen declares, or one of the theme's spacing tokens
+    /// (`space.md`).
     Length,
-    /// A whole number of layout units or a design token: not a spacing
-    /// token.
+    /// A whole number of layout units (`16` or `"16px"`) or a design token:
+    /// not a spacing token.
     Size,
     /// A whole number from `least` to `most`, or, where `token`, a design
     /// token.
@@ -71,7 +72,8 @@ pub enum Value {
     },
     /// One of these string literals.
     Choice(&'static [&'static str]),
-    /// One of the theme's colours, by name ([`screen_compiler_ir::Colour::NAMES`]).
+    /// One of the theme's colours, by name ([`screen_compiler_ir::Colour::NAMES`]),
+    /// or as CSS's `var(--name)`.
     Colour,
     /// A callback prop of the component, which becomes an action.
     Action,

@@ -44,22 +44,24 @@ declare module "nowayos:kit" {
 
   /** What `style` on `<Column>` may name. */
   export interface ColumnStyle {
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    gap?: number | Space;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    padding?: number | Space;
-    /** A whole number of layout units or a design token. */
-    width?: number;
-    /** A whole number of layout units or a design token. */
-    height?: number;
-    /** A whole number of layout units or a design token. */
-    minWidth?: number;
-    /** A whole number of layout units or a design token. */
-    maxWidth?: number;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    gap?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    padding?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    width?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    height?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    minWidth?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    maxWidth?: number | `${number}px`;
     alignItems?: "flex-start" | "start" | "center" | "flex-end" | "end" | "stretch";
     justifyContent?: "flex-start" | "start" | "center" | "flex-end" | "end" | "space-between";
-    backgroundColor?: Colour;
-    borderColor?: Colour;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    backgroundColor?: Colour | `var(--${Colour})`;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    borderColor?: Colour | `var(--${Colour})`;
     /** A whole number from 0 to 16. */
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
@@ -70,10 +72,10 @@ declare module "nowayos:kit" {
   export interface ColumnProps {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */
     id?: string;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    gap?: number | Space;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    padding?: number | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    gap?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    padding?: number | `${number}px` | Space;
     style?: ColumnStyle;
     children?: Child | readonly Child[];
   }
@@ -82,22 +84,24 @@ declare module "nowayos:kit" {
 
   /** What `style` on `<Row>` may name. */
   export interface RowStyle {
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    gap?: number | Space;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    padding?: number | Space;
-    /** A whole number of layout units or a design token. */
-    width?: number;
-    /** A whole number of layout units or a design token. */
-    height?: number;
-    /** A whole number of layout units or a design token. */
-    minWidth?: number;
-    /** A whole number of layout units or a design token. */
-    maxWidth?: number;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    gap?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    padding?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    width?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    height?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    minWidth?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    maxWidth?: number | `${number}px`;
     alignItems?: "flex-start" | "start" | "center" | "flex-end" | "end" | "stretch";
     justifyContent?: "flex-start" | "start" | "center" | "flex-end" | "end" | "space-between";
-    backgroundColor?: Colour;
-    borderColor?: Colour;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    backgroundColor?: Colour | `var(--${Colour})`;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    borderColor?: Colour | `var(--${Colour})`;
     /** A whole number from 0 to 16. */
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
@@ -108,10 +112,10 @@ declare module "nowayos:kit" {
   export interface RowProps {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */
     id?: string;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    gap?: number | Space;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    padding?: number | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    gap?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    padding?: number | `${number}px` | Space;
     style?: RowStyle;
     children?: Child | readonly Child[];
   }
@@ -120,7 +124,8 @@ declare module "nowayos:kit" {
 
   /** What `style` on `<Text>` may name. */
   export interface TextStyle {
-    color?: Colour;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    color?: Colour | `var(--${Colour})`;
     textAlign?: "left" | "start" | "center" | "right" | "end";
   }
 
@@ -142,8 +147,10 @@ declare module "nowayos:kit" {
 
   /** What `style` on `<Button>` may name. */
   export interface ButtonStyle {
-    backgroundColor?: Colour;
-    color?: Colour;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    backgroundColor?: Colour | `var(--${Colour})`;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    color?: Colour | `var(--${Colour})`;
   }
 
   /** The props of `<Button>`. */
@@ -178,8 +185,8 @@ declare module "nowayos:kit" {
   export interface SpacerProps {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */
     id?: string;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    size?: number | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    size?: number | `${number}px` | Space;
     children?: never;
   }
   /** Empty space: flexible, or of a fixed size. */
@@ -209,22 +216,24 @@ declare module "nowayos:kit" {
 
   /** What `style` on `<Card>` may name. */
   export interface CardStyle {
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    gap?: number | Space;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    padding?: number | Space;
-    /** A whole number of layout units or a design token. */
-    width?: number;
-    /** A whole number of layout units or a design token. */
-    height?: number;
-    /** A whole number of layout units or a design token. */
-    minWidth?: number;
-    /** A whole number of layout units or a design token. */
-    maxWidth?: number;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    gap?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    padding?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    width?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    height?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    minWidth?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    maxWidth?: number | `${number}px`;
     alignItems?: "flex-start" | "start" | "center" | "flex-end" | "end" | "stretch";
     justifyContent?: "flex-start" | "start" | "center" | "flex-end" | "end" | "space-between";
-    backgroundColor?: Colour;
-    borderColor?: Colour;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    backgroundColor?: Colour | `var(--${Colour})`;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    borderColor?: Colour | `var(--${Colour})`;
     /** A whole number from 0 to 16. */
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
@@ -235,10 +244,10 @@ declare module "nowayos:kit" {
   export interface CardProps {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */
     id?: string;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    gap?: number | Space;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    padding?: number | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    gap?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    padding?: number | `${number}px` | Space;
     style?: CardStyle;
     children?: Child | readonly Child[];
   }
@@ -247,22 +256,24 @@ declare module "nowayos:kit" {
 
   /** What `style` on `<Notice>` may name. */
   export interface NoticeStyle {
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    gap?: number | Space;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    padding?: number | Space;
-    /** A whole number of layout units or a design token. */
-    width?: number;
-    /** A whole number of layout units or a design token. */
-    height?: number;
-    /** A whole number of layout units or a design token. */
-    minWidth?: number;
-    /** A whole number of layout units or a design token. */
-    maxWidth?: number;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    gap?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    padding?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    width?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    height?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    minWidth?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    maxWidth?: number | `${number}px`;
     alignItems?: "flex-start" | "start" | "center" | "flex-end" | "end" | "stretch";
     justifyContent?: "flex-start" | "start" | "center" | "flex-end" | "end" | "space-between";
-    backgroundColor?: Colour;
-    borderColor?: Colour;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    backgroundColor?: Colour | `var(--${Colour})`;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    borderColor?: Colour | `var(--${Colour})`;
     /** A whole number from 0 to 16. */
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
@@ -273,10 +284,10 @@ declare module "nowayos:kit" {
   export interface NoticeProps {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */
     id?: string;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    gap?: number | Space;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    padding?: number | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    gap?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    padding?: number | `${number}px` | Space;
     tone: "success" | "caution" | "warning";
     style?: NoticeStyle;
     children?: Child | readonly Child[];
@@ -286,22 +297,24 @@ declare module "nowayos:kit" {
 
   /** What `style` on `<HeaderBar>` may name. */
   export interface HeaderBarStyle {
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    gap?: number | Space;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    padding?: number | Space;
-    /** A whole number of layout units or a design token. */
-    width?: number;
-    /** A whole number of layout units or a design token. */
-    height?: number;
-    /** A whole number of layout units or a design token. */
-    minWidth?: number;
-    /** A whole number of layout units or a design token. */
-    maxWidth?: number;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    gap?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    padding?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    width?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    height?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    minWidth?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    maxWidth?: number | `${number}px`;
     alignItems?: "flex-start" | "start" | "center" | "flex-end" | "end" | "stretch";
     justifyContent?: "flex-start" | "start" | "center" | "flex-end" | "end" | "space-between";
-    backgroundColor?: Colour;
-    borderColor?: Colour;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    backgroundColor?: Colour | `var(--${Colour})`;
+    /** One of the theme's colours, by name or as `var(--name)`. */
+    borderColor?: Colour | `var(--${Colour})`;
     /** A whole number from 0 to 16. */
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
@@ -312,10 +325,10 @@ declare module "nowayos:kit" {
   export interface HeaderBarProps {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */
     id?: string;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    gap?: number | Space;
-    /** A whole number of layout units, a design token or a spacing token (`space.md`). */
-    padding?: number | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    gap?: number | `${number}px` | Space;
+    /** A whole number of layout units (`16`, or `"16px"`), a design token or a spacing token (`space.md`). */
+    padding?: number | `${number}px` | Space;
     style?: HeaderBarStyle;
     children?: Child | readonly Child[];
   }

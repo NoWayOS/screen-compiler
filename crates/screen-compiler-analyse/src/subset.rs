@@ -278,8 +278,8 @@ fn member(out: &mut String, name: &str, required: bool, value: Value, component:
 fn ts_type(value: Value, component: &str) -> String {
     match value {
         Value::Id | Value::FieldId | Value::Text => "string".to_owned(),
-        Value::Length => "number | Space".to_owned(),
-        Value::Size => "number".to_owned(),
+        Value::Length => "number | `${number}px` | Space".to_owned(),
+        Value::Size => "number | `${number}px`".to_owned(),
         Value::Whole {
             least,
             most,
@@ -290,7 +290,7 @@ fn ts_type(value: Value, component: &str) -> String {
         }
         Value::Whole { .. } => "number".to_owned(),
         Value::Choice(values) => union(values),
-        Value::Colour => "Colour".to_owned(),
+        Value::Colour => "Colour | `var(--${Colour})`".to_owned(),
         Value::Action => "() => void".to_owned(),
         Value::Prop => "number".to_owned(),
         Value::Options { .. } => "readonly string[]".to_owned(),
@@ -305,10 +305,12 @@ fn doc(value: Value) -> Option<String> {
         Value::FieldId => "The id of a field on the same screen.".to_owned(),
         Value::Text => "A string literal.".to_owned(),
         Value::Length => {
-            "A whole number of layout units, a design token or a spacing token (`space.md`)."
+            "A whole number of layout units (`16`, or `\"16px\"`), a design token or a spacing token (`space.md`)."
                 .to_owned()
         }
-        Value::Size => "A whole number of layout units or a design token.".to_owned(),
+        Value::Size => {
+            "A whole number of layout units (`16`, or `\"16px\"`) or a design token.".to_owned()
+        }
         Value::Whole { least, most, token } => {
             let or = if token { ", or a design token" } else { "" };
             format!("A whole number from {least} to {most}{or}.")
@@ -316,7 +318,10 @@ fn doc(value: Value) -> Option<String> {
         Value::Action => "A callback prop of the screen, which becomes an action.".to_owned(),
         Value::Prop => "A prop of the screen, whose value the application sets.".to_owned(),
         Value::Options { most } => format!("1 to {most} string literals."),
-        Value::Choice(_) | Value::Colour | Value::Style => return None,
+        Value::Colour => {
+            "One of the theme's colours, by name or as `var(--name)`.".to_owned()
+        }
+        Value::Choice(_) | Value::Style => return None,
     })
 }
 

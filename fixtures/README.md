@@ -34,7 +34,10 @@ customer, and none may be added from one.
   `make contract-check` draws it in the large-text theme too
   (`order_ready.large.png`); `parking-paid.tsx` every property a
   `style={{…}}` may name, so it is drawn in the large-text theme
-  too and its colours checked for contrast in each theme. The three
+  too and its colours checked for contrast in each theme;
+  `parking-paid-css.tsx` is the same screen written as CSS writes it,
+  lengths in px and colours as `var(--name)`, and must draw exactly as it
+  does (its approved images are copies of parking-paid's). The three
   `lost-property-*.tsx` are the steps of one invented form, which together
   use every control the UI core lists for form-heavy kiosks: the
   screens subset v1 is designed against. Each moved up from `unsupported/`
