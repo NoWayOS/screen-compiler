@@ -7,7 +7,8 @@
 //! construct ([`verdict`]): in the subset, a step on the road towards
 //! React and CSS, out by design, or unknown. A construct this table does
 //! not know is unknown, never counted as converting; and a file converts
-//! only if the analyser converts it, whatever its constructs are judged.
+//! only if the analyser converts it, whatever its constructs are judged -
+//! or, for a file of components, if a file that converts imports it.
 //! The report names constructs and counts them; it quotes no code.
 //!
 //! Run it only on code you trust: the parser's limits are those of
@@ -22,8 +23,9 @@ use std::path::{Path, PathBuf};
 use screen_compiler_ir::escape_special;
 use screen_compiler_tsx::census::{Census, Construct, ImportKind};
 
+use crate::files::{Folder, Load, NoFiles};
 use crate::kit::KitComponent;
-use crate::{Options, analyse};
+use crate::{Options, analyse_with};
 
 /// The most files one report reads.
 pub const MAX_FILES: usize = 10_000;
@@ -31,8 +33,6 @@ pub const MAX_FILES: usize = 10_000;
 /// A step on the road towards React and CSS: what would convert a gap.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Step {
-    /// A screen's own components written in other files.
-    Components,
     /// More of CSS layout: flex growth, margins, per-side padding.
     CssLayout,
     /// React DOM's event names, and arrows that only call a prop.
@@ -52,7 +52,6 @@ impl Step {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
-            Self::Components => "your own components from other files",
             Self::CssLayout => "more of CSS layout",
             Self::DomEvents => "React DOM's event names",
             Self::HtmlElements => "common HTML elements",
@@ -85,6 +84,8 @@ const ANIMATION: &str = "animation";
 const UNBOUNDED: &str = "a list with no most: slice it, .slice(0, N), so the screen knows its rows";
 const COMPARISON: &str = "a comparison other than a prop `===` a string literal: compare in the application and pass the result as a prop";
 const STATEMENT: &str = "a screen's function only returns its tree: choose in it with && or ?:";
+const OUTSIDE: &str = "a screen reads only the files in its own folder and below: put the component beside it, ./header";
+const COMPONENT: &str = "a component from a package or from outside the screen's folder: Screen Compiler converts the kit's, and your own beside the screen";
 
 /// The style properties the road's CSS layout step adds.
 const LAYOUT: &[&str] = &[
@@ -177,7 +178,8 @@ pub fn verdict_in(construct: &Construct, own: &BTreeSet<String>) -> Verdict {
             ImportKind::Kit | ImportKind::React => Verdict::Subset,
             ImportKind::CssModule => Verdict::Road(Step::CssModules),
             ImportKind::Stylesheet => Verdict::Out(CASCADE),
-            ImportKind::Local => Verdict::Road(Step::Components),
+            ImportKind::Local => Verdict::Subset,
+            ImportKind::Outside => Verdict::Out(OUTSIDE),
             ImportKind::Package(_) => Verdict::Unknown,
         },
         Construct::Statement(kind) => match *kind {
@@ -193,7 +195,7 @@ fn component(name: &str) -> Verdict {
         _ if KitComponent::from_name(name).is_some() => Verdict::Subset,
         "Image" => Verdict::Road(Step::ImagesAndMasking),
         "Stack" => Verdict::Road(Step::Layering),
-        _ => Verdict::Road(Step::Components),
+        _ => Verdict::Out(COMPONENT),
     }
 }
 
@@ -278,7 +280,8 @@ fn describe(construct: &Construct) -> String {
             ImportKind::React => "an import from react".to_owned(),
             ImportKind::CssModule => "an import of a CSS module".to_owned(),
             ImportKind::Stylesheet => "an import of a stylesheet".to_owned(),
-            ImportKind::Local => "an import of a local file".to_owned(),
+            ImportKind::Local => "an import of a file beside it".to_owned(),
+            ImportKind::Outside => "an import of a file outside its folder".to_owned(),
             ImportKind::Package(name) => format!("an import from {name}"),
         },
         Construct::Class => "a class".to_owned(),
@@ -301,17 +304,26 @@ pub enum FileResult {
     Unreadable,
 }
 
-/// One file's result.
+/// One file's result, given alone: it reads no file it imports.
 #[must_use]
 pub fn audit_source(source: &str, name: &str) -> FileResult {
+    audit_file(source, name, &mut NoFiles).0
+}
+
+/// One file's result, reading the files it imports through `load`; and,
+/// if it converts, those files' paths from its folder.
+fn audit_file(source: &str, name: &str, load: &mut dyn Load) -> (FileResult, Vec<String>) {
     let Ok(census) = screen_compiler_tsx::census(source) else {
-        return FileResult::Unreadable;
+        return (FileResult::Unreadable, Vec::new());
     };
-    let converts = screen_compiler_tsx::parse(source).is_ok_and(|module| {
-        let analysis = analyse(&module, &Options::new(name));
-        analysis.module.is_some()
-    });
-    FileResult::Read { converts, census }
+    let analysis = screen_compiler_tsx::parse(source)
+        .ok()
+        .map(|module| analyse_with(&module, &Options::new(name), load));
+    let (converts, imported) = match analysis {
+        Some(analysis) if analysis.module.is_some() => (true, analysis.imported),
+        _ => (false, Vec::new()),
+    };
+    (FileResult::Read { converts, census }, imported)
 }
 
 /// Why a folder could not be audited.
@@ -362,20 +374,38 @@ fn tsx_files(dir: &Path) -> Result<Vec<PathBuf>, AuditError> {
 /// file that cannot be read as TSX is counted, not an error.
 pub fn audit_dir(dir: &Path) -> Result<Report, AuditError> {
     let mut report = Report::default();
+    // Files a converting screen imports, as shown: they convert with it.
+    let mut used: BTreeSet<String> = BTreeSet::new();
     for path in tsx_files(dir)? {
         let shown = path
             .strip_prefix(dir)
             .unwrap_or(&path)
             .to_string_lossy()
             .replace('\\', "/");
-        let result = match fs::read(&path) {
+        let name = path
+            .file_name()
+            .map_or_else(|| shown.clone(), |name| name.to_string_lossy().into_owned());
+        let mut folder = Folder::of(&path).map_err(|error| AuditError::Io(path.clone(), error))?;
+        let (result, imported) = match fs::read(&path) {
             Ok(bytes) => match String::from_utf8(bytes) {
-                Ok(source) => audit_source(&source, &shown),
-                Err(_) => FileResult::Unreadable,
+                Ok(source) => audit_file(&source, &name, &mut folder),
+                Err(_) => (FileResult::Unreadable, Vec::new()),
             },
             Err(error) => return Err(AuditError::Io(path, error)),
         };
+        let beside = shown
+            .rfind('/')
+            .and_then(|end| shown.get(..=end))
+            .unwrap_or("");
+        used.extend(imported.iter().map(|file| format!("{beside}{file}")));
         report.files.push((shown, result));
+    }
+    for (shown, result) in &mut report.files {
+        if let FileResult::Read { converts, .. } = result
+            && used.contains(shown)
+        {
+            *converts = true;
+        }
     }
     Ok(report)
 }

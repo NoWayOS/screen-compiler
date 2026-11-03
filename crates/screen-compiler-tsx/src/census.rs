@@ -101,8 +101,12 @@ pub enum ImportKind {
     CssModule,
     /// Any other stylesheet: `.css`, `.scss`, `.sass`, `.less`.
     Stylesheet,
-    /// A file of the project's own: a path starting `.` or `/`.
+    /// A file of the project's own in the importing file's folder or below:
+    /// a path starting `./`.
     Local,
+    /// A file of the project's own elsewhere: any other path starting `.`
+    /// or `/`.
+    Outside,
     /// A package, by name.
     Package(String),
 }
@@ -114,8 +118,9 @@ pub struct Census {
     pub counts: BTreeMap<Construct, u32>,
     /// The module's own function components, by name: its top-level
     /// function declarations and `const` declarations of an arrow or a
-    /// function, exported or not. An element of one of these names is the
-    /// module's own component, not one from elsewhere.
+    /// function, exported or not, and the names it imports from a file
+    /// beside it (a path starting `./`). An element of one of these names
+    /// is the project's own component, not one from a package.
     pub own_components: BTreeSet<String>,
     /// The module's top-level `const` arrays, by name.
     pub own_lists: BTreeSet<String>,
@@ -174,6 +179,15 @@ fn own_lists(program: &Program<'_>) -> BTreeSet<String> {
 fn own_components(program: &Program<'_>) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     for statement in &program.body {
+        if let Statement::ImportDeclaration(decl) = statement
+            && decl.import_kind != ImportOrExportKind::Type
+            && decl.source.value.as_str().starts_with("./")
+        {
+            for specifier in decl.specifiers.iter().flatten() {
+                names.insert(specifier.local().name.as_str().to_owned());
+            }
+            continue;
+        }
         let declaration = match statement {
             Statement::ExportNamedDeclaration(decl) if decl.source.is_none() => {
                 decl.declaration.as_ref()
@@ -266,8 +280,10 @@ impl Counter {
             .any(|ending| module.ends_with(ending))
         {
             ImportKind::Stylesheet
-        } else if module.starts_with('.') || module.starts_with('/') {
+        } else if module.starts_with("./") {
             ImportKind::Local
+        } else if module.starts_with('.') || module.starts_with('/') {
+            ImportKind::Outside
         } else {
             ImportKind::Package(module.to_owned())
         }

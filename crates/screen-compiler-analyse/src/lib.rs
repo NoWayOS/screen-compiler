@@ -27,9 +27,13 @@
 //!   `{props.NAME && <X/>}` and `{props.NAME ? <X/> : <Y/>}` (or `: null`)
 //!   become a group the application shows or hides, each named after its
 //!   prop. A condition is one prop, and what it shows one element;
-//! * fragments and the file's own components (*parts*), expanded at build
+//! * fragments and the screen's own components (*parts*), expanded at build
 //!   time before the walk (its rules in the private `parts` module), so a screen
-//!   built of parts is checked and lowered as if written flat.
+//!   built of parts is checked and lowered as if written flat. A part may be
+//!   imported from a `.tsx` file in the screen's folder or below
+//!   (`import { Header } from "./parts/header"`), read through a
+//!   [`files::Load`]er ([`analyse_with`]); each name is resolved in the file
+//!   it is written in, and each error reported there.
 //!
 //! Every component, prop and style property, with the values each takes,
 //! is in the kit's tables ([`KitComponent::props`], [`KitComponent::style`]),
@@ -39,6 +43,7 @@
 #![deny(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
 
 pub mod audit;
+pub mod files;
 mod kit;
 mod lower;
 mod parts;
@@ -107,10 +112,40 @@ pub struct Analysis {
     pub module: Option<Module>,
     /// Every finding, sorted by position.
     pub diagnostics: Vec<Diagnostic>,
+    /// The files the screen imports, as paths from its folder, in the order
+    /// read: a diagnostic in file `n` (from 1) is in `imported[n - 1]`.
+    pub imported: Vec<String>,
 }
 
-/// Checks `source` against the subset and lowers it to the IR.
+impl Analysis {
+    /// Each file's name, the screen's own first: `own`, then each imported
+    /// file's path from the folder `own` is in, for rendering diagnostics
+    /// ([`Diagnostic::render_in`]).
+    #[must_use]
+    pub fn file_names(&self, own: &str) -> Vec<String> {
+        let folder = own
+            .rfind(['/', '\\'])
+            .and_then(|end| own.get(..=end))
+            .unwrap_or("");
+        std::iter::once(own.to_owned())
+            .chain(self.imported.iter().map(|path| format!("{folder}{path}")))
+            .collect()
+    }
+}
+
+/// Checks `source` against the subset and lowers it to the IR. It reads no
+/// files: an import from one is reported.
 #[must_use]
 pub fn analyse(source: &SourceModule, options: &Options) -> Analysis {
-    lower::analyse(source, options)
+    lower::analyse(source, options, &mut files::NoFiles)
+}
+
+/// As [`analyse`], reading each file the screen imports through `load`.
+#[must_use]
+pub fn analyse_with(
+    source: &SourceModule,
+    options: &Options,
+    load: &mut dyn files::Load,
+) -> Analysis {
+    lower::analyse(source, options, load)
 }

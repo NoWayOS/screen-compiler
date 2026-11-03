@@ -542,11 +542,26 @@ pub fn convert_fixture(name: &str) -> (screen_compiler_ir::Module, String) {
         .join("../../fixtures")
         .join(name);
     let source = std::fs::read_to_string(&path).unwrap();
-    convert_source(name, &source)
+    // The files it imports are read from beside it, as the tool reads them.
+    let mut folder = screen_compiler_analyse::files::Folder::of(&path).unwrap();
+    convert_in(name, &source, &mut folder)
 }
 
-/// Runs the whole pipeline on `source`, recorded as file `name`.
+/// Runs the whole pipeline on `source`, recorded as file `name`; the files
+/// it imports are read from `fixtures/`.
 pub fn convert_source(name: &str, source: &str) -> (screen_compiler_ir::Module, String) {
+    let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures");
+    let mut folder = screen_compiler_analyse::files::Folder::new(&fixtures).unwrap();
+    convert_in(name, source, &mut folder)
+}
+
+/// Runs the whole pipeline on `source`, recorded as file `name`, reading the
+/// files it imports through `load`.
+fn convert_in(
+    name: &str,
+    source: &str,
+    load: &mut dyn screen_compiler_analyse::files::Load,
+) -> (screen_compiler_ir::Module, String) {
     let render = |diagnostics: &[screen_compiler_ir::Diagnostic]| -> String {
         diagnostics
             .iter()
@@ -558,8 +573,11 @@ pub fn convert_source(name: &str, source: &str) -> (screen_compiler_ir::Module, 
         Ok(parsed) => parsed,
         Err(diagnostics) => panic!("{name} does not parse:\n{}", render(&diagnostics)),
     };
-    let analysis =
-        screen_compiler_analyse::analyse(&parsed, &screen_compiler_analyse::Options::new(name));
+    let analysis = screen_compiler_analyse::analyse_with(
+        &parsed,
+        &screen_compiler_analyse::Options::new(name),
+        load,
+    );
     let Some(module) = analysis.module else {
         panic!(
             "{name} is not supported:\n{}",

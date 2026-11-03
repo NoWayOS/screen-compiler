@@ -1,13 +1,13 @@
-screen-compiler audit: 22 files
-  convert                21  95.4%
+screen-compiler audit: 25 files
+  convert                24  96.0%
   do not convert          1
   cannot be read          0
 
-constructs            749
-  in the subset       737  98.3%
-  on the road           4  0.5%
-  out by design         4  0.5%
-  unknown               4  0.5%
+constructs            808
+  in the subset       796  98.5%
+  on the road           4  0.4%
+  out by design         4  0.4%
+  unknown               4  0.4%
 
 on the road
   React DOM's event names                  2 in 1 file
@@ -32,6 +32,7 @@ unknown
 
 files
   bike-hire.tsx  converts
+  check-in-files.tsx  converts
   check-in-parts.tsx  converts
   check-in.tsx  converts
   details-form.tsx  converts
@@ -47,6 +48,8 @@ files
   parcel-status.tsx  converts
   parking-paid-css.tsx  converts
   parking-paid.tsx  converts
+  parts/theme.tsx  converts
+  parts/visitor.tsx  converts
   queue-ticket.tsx  converts
   table-ready.tsx  converts
   tiles.tsx  converts

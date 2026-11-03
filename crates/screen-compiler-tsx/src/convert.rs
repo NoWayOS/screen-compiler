@@ -26,15 +26,18 @@ pub const MAX_NESTING: usize = 256;
 
 pub struct Converter<'s> {
     source: &'s str,
+    /// The file's number, which every location carries.
+    file: u16,
     lines: LineIndex,
     diagnostics: Vec<Diagnostic>,
     nesting_reported: bool,
 }
 
 impl<'s> Converter<'s> {
-    pub fn new(source: &'s str) -> Self {
+    pub fn new(source: &'s str, file: u16) -> Self {
         Self {
             source,
+            file,
             lines: LineIndex::new(source),
             diagnostics: Vec::new(),
             nesting_reported: false,
@@ -42,7 +45,7 @@ impl<'s> Converter<'s> {
     }
 
     fn at(&self, offset: usize) -> Loc {
-        self.lines.loc(self.source, offset)
+        self.lines.loc(self.source, offset).in_file(self.file)
     }
 
     fn loc(&self, span: Span) -> Loc {

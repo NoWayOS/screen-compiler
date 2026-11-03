@@ -103,6 +103,15 @@ mod fixture_check_in_parts {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_check_in_files {
+    use crate::nowayos_ui;
+    include!("snapshots/check-in-files.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_bike_hire {
     use crate::nowayos_ui;
     include!("snapshots/bike-hire.rs");
@@ -217,9 +226,10 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 21] = [
+const COMPILED: [&str; 22] = [
     "bike-hire",
     "check-in",
+    "check-in-files",
     "check-in-parts",
     "details-form",
     "edge-names",
@@ -462,6 +472,31 @@ fn check_in_built_of_parts_is_check_in_written_flat() {
     assert!(!flat.is_empty());
     assert_eq!(calls(include_str!("snapshots/check-in-parts.rs")), flat);
     use fixture_check_in_parts::check_in as screen;
+    let mut recorder = Recorder::with_capacity(32);
+    let nodes = screen::build(&mut recorder).unwrap();
+    assert_eq!(recorder.outline(nodes.root), ir_outline("check-in.tsx"));
+}
+
+/// The screen built of parts imported from files beside it - and its design
+/// tokens from another - is check-in's too; its comments name the file each
+/// part is written in.
+#[test]
+fn check_in_built_of_parts_from_other_files_is_check_in_written_flat() {
+    assert_eq!(ir_outline("check-in-files.tsx"), ir_outline("check-in.tsx"));
+    let calls = |rust: &str| -> Vec<String> {
+        rust.lines()
+            .filter(|line| line.trim_start().starts_with("let n"))
+            .map(|line| line.split(" // ").next().unwrap_or(line).to_owned())
+            .collect()
+    };
+    let rust = include_str!("snapshots/check-in-files.rs");
+    assert_eq!(calls(rust), calls(include_str!("snapshots/check-in.rs")));
+    assert!(
+        rust.contains("// visitor.tsx:"),
+        "a part's place is in its file"
+    );
+    assert!(rust.contains("(theme.tsx:"), "and a token's");
+    use fixture_check_in_files::check_in as screen;
     let mut recorder = Recorder::with_capacity(32);
     let nodes = screen::build(&mut recorder).unwrap();
     assert_eq!(recorder.outline(nodes.root), ir_outline("check-in.tsx"));
