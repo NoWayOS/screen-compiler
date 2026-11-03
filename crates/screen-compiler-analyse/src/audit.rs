@@ -35,12 +35,8 @@ pub enum Step {
     Components,
     /// Text mixing literals and props.
     MixedText,
-    /// Lists from `.map`.
-    Lists,
     /// More of CSS layout: flex growth, margins, per-side padding.
     CssLayout,
-    /// Conditions beyond one prop: negation, comparison with a literal.
-    Conditions,
     /// React DOM's event names, and arrows that only call a prop.
     DomEvents,
     /// Common HTML elements, by fixed rules.
@@ -60,9 +56,7 @@ impl Step {
         match self {
             Self::Components => "your own components from other files",
             Self::MixedText => "text mixing literals and props",
-            Self::Lists => "lists",
             Self::CssLayout => "more of CSS layout",
-            Self::Conditions => "more conditions",
             Self::DomEvents => "React DOM's event names",
             Self::HtmlElements => "common HTML elements",
             Self::CssModules => "CSS modules",
@@ -92,6 +86,8 @@ const COMPUTED_STYLE: &str = "a style computed when the code runs";
 const CASCADE: &str = "a global stylesheet: there is no cascade";
 const ANIMATION: &str = "animation";
 const UNBOUNDED: &str = "a list with no most: slice it, .slice(0, N), so the screen knows its rows";
+const COMPARISON: &str = "a comparison other than a prop `===` a string literal: compare in the application and pass the result as a prop";
+const STATEMENT: &str = "a screen's function only returns its tree: choose in it with && or ?:";
 
 /// The style properties the road's CSS layout step adds.
 const LAYOUT: &[&str] = &[
@@ -166,13 +162,12 @@ pub fn verdict_in(construct: &Construct, own: &BTreeSet<String>) -> Verdict {
         Construct::Map => Verdict::Out(UNBOUNDED),
         Construct::Call(_) => Verdict::Unknown,
         Construct::Binary(op) => match *op {
-            "===" | "!==" | "==" | "!=" | "<" | ">" | "<=" | ">=" => {
-                Verdict::Road(Step::Conditions)
-            }
+            "===" => Verdict::Subset,
+            "!==" | "==" | "!=" | "<" | ">" | "<=" | ">=" => Verdict::Out(COMPARISON),
             _ => Verdict::Unknown,
         },
         Construct::Unary(op) => match *op {
-            "!" => Verdict::Road(Step::Conditions),
+            "!" => Verdict::Subset,
             _ => Verdict::Unknown,
         },
         Construct::Logical(op) => match *op {
@@ -189,7 +184,7 @@ pub fn verdict_in(construct: &Construct, own: &BTreeSet<String>) -> Verdict {
             ImportKind::Package(_) => Verdict::Unknown,
         },
         Construct::Statement(kind) => match *kind {
-            "if" | "switch" => Verdict::Road(Step::Conditions),
+            "if" | "switch" => Verdict::Out(STATEMENT),
             _ => Verdict::Unknown,
         },
     }

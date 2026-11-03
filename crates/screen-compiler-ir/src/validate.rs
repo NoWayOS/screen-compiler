@@ -12,6 +12,9 @@ use crate::{
 /// limit is lower; this bound keeps every tree walk over the IR bounded.
 pub const MAX_DEPTH: usize = 64;
 
+/// The most cases one switch has: the runtime numbers them with a `u8`.
+pub const MAX_CASES: usize = 256;
+
 /// Checks the invariants code generators rely on:
 ///
 /// * design tokens, screens, element ids (per screen) and actions (per
@@ -76,6 +79,9 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
     let mut actions = Seen::default();
     let mut slots = Seen::default();
     let mut groups = Seen::default();
+    let mut switches = Seen::default();
+    // Each switch's cases, by the switch's words.
+    let mut cases: BTreeMap<&[String], Seen> = BTreeMap::new();
     let mut too_deep = false;
     // Each node with its depth, and whether a scroll view holds it.
     let mut scroll_views = 0_usize;
@@ -318,6 +324,68 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
                 .with_help("rename one of the props"),
             );
         }
+        // One prop may be the switch of several cases, which share its
+        // number; two props whose names give one switch name may not.
+        if let NodeKind::Case(case) = &node.kind
+            && let Some(first) = switches.insert(&case.switch, node.loc)
+            && first.name.source() != case.switch.source()
+        {
+            diagnostics.push(
+                Diagnostic::error(
+                    Code::DuplicateName,
+                    node.loc,
+                    format!(
+                        "props `{}`{} and `{}` would get the same switch name in screen `{}`",
+                        first.name.source(),
+                        at(first.loc),
+                        case.switch.source(),
+                        screen.name
+                    ),
+                )
+                .with_help("rename one of the props"),
+            );
+        }
+        // A switch's cases are values the application compares exactly:
+        // two whose names give one constant may not be told apart.
+        if let NodeKind::Case(case) = &node.kind
+            && let Some(first) = cases
+                .entry(case.switch.words())
+                .or_default()
+                .insert(&case.when, node.loc)
+            && first.name.source() != case.when.source()
+        {
+            diagnostics.push(
+                Diagnostic::error(
+                    Code::DuplicateName,
+                    node.loc,
+                    format!(
+                        "cases \"{}\"{} and \"{}\" of `{}` would get the same name in screen `{}`",
+                        first.name.source(),
+                        at(first.loc),
+                        case.when.source(),
+                        case.switch.source(),
+                        screen.name
+                    ),
+                )
+                .with_help(
+                    "compare with values whose words differ, such as \"review\" and \"pay\"",
+                ),
+            );
+        }
+        if let NodeKind::Case(case) = &node.kind
+            && !(1..=2).contains(&case.children.len())
+        {
+            diagnostics.push(Diagnostic::error(
+                Code::Internal,
+                node.loc,
+                format!(
+                    "case `{}` of `{}` holds {} elements, not one or two; please report this input",
+                    case.when,
+                    case.switch,
+                    case.children.len()
+                ),
+            ));
+        }
         if let NodeKind::Group(group) = &node.kind
             && !(1..=2).contains(&group.children.len())
         {
@@ -334,6 +402,19 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
         let next = depth.saturating_add(1);
         let inside = scrolled || is_scroll;
         stack.extend(node.children().iter().rev().map(|c| (c, next, inside)));
+    }
+    for (switch, whens) in screen.switches() {
+        if whens.len() > MAX_CASES {
+            diagnostics.push(Diagnostic::error(
+                Code::Limit,
+                screen.loc,
+                format!(
+                    "`{}` has more than {MAX_CASES} cases in screen `{}`",
+                    switch.source(),
+                    screen.name
+                ),
+            ));
+        }
     }
     for (index, &(field, loc)) in field_errors.iter().enumerate() {
         if !field_ids.iter().any(|id| id.same_words(field)) {
@@ -626,6 +707,7 @@ mod tests {
                 NodeKind::Group(crate::Group {
                     name: name(n),
                     children,
+                    unless: false,
                 }),
                 None,
             )

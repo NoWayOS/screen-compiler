@@ -4,11 +4,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use screen_compiler_ir::{
-    AlignItems, ButtonVariant, Code, Colour, Container, Diagnostic, Group, ICON_NAMES, InputMode,
-    Justify, Length, Loc, Look, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LABEL_BYTES, MAX_LINES,
-    MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, Module, Name, Node, NodeKind, SELECT_ROWS,
-    Screen, Space, Surface, TextAlign, TextRole, TextStyle, Token, Tone, Weight, has_errors,
-    sort_diagnostics, special_char, validate,
+    AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Group, ICON_NAMES,
+    InputMode, Justify, Length, Loc, Look, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LABEL_BYTES,
+    MAX_LINES, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, Module, Name, Node, NodeKind,
+    SELECT_ROWS, Screen, Space, Surface, TextAlign, TextRole, TextStyle, Token, Tone, Weight,
+    has_errors, sort_diagnostics, special_char, validate,
 };
 use screen_compiler_tsx::SourceModule;
 use screen_compiler_tsx::syntax::{
@@ -943,6 +943,21 @@ struct Props {
     for_given: bool,
 }
 
+/// What a condition tests.
+enum Test {
+    /// A prop: `props.ready`.
+    Truthy(Name),
+    /// A prop negated: `!props.ready`.
+    Falsy(Name),
+    /// A prop compared with a string literal: `props.step === "review"`.
+    Is {
+        /// The prop, which names the switch.
+        switch: Name,
+        /// The literal, which names the case.
+        when: Name,
+    },
+}
+
 /// Lowering of one screen.
 struct Lower<'c, 'o, 'a> {
     cx: &'c mut Cx<'o>,
@@ -1373,16 +1388,16 @@ impl Lower<'_, '_, '_> {
     /// else is reported where it is.
     fn conditional(&mut self, expr: &Expr, depth: usize) -> Option<Node> {
         let inner = depth.saturating_add(1);
-        let (name, children, loc) = match expr {
+        let (test, children, loc) = match expr {
             Expr::Logical {
                 op: LogicalOp::And,
                 left,
                 right,
                 loc,
             } => {
-                let name = self.condition(left);
+                let test = self.test(left);
                 let shown = self.branch(right, inner);
-                (name, vec![shown?], *loc)
+                (test, vec![shown?], *loc)
             }
             Expr::Logical { op, loc, .. } => {
                 let op = if *op == LogicalOp::Or { "||" } else { "??" };
@@ -1400,15 +1415,25 @@ impl Lower<'_, '_, '_> {
                 alternate,
                 loc,
             } => {
-                let name = self.condition(test);
-                if let Expr::Null { loc } = consequent.as_ref() {
-                    self.cx.error_help(
-                        Code::Unsupported,
-                        *loc,
-                        "`null` while the condition holds is not supported",
-                        "pass the opposite as a prop and write {props.NAME && <Element />}",
-                    );
-                    return None;
+                let test = self.test(test);
+                if let Expr::Null { loc: at } = consequent.as_ref() {
+                    // `p ? null : <X/>` is `!p && <X/>`.
+                    let test = match test {
+                        Some(Test::Truthy(name)) => Some(Test::Falsy(name)),
+                        Some(Test::Falsy(name)) => Some(Test::Truthy(name)),
+                        Some(Test::Is { switch, .. }) => {
+                            self.cx.error_help(
+                                Code::Unsupported,
+                                *at,
+                                format!("`null` while `{}` is on one case is not supported", switch.source()),
+                                "show content on the cases that have it: {props.NAME === \"case\" && <Element />}",
+                            );
+                            None
+                        }
+                        None => None,
+                    };
+                    let shown = self.branch(alternate, inner);
+                    return self.decided(test, vec![shown?], *loc, depth);
                 }
                 let shown = self.branch(consequent, inner);
                 let otherwise = match alternate.as_ref() {
@@ -1419,19 +1444,109 @@ impl Lower<'_, '_, '_> {
                 if let Some(otherwise) = otherwise {
                     children.push(otherwise?);
                 }
-                (name, children, *loc)
+                (test, children, *loc)
             }
             _ => return None,
         };
-        let name = name?;
+        self.decided(test, children, loc, depth)
+    }
+
+    /// The node a condition and what it shows make.
+    fn decided(
+        &mut self,
+        test: Option<Test>,
+        children: Vec<Node>,
+        loc: Loc,
+        depth: usize,
+    ) -> Option<Node> {
+        let kind = match test? {
+            Test::Truthy(name) => NodeKind::Group(Group {
+                name,
+                children,
+                unless: false,
+            }),
+            // `!p ? <X/> : <Y/>` is `p ? <Y/> : <X/>`.
+            Test::Falsy(name) if children.len() > 1 => NodeKind::Group(Group {
+                name,
+                children: children.into_iter().rev().collect(),
+                unless: false,
+            }),
+            Test::Falsy(name) => NodeKind::Group(Group {
+                name,
+                children,
+                unless: true,
+            }),
+            Test::Is { switch, when } => NodeKind::Case(Case {
+                switch,
+                when,
+                children,
+            }),
+        };
         if !self.admit(loc, depth) {
             return None;
         }
         Some(Node {
-            kind: NodeKind::Group(Group { name, children }),
+            kind,
             id: None,
             loc: Some(loc),
         })
+    }
+
+    /// What a condition tests (contract v13 beyond one prop's truth): a
+    /// prop, `!` a prop, or a prop `===` a string literal - one case of the
+    /// prop's switch. Anything else is reported.
+    fn test(&mut self, expr: &Expr) -> Option<Test> {
+        match expr {
+            Expr::Not { operand, loc } => {
+                if matches!(operand.as_ref(), Expr::Not { .. }) {
+                    self.cx.error_help(
+                        Code::Unsupported,
+                        *loc,
+                        "`!!` in a condition is not supported",
+                        "test the prop itself: {props.NAME && …}",
+                    );
+                    return None;
+                }
+                self.condition(operand).map(Test::Falsy)
+            }
+            Expr::Equals { left, right, loc } => {
+                let literal = |side: &Expr| match side {
+                    Expr::Str { value, loc } => Some((value.clone(), *loc)),
+                    _ => None,
+                };
+                let found = match (literal(left), literal(right)) {
+                    (Some(literal), None) => Some((right.as_ref(), literal)),
+                    (None, Some(literal)) => Some((left.as_ref(), literal)),
+                    (Some(_), Some(_)) | (None, None) => None,
+                };
+                let Some((prop, (value, at))) = found else {
+                    self.cx.error_help(
+                        Code::Unsupported,
+                        *loc,
+                        "a comparison in a condition is one prop `===` a string literal",
+                        "write {props.step === \"review\" && …}; compare anything else in the application and pass the result as a prop",
+                    );
+                    return None;
+                };
+                let switch = self.condition(prop)?;
+                match Name::parse(&value) {
+                    Ok(when) => Some(Test::Is { switch, when }),
+                    Err(error) => {
+                        self.cx.error_help(
+                            Code::InvalidValue,
+                            at,
+                            format!(
+                                "\"{value}\" cannot name a case of `{}` in generated code: {error}",
+                                switch.source()
+                            ),
+                            "a case is a word or two, such as \"review\" or \"step-2\"",
+                        );
+                        None
+                    }
+                }
+            }
+            other => self.condition(other).map(Test::Truthy),
+        }
     }
 
     /// What a condition shows: exactly one element.

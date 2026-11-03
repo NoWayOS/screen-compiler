@@ -44,6 +44,8 @@ its approved image in `contract-check/golden/` pixel for pixel. See
 | `<Text>{props.name}</Text>`, or `<Text>{name}</Text>` with `name` destructured | text the application sets at run time: a **slot**, `b.slot(slots::NAME)`, never text compiled in. The prop must be the text's only content (`Name: {props.name}` is refused: write two `Text` elements); one slot per prop on a screen |
 | `{props.ready && <X />}` | a **group** the application shows or hides, `b.group(groups::READY, x)`: hidden at first, and then taking no space |
 | `{props.ready ? <X /> : <Y />}`, or `: null` | a group choosing between the two, `b.either(groups::READY, x, y)`: `<Y />` shows at first |
+| `{!props.ready && <X />}`, or `{props.ready ? null : <X />}` | the prop's group negated (contract v13), `b.unless(groups::READY, x)`: shown at first, and while the application hides the group; it shares the prop's group number. `{!props.ready ? <X /> : <Y />}` is `{props.ready ? <Y /> : <X />}` |
+| `{props.step === "review" && <X />}`, `{props.step === "pay" ? <X /> : <Y />}` | a **switch** the application sets to one case (contract v13): one per prop, each string literal it is compared with one case, `b.case(switches::STEP, switches::step::REVIEW, x)` or `b.case_or(…, x, y)`. The screen's `switches` module numbers switches from 1 in document order, each beside a module of its cases, `u8`s from 0 in the order first written; on no case at first, and what a case does not show takes no space. Refused where written: comparing two props, a prop with a number or a computed value, or two literals; `!==`, `==` and the other comparisons; `!!`; `null` while a case holds; a literal that cannot name a constant, or two that name the same one (`"review"` and `"Review"`); more than 256 cases; a prop whose cases' module would be a Rust keyword or `ui`. Each case is drawn on its own (`SCREEN.case-SWITCH-CASE.png`); `fixtures/bike-hire.tsx` has a switch and a negation |
 | `<TextInput id="phone" placeholder="…" maxLength={15} inputMode="tel" />` | `maxLength` 1–64 bytes, a number or a token (default 64); `inputMode` `text` (the default), `numeric` or `tel` (both digits only) or `email`. Every text input becomes `b.input(fields::PHONE, ui::Input::new()…)`, never v0's `text_input`; the runtime refuses a key outside its mode or beyond its length |
 | `<Checkbox id="remind" label="…" />` | `b.checkbox(fields::REMIND, "…")`: a literal label of at most 256 bytes; `id` required |
 | `<RadioGroup id="when" options={["…", "…"]} />` | `b.radio_group(fields::WHEN, &["…", "…"])`: 1 to 8 literal options, each at most 256 bytes (more is refused, with help naming `<Select>`); `id` required |
@@ -70,8 +72,8 @@ or a destructured `NAME`), and what it shows is one element. Several conditions 
 share its number and show and hide together. Each screen's `groups` and
 `slots` modules number them from 1 in document order, one per prop, as
 `actions` does. Refused, each with its position: any other condition
-(`!props.a`, `props.n > 0`, `a && b`, a call), `||` and `??`, `null` while
-the condition holds, a condition inside a condition, text or a fragment of
+(`props.n > 0`, `a && b`, a call; `!` a prop and `===` a string literal are
+contract v13's, above), `||` and `??`, a condition inside a condition, text or a fragment of
 several elements as what a condition shows, a condition as a screen's one child, text mixed with
 a prop, the same prop as the text of two elements, two props whose names
 give one group or slot name (`isReady` and `is_ready`, as for actions); a
@@ -119,7 +121,8 @@ screen-compiler/
 │   │                            (a workspace of its own: Screen Compiler's crates never
 │   │                            depend on NoWayOS)
 │   └── golden/                  each fixture's approved image, FIXTURE/SCREEN.png
-│                                (and SCREEN.shown.png, every group shown and slot filled)
+│                                (and SCREEN.shown.png, every group shown and slot filled;
+│                                SCREEN.case-SWITCH-CASE.png, each case of each switch)
 └── fixtures/                    synthetic React screens only
 ```
 
@@ -268,7 +271,9 @@ frame must match the screen's approved image,
 `contract-check/golden/FIXTURE/SCREEN.png`, pixel for pixel. A screen with
 groups or slots is drawn a second time as the application would show it with
 every group visible and each slot holding "Text from the application, N", and
-must match `SCREEN.shown.png` too. A frame that
+must match `SCREEN.shown.png` too; a screen with switches is drawn again
+for each case of each, that switch set to it, and must match
+`SCREEN.case-SWITCH-CASE.png`. A frame that
 differs is written beside the image as `SCREEN.actual.png` (never committed)
 so the two can be compared, and an image no converted screen draws fails the
 check too.

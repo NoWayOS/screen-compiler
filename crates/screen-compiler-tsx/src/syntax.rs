@@ -326,6 +326,22 @@ pub enum Expr {
         /// Where the expression starts (its left operand).
         loc: Loc,
     },
+    /// `!operand`.
+    Not {
+        /// What is negated.
+        operand: Box<Expr>,
+        /// Where the expression starts (its `!`).
+        loc: Loc,
+    },
+    /// `left === right`.
+    Equals {
+        /// The left operand.
+        left: Box<Expr>,
+        /// The right operand.
+        right: Box<Expr>,
+        /// Where the expression starts (its left operand).
+        loc: Loc,
+    },
     /// `list.map(callback)`, or `list.slice(0, most).map(callback)`: a list
     /// of elements, one for each item.
     Map {
@@ -379,6 +395,8 @@ impl Expr {
             | Self::Object { loc, .. }
             | Self::Logical { loc, .. }
             | Self::Map { loc, .. }
+            | Self::Not { loc, .. }
+            | Self::Equals { loc, .. }
             | Self::Conditional { loc, .. } => *loc,
             Self::Function(f) => f.loc,
             Self::Element(e) => e.loc,
@@ -405,6 +423,8 @@ impl Expr {
             Self::Logical { .. } => "a logical (`&&`, `||`, `??`) expression".to_owned(),
             Self::Conditional { .. } => "a conditional (`?:`) expression".to_owned(),
             Self::Map { .. } => "a call to `.map()`".to_owned(),
+            Self::Not { .. } => "a `!` expression".to_owned(),
+            Self::Equals { .. } => "a `===` comparison".to_owned(),
             Self::Other(o) => with_article(&o.kind),
         }
     }

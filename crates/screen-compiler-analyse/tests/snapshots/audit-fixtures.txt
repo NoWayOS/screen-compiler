@@ -1,22 +1,23 @@
-screen-compiler audit: 19 files
-  convert                17  89.4%
+screen-compiler audit: 20 files
+  convert                18  90.0%
   do not convert          2
   cannot be read          0
 
-constructs            652
-  in the subset       638  97.8%
-  on the road           7  1.0%
-  out by design         3  0.4%
-  unknown               4  0.6%
+constructs            683
+  in the subset       669  97.9%
+  on the road           6  0.8%
+  out by design         4  0.5%
+  unknown               4  0.5%
 
 on the road
   text mixing literals and props           2 in 2 files
-  more conditions                          1 in 1 file
   React DOM's event names                  2 in 1 file
   common HTML elements                     1 in 1 file
   CSS modules                              1 in 1 file
 
 out by design
+  a comparison other than a prop `===` a string literal: compare in the application and pass the result as a prop
+    >                                      1
   a global stylesheet: there is no cascade
     an import of a stylesheet              1
   a list with no most: slice it, .slice(0, N), so the screen knows its rows
@@ -31,6 +32,7 @@ unknown
   style background on <Column>             1
 
 files
+  bike-hire.tsx  converts
   check-in-parts.tsx  converts
   check-in.tsx  converts
   details-form.tsx  converts
@@ -47,6 +49,6 @@ files
   queue-ticket.tsx  converts
   tiles.tsx  converts
   unsupported/form-controls.tsx  does not convert: 1 on the road, 0 out by design, 0 unknown
-  unsupported/web-search.tsx  does not convert: 6 on the road, 3 out by design, 4 unknown
+  unsupported/web-search.tsx  does not convert: 5 on the road, 4 out by design, 4 unknown
   visit-booking.tsx  converts
   welcome.tsx  converts

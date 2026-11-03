@@ -96,6 +96,21 @@ fn check_rust_names(module: &Module) -> Vec<Diagnostic> {
                 screen.loc,
             );
         }
+        for (switch, cases) in screen.switches() {
+            identifier(
+                switch.screaming_snake_case(),
+                format!("prop `{switch}`"),
+                screen.loc,
+            );
+            identifier(switch.snake_case(), format!("prop `{switch}`"), screen.loc);
+            for case in cases {
+                identifier(
+                    case.screaming_snake_case(),
+                    format!("case \"{case}\" of `{switch}`"),
+                    screen.loc,
+                );
+            }
+        }
         for node in screen.nodes() {
             if let Some(id) = &node.id {
                 identifier(id.snake_case(), format!("id \"{id}\""), node.loc);
@@ -116,6 +131,29 @@ fn check_rust_names(module: &Module) -> Vec<Diagnostic> {
                 )
                 .with_help("rename the component"),
             );
+        }
+        // Each switch's cases are a module beside `use super::ui;`.
+        for (switch, _) in screen.switches() {
+            let cases = switch.snake_case();
+            if cases == "ui" || rust::is_keyword(&cases) {
+                let at = screen
+                    .nodes()
+                    .into_iter()
+                    .find(|node| {
+                        matches!(&node.kind, NodeKind::Case(case) if case.switch.same_words(switch))
+                    })
+                    .and_then(|node| node.loc);
+                diagnostics.push(
+                    Diagnostic::error(
+                        Code::ReservedName,
+                        at,
+                        format!(
+                            "prop `{switch}` would name module `{cases}` of its cases, which is reserved in generated Rust"
+                        ),
+                    )
+                    .with_help("rename the prop"),
+                );
+            }
         }
         for node in screen.nodes() {
             let Some(id) = &node.id else { continue };
@@ -257,6 +295,11 @@ impl<'m> Emitter<'m> {
                 "Groups of content the application shows or hides, one per prop, numbered from 1 in document order.",
             );
         }
+        let switches = screen.switches();
+        if !switches.is_empty() {
+            self.blank();
+            self.switches(screen, &switches);
+        }
         let slots = screen.slots();
         if !slots.is_empty() {
             self.blank();
@@ -366,6 +409,44 @@ impl<'m> Emitter<'m> {
                     id.screaming_snake_case()
                 ),
             );
+        }
+        self.line(1, "}");
+    }
+
+    /// The `switches` module: each switch a constant named after its prop,
+    /// numbered from 1, and beside it a module of its cases, each a `u8`
+    /// named after its value, numbered from 0 (contract v13).
+    fn switches(&mut self, screen: &Screen, switches: &[(&Name, Vec<&Name>)]) {
+        self.line(
+            1,
+            "/// Switches the application sets to one case, one per prop, numbered from 1 in document order; each switch's cases, numbered from 0, in the module of its name.",
+        );
+        self.line(1, "pub mod switches {");
+        self.line(2, "use super::ui;");
+        for (number, (switch, cases)) in (1_u32..).zip(switches) {
+            let first = screen.nodes().into_iter().find(
+                |node| matches!(&node.kind, NodeKind::Case(case) if case.switch.same_words(switch)),
+            );
+            let at = self.at(first.and_then(|node| node.loc));
+            self.blank();
+            self.line(2, &format!("/// Prop `{}`{at}.", switch.source()));
+            self.line(
+                2,
+                &format!(
+                    "pub const {}: ui::SwitchId = ui::SwitchId::new({number});",
+                    switch.screaming_snake_case()
+                ),
+            );
+            self.line(2, &format!("/// The cases of `{}`.", switch.source()));
+            self.line(2, &format!("pub mod {} {{", switch.snake_case()));
+            for (when, case) in (0_u32..).zip(cases) {
+                self.line(3, &format!("/// `\"{}\"`.", case.source()));
+                self.line(
+                    3,
+                    &format!("pub const {}: u8 = {when};", case.screaming_snake_case()),
+                );
+            }
+            self.line(2, "}");
         }
         self.line(1, "}");
     }
@@ -617,9 +698,31 @@ impl<'m> Emitter<'m> {
                 let name = group.name.screaming_snake_case();
                 if children.len() > 1 {
                     format!("b.either(groups::{name}, {})", children.join(", "))
+                } else if group.unless {
+                    format!("b.unless(groups::{name}, {})", children.join(", "))
                 } else {
                     format!("b.group(groups::{name}, {})", children.join(", "))
                 }
+            }
+            // A switch's case (contract v13).
+            NodeKind::Case(case) => {
+                let children: Vec<String> = case
+                    .children
+                    .iter()
+                    .map(|child| self.node(child, body))
+                    .collect();
+                let switch = case.switch.screaming_snake_case();
+                let cases = case.switch.snake_case();
+                let when = case.when.screaming_snake_case();
+                let method = if children.len() > 1 {
+                    "case_or"
+                } else {
+                    "case"
+                };
+                format!(
+                    "b.{method}(switches::{switch}, switches::{cases}::{when}, {})",
+                    children.join(", ")
+                )
             }
         };
         let at = node
@@ -630,7 +733,20 @@ impl<'m> Emitter<'m> {
             NodeKind::Group(group) if group.children.len() > 1 => {
                 format!("{{{} ? ... : ...}}", group.name.source())
             }
+            NodeKind::Group(group) if group.unless => {
+                format!("{{!{} && ...}}", group.name.source())
+            }
             NodeKind::Group(group) => format!("{{{} && ...}}", group.name.source()),
+            NodeKind::Case(case) if case.children.len() > 1 => format!(
+                "{{{} === \"{}\" ? ... : ...}}",
+                case.switch.source(),
+                case.when.source()
+            ),
+            NodeKind::Case(case) => format!(
+                "{{{} === \"{}\" && ...}}",
+                case.switch.source(),
+                case.when.source()
+            ),
             _ => format!("<{}>", node.component()),
         };
         body.lines
@@ -810,7 +926,7 @@ mod tests {
         );
         let expected = "\
 // @generated by screen-compiler from demo.tsx. Do not edit by hand.
-// Target: nowayos-ui builder contract v12 (provisional). Regenerate with `screen-compiler convert`.
+// Target: nowayos-ui builder contract v13 (provisional). Regenerate with `screen-compiler convert`.
 
 use nowayos_ui::builder as ui;
 

@@ -293,7 +293,8 @@ fn lists_conditionals_fragments_and_spreads_are_reported() {
         codes("<Column>{items.map((i) => <Text>{i}</Text>)}</Column>"),
         [Code::Unsupported]
     );
-    // Conditions are one prop (subset v1); anything else is reported.
+    // Conditions are one prop (subset v1), negated or compared with a
+    // string literal (contract v13); anything else is reported.
     assert_eq!(
         codes("<Column>{elsewhere && <Text>x</Text>}</Column>"),
         [Code::UnknownName]
@@ -303,7 +304,7 @@ fn lists_conditionals_fragments_and_spreads_are_reported() {
         [Code::Unsupported]
     );
     assert_eq!(
-        codes("<Column>{onGo ? null : <Text>a</Text>}</Column>"),
+        codes("<Column>{onGo === \"a\" ? null : <Text>a</Text>}</Column>"),
         [Code::Unsupported]
     );
     // A fragment's children take its place: two where <Screen> takes one.
@@ -420,9 +421,19 @@ fn a_prop_shows_or_hides_one_element_or_chooses_between_two() {
             "props.n",
         ),
         (
-            "<Column>{!props.ok && <Text>x</Text>}</Column>",
+            "<Column>{!!props.ok && <Text>x</Text>}</Column>",
             Code::Unsupported,
-            "!props",
+            "!!props",
+        ),
+        (
+            "<Column>{props.a === props.b && <Text>x</Text>}</Column>",
+            Code::Unsupported,
+            "props.a",
+        ),
+        (
+            "<Column>{props.n === 1 && <Text>x</Text>}</Column>",
+            Code::Unsupported,
+            "props.n",
         ),
         (
             "<Column>{props.a && props.b && <Text>x</Text>}</Column>",
@@ -472,7 +483,7 @@ fn a_prop_shows_or_hides_one_element_or_chooses_between_two() {
             "props.b",
         ),
         (
-            "<Column>{props.a ? null : <Text>x</Text>}</Column>",
+            "<Column>{props.a === \"b\" ? null : <Text>x</Text>}</Column>",
             Code::Unsupported,
             "null",
         ),
@@ -1428,7 +1439,7 @@ const fn unsupported(tsx: &'static str, code: Code, offset: u32) -> Piece {
     }
 }
 
-const PIECES: [Piece; 31] = [
+const PIECES: [Piece; 33] = [
     supported("<Text>Hello</Text>", 1),
     supported("<Spacer />", 1),
     supported("<Spacer size={8} />", 1),
@@ -1460,7 +1471,9 @@ const PIECES: [Piece; 31] = [
     supported("{onBack ? <Text>a</Text> : null}", 2),
     supported("{onGo ? <Spacer /> : <Row><Text>b</Text></Row>}", 4),
     unsupported("{onGo || <Text>x</Text>}", Code::Unsupported, 1),
-    unsupported("{!onGo && <Text>x</Text>}", Code::Unsupported, 1),
+    supported("{!onGo && <Text>x</Text>}", 2),
+    supported("{onBack === \"a\" ? <Text>a</Text> : <Text>b</Text>}", 3),
+    unsupported("{!!onGo && <Text>x</Text>}", Code::Unsupported, 1),
     unsupported("{onGo && \"text\"}", Code::InvalidChildren, 9),
     unsupported(
         "<Button onPress={() => go()}>Go</Button>",

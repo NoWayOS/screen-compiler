@@ -136,7 +136,12 @@ fn the_road_takes_the_constructs_its_steps_name() {
     assert_eq!(road(Construct::BoundedMap), Verdict::Subset);
     assert!(matches!(road(Construct::Map), Verdict::Out(_)));
     assert_eq!(road(Construct::MixedText), Verdict::Road(Step::MixedText));
-    assert_eq!(road(Construct::Unary("!")), Verdict::Road(Step::Conditions));
+    // A prop negated, or `===` a string literal (a switch's case), converts;
+    // other comparisons and statements are the application's.
+    assert_eq!(road(Construct::Unary("!")), Verdict::Subset);
+    assert_eq!(road(Construct::Binary("===")), Verdict::Subset);
+    assert!(matches!(road(Construct::Binary("<")), Verdict::Out(_)));
+    assert!(matches!(road(Construct::Statement("if")), Verdict::Out(_)));
     assert_eq!(
         road(Construct::Style {
             element: "Column".into(),

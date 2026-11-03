@@ -19,7 +19,11 @@ customer, and none may be added from one.
   must convert and draw exactly as `check-in.tsx` does (its approved image
   is a copy of check-in's); `order-summary.tsx` has lists: steps from a
   `const` array, expanded at build time, and up to four order lines from a
-  prop, rows the application shows and fills (`order_summary.shown.png`). `notice-board.tsx` wraps text onto
+  prop, rows the application shows and fills (`order_summary.shown.png`);
+  `bike-hire.tsx` has contract v13's conditions: a note shown while a prop
+  is not set, and a step prop compared with three literals, one switch whose
+  cases `make contract-check` draws one by one (`bike_hire.case-step-pay.png`
+  and the others). `notice-board.tsx` wraps text onto
   several lines: static text in a notice and a slot in a card;
   `fuelling.tsx` live figures in slots and a progress bar; `tiles.tsx`
   icons on a header bar and on cards; `order-ready.tsx` text aligned
