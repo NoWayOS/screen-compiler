@@ -4,19 +4,20 @@ screen-compiler audit: 25 files
   cannot be read          0
 
 constructs            808
-  in the subset       796  98.5%
-  on the road           4  0.4%
-  out by design         4  0.4%
+  in the subset       797  98.6%
+  on the road           2  0.2%
+  out by design         5  0.6%
   unknown               4  0.4%
 
 on the road
-  React DOM's event names                  2 in 1 file
   common HTML elements                     1 in 1 file
   CSS modules                              1 in 1 file
 
 out by design
   a comparison other than a prop `===` a string literal: compare in the application and pass the result as a prop
     >                                      1
+  a function that does more than call a callback prop: do the work in the application, and pass the callback
+    an inline function as onPress on <Button>     1
   a global stylesheet: there is no cascade
     an import of a stylesheet              1
   a list with no most: slice it, .slice(0, N), so the screen knows its rows
@@ -53,6 +54,6 @@ files
   queue-ticket.tsx  converts
   table-ready.tsx  converts
   tiles.tsx  converts
-  unsupported/web-search.tsx  does not convert: 4 on the road, 4 out by design, 4 unknown
+  unsupported/web-search.tsx  does not convert: 2 on the road, 5 out by design, 4 unknown
   visit-booking.tsx  converts
   welcome.tsx  converts

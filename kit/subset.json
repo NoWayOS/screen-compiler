@@ -76,7 +76,8 @@
       "children": "text",
       "props": [
         { "name": "id", "required": false, "value": { "kind": "id" } },
-        { "name": "onPress", "required": true, "value": { "kind": "action" } },
+        { "name": "onPress", "required": true, "or": "onClick", "value": { "kind": "action" } },
+        { "name": "onClick", "required": true, "or": "onPress", "value": { "kind": "action" } },
         { "name": "variant", "required": false, "value": { "kind": "choice", "values": ["primary", "secondary", "quiet"] } },
         { "name": "style", "required": false, "value": { "kind": "style" } }
       ],

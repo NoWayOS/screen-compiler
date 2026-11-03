@@ -201,19 +201,53 @@ fn buttons_need_a_label_and_a_callback_prop() {
     assert_eq!((e.code, e.loc), (Code::MissingProp, at(2, 57)));
     let e = error(&screen("<Button onPress={onGo}></Button>"));
     assert_eq!(e.code, Code::InvalidChildren);
-    let e = error(&screen("<Button onPress={() => go()}>Go</Button>"));
-    assert_eq!(e.code, Code::Unsupported);
-    assert!(e.message.contains("inline event handlers"));
     let e = error(&screen("<Button onPress={nothing}>Go</Button>"));
     assert_eq!(e.code, Code::UnknownName);
     let e = error(&screen("<Button onPress=\"go\">Go</Button>"));
     assert_eq!(e.code, Code::InvalidValue);
-    // `onClick` is unknown, so onPress is also missing: two errors.
-    let codes: Vec<Code> = errors(&screen("<Button onClick={onGo}>Go</Button>"))
-        .iter()
-        .map(|d| d.code)
-        .collect();
-    assert_eq!(codes, [Code::MissingProp, Code::UnknownProp]);
+}
+
+#[test]
+fn a_button_takes_react_doms_on_click_and_a_function_that_only_calls_a_prop() {
+    let pressed = ok_outline(&screen("<Button onPress={onGo}>Go</Button>"));
+    for written in [
+        "<Button onClick={onGo}>Go</Button>",
+        "<Button onPress={() => onGo()}>Go</Button>",
+        "<Button onClick={() => onGo()}>Go</Button>",
+        "<Button onClick={() => { onGo(); }}>Go</Button>",
+        "<Button onClick={function () { onGo(); }}>Go</Button>",
+    ] {
+        assert_eq!(ok_outline(&screen(written)), pressed, "{written}");
+    }
+    let by_object = format!(
+        "{KIT}export function S(props: P) {{ return <Screen><Button onClick={{() => props.onGo()}}>Go</Button></Screen>; }}\n"
+    );
+    assert_eq!(ok_outline(&by_object), pressed);
+    // One of the two, never both.
+    let e = error(&screen(
+        "<Button onPress={onGo} onClick={onBack}>Go</Button>",
+    ));
+    assert_eq!((e.code, e.loc), (Code::DuplicateName, at(2, 80)));
+    assert!(e.message.contains("both onPress and onClick"), "{e:#?}");
+    // A function that does anything more is refused where it starts.
+    for written in [
+        "<Button onClick={() => { onGo(); onBack(); }}>Go</Button>",
+        "<Button onClick={(event) => onGo(event)}>Go</Button>",
+        "<Button onClick={() => onGo(1)}>Go</Button>",
+        "<Button onClick={async () => onGo()}>Go</Button>",
+        "<Button onClick={() => onGo?.()}>Go</Button>",
+        "<Button onClick={() => go.now.later()}>Go</Button>",
+    ] {
+        let e = error(&screen(written));
+        assert_eq!(
+            (e.code, e.loc),
+            (Code::Unsupported, at(2, 74)),
+            "{written}: {e:#?}"
+        );
+    }
+    // What it calls must be a callback prop.
+    let e = error(&screen("<Button onClick={() => go()}>Go</Button>"));
+    assert_eq!(e.code, Code::UnknownName);
 }
 
 #[test]
@@ -1452,7 +1486,7 @@ const fn unsupported(tsx: &'static str, code: Code, offset: u32) -> Piece {
     }
 }
 
-const PIECES: [Piece; 34] = [
+const PIECES: [Piece; 35] = [
     supported("<Text>Hello</Text>", 1),
     supported("<Spacer />", 1),
     supported("<Spacer size={8} />", 1),
@@ -1475,7 +1509,7 @@ const PIECES: [Piece; 34] = [
         18,
     ),
     unsupported("<Spacer className=\"gap\" />", Code::UnknownProp, 8),
-    unsupported("<Button onClick={onGo}>Go</Button>", Code::UnknownProp, 8),
+    supported("<Button onClick={onGo}>Go</Button>", 1),
     unsupported("<div>x</div>", Code::UnknownElement, 0),
     unsupported("<Text>{name}</Text>", Code::UnknownName, 7),
     unsupported("<Text>{onGo} and {onBack}</Text>", Code::Unsupported, 18),
@@ -1488,8 +1522,9 @@ const PIECES: [Piece; 34] = [
     supported("{onBack === \"a\" ? <Text>a</Text> : <Text>b</Text>}", 3),
     unsupported("{!!onGo && <Text>x</Text>}", Code::Unsupported, 1),
     unsupported("{onGo && \"text\"}", Code::InvalidChildren, 9),
+    supported("<Button onClick={() => onGo()}>Go</Button>", 1),
     unsupported(
-        "<Button onPress={() => go()}>Go</Button>",
+        "<Button onPress={() => { onGo(); onBack(); }}>Go</Button>",
         Code::Unsupported,
         17,
     ),

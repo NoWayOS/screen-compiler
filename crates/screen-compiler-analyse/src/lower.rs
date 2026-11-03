@@ -1321,7 +1321,8 @@ struct Props {
     size: Option<Length>,
     placeholder: Option<String>,
     on_press: Option<Name>,
-    on_press_given: bool,
+    /// `onPress` or `onClick`, whichever is given first.
+    on_press_given: Option<&'static str>,
     max_len: Option<Length>,
     mode: InputMode,
     label: Option<String>,
@@ -1675,11 +1676,11 @@ impl Lower<'_, '_, '_> {
             }
             KitComponent::Button => {
                 let label = self.literal_text(component, element, TextRole::Body);
-                if !props.on_press_given {
+                if props.on_press_given.is_none() {
                     self.cx.error_help(
                         Code::MissingProp,
                         element.loc,
-                        "<Button> needs an onPress callback prop",
+                        "<Button> needs an onPress (or onClick) callback prop",
                         "write onPress={onContinue}, where onContinue is a prop of the component",
                     );
                 }
@@ -3142,7 +3143,9 @@ impl Lower<'_, '_, '_> {
                 // Already reported by the parser front end; the prop is
                 // still given, so it is not reported missing as well.
                 props.id_given |= name == "id";
-                props.on_press_given |= name == "onPress";
+                if matches!(name, "onPress" | "onClick") {
+                    props.on_press_given = Some("onPress");
+                }
                 props.label_given |= name == "label";
                 props.options_given |= name == "options";
                 props.style_invalid |= matches!(name, "role" | "weight" | "lines");
@@ -3181,9 +3184,23 @@ impl Lower<'_, '_, '_> {
                     props.rows = self.select_rows(value, loc);
                     props.rows_invalid = props.rows.is_none();
                 }
-                "onPress" => {
-                    props.on_press_given = true;
-                    props.on_press = self.action(value, loc);
+                "onPress" | "onClick" => {
+                    let prop = if name == "onPress" {
+                        "onPress"
+                    } else {
+                        "onClick"
+                    };
+                    if let Some(first) = props.on_press_given {
+                        self.cx.error_help(
+                            Code::DuplicateName,
+                            loc,
+                            format!("<{component}> is given both {first} and {prop}"),
+                            "give it one of them: onClick is React DOM's name for onPress",
+                        );
+                        continue;
+                    }
+                    props.on_press_given = Some(prop);
+                    props.on_press = self.action(prop, value, loc);
                 }
                 "variant" => props.variant = self.variant(value, loc),
                 "tone" => {
@@ -3710,17 +3727,23 @@ impl Lower<'_, '_, '_> {
         }
     }
 
-    fn action(&mut self, value: &AttrValue, loc: Loc) -> Option<Name> {
-        let help = "pass a callback prop of the component: onPress={onContinue}";
+    fn action(&mut self, prop: &str, value: &AttrValue, loc: Loc) -> Option<Name> {
+        let help = format!(
+            "pass a callback prop of the component: {prop}={{onContinue}}, or {prop}={{() => props.onContinue()}}"
+        );
         match value {
+            // A function that only calls one: the callback it calls.
+            AttrValue::Expr(Expr::Handler { calls, .. }) => {
+                self.action(prop, &AttrValue::Expr((**calls).clone()), loc)
+            }
             AttrValue::Expr(Expr::Ident { name, loc }) => match self.lookup(name, *loc) {
                 Some(Binding::Prop(key)) => self.action_name(&key, *loc),
                 Some(Binding::PropsObject) => {
                     self.cx.error_help(
                         Code::InvalidValue,
                         *loc,
-                        "`onPress` takes one callback prop, not the whole props object",
-                        format!("write onPress={{{name}.onContinue}}"),
+                        format!("`{prop}` takes one callback prop, not the whole props object"),
+                        format!("write {prop}={{{name}.onContinue}}"),
                     );
                     None
                 }
@@ -3729,7 +3752,7 @@ impl Lower<'_, '_, '_> {
                         Code::InvalidValue,
                         *loc,
                         format!("`{name}` is not a callback prop"),
-                        help,
+                        help.clone(),
                     );
                     None
                 }
@@ -3755,7 +3778,7 @@ impl Lower<'_, '_, '_> {
                         Code::InvalidValue,
                         *loc,
                         format!("`{object}.{property}` is not a callback prop"),
-                        help,
+                        help.clone(),
                     );
                     None
                 }
@@ -3764,8 +3787,8 @@ impl Lower<'_, '_, '_> {
                 self.cx.error_help(
                     Code::Unsupported,
                     function.loc,
-                    "inline event handlers are not supported in subset v1",
-                    help,
+                    "a function here may only call a callback prop, with no arguments",
+                    help.clone(),
                 );
                 None
             }
@@ -3774,10 +3797,10 @@ impl Lower<'_, '_, '_> {
                     Code::Unsupported,
                     other.loc(),
                     format!(
-                        "`onPress` must name a callback prop, not {}",
+                        "`{prop}` must name a callback prop, not {}",
                         other.describe()
                     ),
-                    help,
+                    help.clone(),
                 );
                 None
             }
@@ -3785,14 +3808,18 @@ impl Lower<'_, '_, '_> {
                 self.cx.error_help(
                     Code::InvalidValue,
                     *loc,
-                    "`onPress` must name a callback prop",
-                    help,
+                    format!("`{prop}` must name a callback prop"),
+                    help.clone(),
                 );
                 None
             }
             AttrValue::Absent => {
-                self.cx
-                    .error_help(Code::InvalidValue, loc, "`onPress` needs a value", help);
+                self.cx.error_help(
+                    Code::InvalidValue,
+                    loc,
+                    format!("`{prop}` needs a value"),
+                    help,
+                );
                 None
             }
             // Already reported by the parser front end.

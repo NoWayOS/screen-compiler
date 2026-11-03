@@ -49,7 +49,7 @@ use std::fmt::Write as _;
 use screen_compiler_ir::{Colour, Space};
 
 use crate::KIT_MODULE;
-use crate::kit::{Children, KitComponent, StyleProperty, Value};
+use crate::kit::{Children, KitComponent, Prop, StyleProperty, Value};
 
 /// The subset as JSON, ending in a newline.
 #[must_use]
@@ -82,8 +82,11 @@ fn component_json(out: &mut String, component: KitComponent) {
         .props()
         .iter()
         .map(|p| {
+            let or =
+                p.or.map(|or| format!(", \"or\": {}", string(or)))
+                    .unwrap_or_default();
             format!(
-                "{{ \"name\": {}, \"required\": {}, \"value\": {} }}",
+                "{{ \"name\": {}, \"required\": {}{or}, \"value\": {} }}",
                 string(p.name),
                 p.required,
                 value_json(p.value)
@@ -243,8 +246,18 @@ fn component_declarations(out: &mut String, component: KitComponent) {
         out.push_str("  }\n");
     }
     let _ = writeln!(out, "\n  /** The props of `<{name}>`. */");
-    let _ = writeln!(out, "  export interface {name}Props {{");
-    for prop in component.props() {
+    // A pair it takes one of, never both, is a union of the two.
+    let pair: Vec<&Prop> = component
+        .props()
+        .iter()
+        .filter(|p| p.or.is_some())
+        .collect();
+    if pair.is_empty() {
+        let _ = writeln!(out, "  export interface {name}Props {{");
+    } else {
+        let _ = writeln!(out, "  export type {name}Props = {name}OneOf & {{");
+    }
+    for prop in component.props().iter().filter(|p| p.or.is_none()) {
         member(out, prop.name, prop.required, prop.value, name);
     }
     let children = match component.children() {
@@ -257,7 +270,33 @@ fn component_declarations(out: &mut String, component: KitComponent) {
         Children::Text => "  /** Its label: literal text. */\n    children: string;",
     };
     let _ = writeln!(out, "  {children}");
-    out.push_str("  }\n");
+    if pair.is_empty() {
+        out.push_str("  }\n");
+    } else {
+        out.push_str("  };\n");
+        let _ = writeln!(
+            out,
+            "  /** `<{name}>` takes one of {}, never both. */",
+            pair.iter()
+                .map(|p| format!("`{}`", p.name))
+                .collect::<Vec<_>>()
+                .join(" and ")
+        );
+        let _ = writeln!(out, "  export type {name}OneOf =");
+        for prop in &pair {
+            let _ = writeln!(out, "    | {{");
+            let mut one = String::new();
+            member(&mut one, prop.name, true, prop.value, name);
+            for line in one.lines() {
+                let _ = writeln!(out, "    {line}");
+            }
+            if let Some(or) = prop.or {
+                let _ = writeln!(out, "        {or}?: never;");
+            }
+            let last = pair.last().is_some_and(|last| last.name == prop.name);
+            let _ = writeln!(out, "      }}{}", if last { ";" } else { "" });
+        }
+    }
     let _ = writeln!(
         out,
         "  /** {} */\n  export function {name}(props: {name}Props): JSX.Element;",
@@ -315,7 +354,7 @@ fn doc(value: Value) -> Option<String> {
             let or = if token { ", or a design token" } else { "" };
             format!("A whole number from {least} to {most}{or}.")
         }
-        Value::Action => "A callback prop of the screen, which becomes an action.".to_owned(),
+        Value::Action => "A callback prop of the screen, which becomes an action; or a function that only calls one: `() => props.onSave()`.".to_owned(),
         Value::Prop => "A prop of the screen, whose value the application sets.".to_owned(),
         Value::Options { most } => format!("1 to {most} string literals."),
         Value::Colour => {

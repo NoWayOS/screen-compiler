@@ -95,8 +95,12 @@ pub struct Prop {
     pub name: &'static str,
     /// What it takes.
     pub value: Value,
-    /// Whether the component must be given it.
+    /// Whether the component must be given it: given it, or given
+    /// [`or`](Self::or) instead.
     pub required: bool,
+    /// The other of a pair the component takes one of, never both: `onPress`
+    /// and `onClick` on a `<Button>`.
+    pub or: Option<&'static str>,
 }
 
 impl Prop {
@@ -105,6 +109,7 @@ impl Prop {
             name,
             value,
             required: false,
+            or: None,
         }
     }
 
@@ -113,6 +118,17 @@ impl Prop {
             name,
             value,
             required: true,
+            or: None,
+        }
+    }
+
+    /// `name`, which the component must be given unless it is given `or`.
+    const fn required_or(name: &'static str, or: &'static str, value: Value) -> Self {
+        Self {
+            name,
+            value,
+            required: true,
+            or: Some(or),
         }
     }
 }
@@ -376,7 +392,9 @@ impl KitComponent {
                 const {
                     &[
                         ID,
-                        Prop::required("onPress", Value::Action),
+                        Prop::required_or("onPress", "onClick", Value::Action),
+                        // React DOM's name for it.
+                        Prop::required_or("onClick", "onPress", Value::Action),
                         Prop::optional("variant", Value::Choice(&ButtonVariant::NAMES)),
                         STYLE,
                     ]
@@ -500,7 +518,6 @@ impl KitComponent {
                 "Screen Compiler does not implement CSS classes: write style={{ … }} with the declared properties, on Column, Row, Card, Notice, HeaderBar, Text or Button"
                     .to_owned()
             }
-            (Self::Button, "onClick") => "use onPress={…} with a callback prop".to_owned(),
             (_, "key") => "keys matter only in lists, which are outside subset v1".to_owned(),
             (Self::TextInput, "value" | "defaultValue" | "onChange") => {
                 "controlled inputs need state, which is outside subset v1; the application reads the field through its id"

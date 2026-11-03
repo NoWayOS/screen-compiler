@@ -16,12 +16,8 @@ web-search.tsx:17:10: error[unsupported]: the list `results` has no most: the sc
   help: write results.slice(0, 5).map(…): at most 5 rows, which the application fills
 web-search.tsx:18:10: error[unsupported]: a binary expression as a condition is not supported
   help: a condition is one prop of the component: work anything more out in the application and pass it as a prop, such as {props.canRetry && …}
-web-search.tsx:18:47: error[unsupported]: inline event handlers are not supported in subset v1
-  help: pass a callback prop of the component: onPress={onContinue}
-web-search.tsx:19:9: error[missing-prop]: <Button> needs an onPress callback prop
-  help: write onPress={onContinue}, where onContinue is a prop of the component
-web-search.tsx:19:17: error[unknown-prop]: <Button> has no prop `onClick` in subset v1
-  help: use onPress={…} with a callback prop
+web-search.tsx:18:47: error[unsupported]: a function here may only call a callback prop, with no arguments
+  help: pass a callback prop of the component: onPress={onContinue}, or onPress={() => props.onContinue()}
 web-search.tsx:19:36: error[unknown-prop]: <Button> has no prop `disabled` in subset v1
   help: the application decides what is required and where focus goes; subset v1 has no such prop
 web-search.tsx:22:15: error[unsupported]: `&copy;` is not a supported character reference

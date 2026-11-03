@@ -22,6 +22,8 @@ use oxc_ast::ast::{
 };
 use oxc_ast_visit::{Visit, walk};
 
+use crate::convert::FnParts;
+
 /// One kind of construct a census counts.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Construct {
@@ -80,6 +82,9 @@ pub enum Construct {
         element: String,
         /// The prop's name.
         prop: String,
+        /// Whether all it does is call a name or a name's member with no
+        /// arguments: `() => props.onSave()`.
+        only_calls: bool,
     },
     /// An import, by where it comes from.
     Import(ImportKind),
@@ -143,6 +148,7 @@ pub(crate) fn count(program: &Program<'_>) -> Census {
         },
         functions: 0,
         bounded_slices: BTreeSet::new(),
+        handler_calls: BTreeSet::new(),
     };
     counter.visit_program(program);
     counter.census
@@ -238,6 +244,9 @@ struct Counter {
     /// Where each `.slice(0, N)` a `.map` lists starts: part of that list,
     /// not a call of its own.
     bounded_slices: BTreeSet<u32>,
+    /// Where each call an inline function only makes starts: part of that
+    /// function, not a call of its own.
+    handler_calls: BTreeSet<u32>,
 }
 
 impl Counter {
@@ -384,16 +393,27 @@ impl<'a> Visit<'a> for Counter {
                     }
                     if let Some(JSXAttributeValue::ExpressionContainer(container)) =
                         &attribute.value
-                        && matches!(
-                            container.expression,
-                            JSXExpression::ArrowFunctionExpression(_)
-                                | JSXExpression::FunctionExpression(_)
-                        )
                     {
-                        self.census.add(Construct::InlineFunction {
-                            element: element.clone(),
-                            prop: prop.clone(),
-                        });
+                        let parts = match &container.expression {
+                            JSXExpression::ArrowFunctionExpression(arrow) => {
+                                Some(FnParts::arrow(arrow))
+                            }
+                            JSXExpression::FunctionExpression(function) => {
+                                Some(FnParts::function(function))
+                            }
+                            _ => None,
+                        };
+                        if let Some(parts) = parts {
+                            let call = parts.only_call();
+                            if let Some(call) = call {
+                                self.handler_calls.insert(call.span.start);
+                            }
+                            self.census.add(Construct::InlineFunction {
+                                element: element.clone(),
+                                prop: prop.clone(),
+                                only_calls: call.is_some(),
+                            });
+                        }
                     }
                     self.census.add(Construct::Prop {
                         element: element.clone(),
@@ -429,6 +449,10 @@ impl<'a> Visit<'a> for Counter {
                 if member.property.name.as_str() == "map" =>
             {
                 self.map_construct(&member.object)
+            }
+            _ if self.handler_calls.contains(&it.span.start) => {
+                walk::walk_call_expression(self, it);
+                return;
             }
             Expression::StaticMemberExpression(_)
                 if self.bounded_slices.contains(&it.span.start) =>

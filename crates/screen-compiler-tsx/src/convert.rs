@@ -506,10 +506,24 @@ impl<'s> Converter<'s> {
                 }
             }
             Expression::ArrowFunctionExpression(arrow) => {
-                Expr::Function(Box::new(self.function(&FnParts::arrow(arrow), inner)))
+                let parts = FnParts::arrow(arrow);
+                match parts.only_call() {
+                    Some(call) => Expr::Handler {
+                        calls: Box::new(self.expr(&call.callee, inner)),
+                        loc: self.loc(span),
+                    },
+                    None => Expr::Function(Box::new(self.function(&parts, inner))),
+                }
             }
             Expression::FunctionExpression(function) => {
-                Expr::Function(Box::new(self.function(&FnParts::function(function), inner)))
+                let parts = FnParts::function(function);
+                match parts.only_call() {
+                    Some(call) => Expr::Handler {
+                        calls: Box::new(self.expr(&call.callee, inner)),
+                        loc: self.loc(span),
+                    },
+                    None => Expr::Function(Box::new(self.function(&parts, inner))),
+                }
             }
             Expression::JSXElement(element) => match self.element(element, depth) {
                 Some(element) => Expr::Element(Box::new(element)),
@@ -858,7 +872,7 @@ impl<'s> Converter<'s> {
 
 /// The parts of a function declaration, function expression or arrow
 /// function that the converter needs.
-struct FnParts<'b, 'a> {
+pub(crate) struct FnParts<'b, 'a> {
     params: &'b FormalParameters<'a>,
     body: Option<&'b FunctionBody<'a>>,
     /// An arrow function whose body is a single expression.
@@ -869,7 +883,7 @@ struct FnParts<'b, 'a> {
 }
 
 impl<'b, 'a> FnParts<'b, 'a> {
-    fn function(function: &'b js::Function<'a>) -> Self {
+    pub(crate) fn function(function: &'b js::Function<'a>) -> Self {
         Self {
             params: &function.params,
             body: function.body.as_deref(),
@@ -880,7 +894,7 @@ impl<'b, 'a> FnParts<'b, 'a> {
         }
     }
 
-    fn arrow(arrow: &'b js::ArrowFunctionExpression<'a>) -> Self {
+    pub(crate) fn arrow(arrow: &'b js::ArrowFunctionExpression<'a>) -> Self {
         Self {
             params: &arrow.params,
             body: Some(&arrow.body),
@@ -889,6 +903,37 @@ impl<'b, 'a> FnParts<'b, 'a> {
             is_generator: false,
             span: arrow.span,
         }
+    }
+
+    /// What the function calls, if that is all it does: no parameters, and
+    /// a body that is one call of a name or a name's member, with no
+    /// arguments - `() => props.onSave()` or `function () { onSave(); }`.
+    pub(crate) fn only_call(&self) -> Option<&'b js::CallExpression<'a>> {
+        let plain = self.params.items.is_empty()
+            && self.params.rest.is_none()
+            && !self.is_async
+            && !self.is_generator;
+        let body = self
+            .body
+            .filter(|body| plain && body.directives.is_empty())?;
+        let [Statement::ExpressionStatement(statement)] = body.statements.as_slice() else {
+            return None;
+        };
+        let Expression::CallExpression(call) = &statement.expression else {
+            return None;
+        };
+        let callee_plain = match &call.callee {
+            Expression::Identifier(_) => true,
+            Expression::StaticMemberExpression(member) => {
+                !member.optional && matches!(member.object, Expression::Identifier(_))
+            }
+            _ => false,
+        };
+        (callee_plain
+            && call.arguments.is_empty()
+            && !call.optional
+            && call.type_arguments.is_none())
+        .then_some(&**call)
     }
 }
 

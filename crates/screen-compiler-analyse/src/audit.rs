@@ -35,8 +35,6 @@ pub const MAX_FILES: usize = 10_000;
 pub enum Step {
     /// More of CSS layout: flex growth, margins, per-side padding.
     CssLayout,
-    /// React DOM's event names, and arrows that only call a prop.
-    DomEvents,
     /// Common HTML elements, by fixed rules.
     HtmlElements,
     /// `className` with CSS modules.
@@ -53,7 +51,6 @@ impl Step {
     pub const fn name(self) -> &'static str {
         match self {
             Self::CssLayout => "more of CSS layout",
-            Self::DomEvents => "React DOM's event names",
             Self::HtmlElements => "common HTML elements",
             Self::CssModules => "CSS modules",
             Self::Layering => "layering",
@@ -85,6 +82,7 @@ const UNBOUNDED: &str = "a list with no most: slice it, .slice(0, N), so the scr
 const COMPARISON: &str = "a comparison other than a prop `===` a string literal: compare in the application and pass the result as a prop";
 const STATEMENT: &str = "a screen's function only returns its tree: choose in it with && or ?:";
 const OUTSIDE: &str = "a screen reads only the files in its own folder and below: put the component beside it, ./header";
+const HANDLER: &str = "a function that does more than call a callback prop: do the work in the application, and pass the callback";
 const COMPONENT: &str = "a component from a package or from outside the screen's folder: Screen Compiler converts the kit's, and your own beside the screen";
 
 /// The style properties the road's CSS layout step adds.
@@ -173,7 +171,10 @@ pub fn verdict_in(construct: &Construct, own: &BTreeSet<String>) -> Verdict {
             _ => Verdict::Unknown,
         },
         Construct::Conditional => Verdict::Subset,
-        Construct::InlineFunction { .. } => Verdict::Road(Step::DomEvents),
+        Construct::InlineFunction {
+            only_calls: true, ..
+        } => Verdict::Subset,
+        Construct::InlineFunction { .. } => Verdict::Out(HANDLER),
         Construct::Import(kind) => match kind {
             ImportKind::Kit | ImportKind::React => Verdict::Subset,
             ImportKind::CssModule => Verdict::Road(Step::CssModules),
@@ -203,10 +204,9 @@ fn component(name: &str) -> Verdict {
 fn prop_verdict(element: &str, prop: &str) -> Verdict {
     let road = |step| Verdict::Road(step);
     match (KitComponent::from_name(element), prop) {
-        (_, "onClick") => road(Step::DomEvents),
+        (Some(kit), prop) if kit.prop(prop).is_some() => Verdict::Subset,
         (_, "className" | "class") => road(Step::CssModules),
         (_, "key") => Verdict::Subset,
-        (Some(kit), prop) if kit.prop(prop).is_some() => Verdict::Subset,
         (Some(KitComponent::TextInput), "type") => road(Step::ImagesAndMasking),
         (
             Some(KitComponent::TextInput | KitComponent::Checkbox | KitComponent::RadioGroup),
@@ -272,7 +272,12 @@ fn describe(construct: &Construct) -> String {
         Construct::Template => "a template literal".to_owned(),
         Construct::Binary(op) | Construct::Unary(op) | Construct::Logical(op) => (*op).to_owned(),
         Construct::Conditional => "?:".to_owned(),
-        Construct::InlineFunction { element, prop } => {
+        Construct::InlineFunction {
+            element,
+            prop,
+            only_calls: true,
+        } => format!("a function that only calls a prop, as {prop} on <{element}>"),
+        Construct::InlineFunction { element, prop, .. } => {
             format!("an inline function as {prop} on <{element}>")
         }
         Construct::Import(kind) => match kind {

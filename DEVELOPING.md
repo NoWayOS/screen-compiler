@@ -32,7 +32,7 @@ its approved image in `contract-check/golden/` pixel for pixel. See
 | `<Screen>` | the root, exactly one child element |
 | `<Column>`, `<Row>` | `gap`, `padding` (number or token), element children |
 | `<Text>` | literal text only (JSX whitespace and `&amp;`-style references applied as React does) |
-| `<Button onPress={onStart}>Label</Button>` | `onPress` names a callback prop, which becomes an action |
+| `<Button onPress={onStart}>Label</Button>` | `onPress` names a callback prop, which becomes an action. React DOM's `onClick` is the same, and a button takes one of the two, never both. Either may be a function that only calls a callback prop with no arguments - `() => props.onStart()`, `() => { onStart(); }` - which is that action; a function that does anything more (two calls, an argument, a parameter, `async`, `?.`) is refused where it starts |
 | `<TextInput id="email" placeholder="…" />` | `id` required |
 | `<Spacer />`, `<Spacer size={N} />` | flexible or fixed |
 | `id="…"` on any element | exposed as a handle in generated code |
@@ -90,7 +90,8 @@ by its number).
 Everything else — state and hooks, effects, lists other than the above, CSS outside the
 declared `style` subset (`className`, stylesheet imports, any other
 property or value), HTML elements, components imported from packages or from outside the
-screen's folder, spread props, inline handlers, computed text (`{a + b}`, a call,
+screen's folder, spread props, inline handlers that do more than call a
+callback prop, computed text (`{a + b}`, a call,
 a second prop in one text), other imports (including `import { type … }`: write `import
 type`), control or invisible characters in text, attribute strings that span
 lines, and anything that is a syntax error in a module — is reported as an
