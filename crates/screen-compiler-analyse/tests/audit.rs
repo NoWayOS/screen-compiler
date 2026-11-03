@@ -19,7 +19,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use screen_compiler_analyse::audit::{FileResult, Step, Verdict, audit_dir, audit_source, verdict};
+use screen_compiler_analyse::audit::{
+    FileResult, Step, Verdict, audit_dir, audit_source, verdict, verdict_in,
+};
 use screen_compiler_tsx::census::Construct;
 
 fn manifest_dir() -> &'static Path {
@@ -58,7 +60,7 @@ fn every_construct_of_a_converting_fixture_is_in_the_subset() {
             converting += 1;
             for construct in census.counts.keys() {
                 assert_eq!(
-                    verdict(construct),
+                    verdict_in(construct, &census.own_components),
                     Verdict::Subset,
                     "{path} converts, yet {construct:?} is judged off the subset"
                 );
@@ -109,11 +111,26 @@ export function Odd() {
 #[test]
 fn the_road_takes_the_constructs_its_steps_name() {
     let road = |construct: Construct| verdict(&construct);
-    assert_eq!(road(Construct::Fragment), Verdict::Road(Step::Components));
+    // A component from another file; the module's own are expanded.
     assert_eq!(
         road(Construct::Component("PriceCard".into())),
         Verdict::Road(Step::Components)
     );
+    let own = std::collections::BTreeSet::from(["PriceCard".to_owned()]);
+    for construct in [
+        Construct::Fragment,
+        Construct::Component("PriceCard".into()),
+        Construct::Prop {
+            element: "PriceCard".into(),
+            prop: "price".into(),
+        },
+    ] {
+        assert_eq!(
+            verdict_in(&construct, &own),
+            Verdict::Subset,
+            "{construct:?}"
+        );
+    }
     assert_eq!(road(Construct::Map), Verdict::Road(Step::Lists));
     assert_eq!(road(Construct::MixedText), Verdict::Road(Step::MixedText));
     assert_eq!(road(Construct::Unary("!")), Verdict::Road(Step::Conditions));

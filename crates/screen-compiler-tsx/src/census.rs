@@ -9,15 +9,16 @@
 //! It records names (of elements, props, style properties, hooks, called
 //! functions and imported packages) and operators, never code.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use oxc_ast::ast::{
-    BinaryExpression, CallExpression, Class, ConditionalExpression, DoWhileStatement, Expression,
-    ForInStatement, ForOfStatement, ForStatement, FunctionBody, IfStatement, ImportDeclaration,
-    ImportOrExportKind, JSXAttributeItem, JSXAttributeName, JSXAttributeValue, JSXChild,
-    JSXElement, JSXElementName, JSXExpression, JSXFragment, JSXOpeningElement, LogicalExpression,
-    ObjectPropertyKind, Program, PropertyKey, SwitchStatement, TemplateLiteral, UnaryExpression,
-    VariableDeclaration, WhileStatement,
+    BinaryExpression, BindingPattern, CallExpression, Class, ConditionalExpression, Declaration,
+    DoWhileStatement, ExportDefaultDeclarationKind, Expression, ForInStatement, ForOfStatement,
+    ForStatement, FunctionBody, IfStatement, ImportDeclaration, ImportOrExportKind,
+    JSXAttributeItem, JSXAttributeName, JSXAttributeValue, JSXChild, JSXElement, JSXElementName,
+    JSXExpression, JSXFragment, JSXOpeningElement, LogicalExpression, ObjectPropertyKind, Program,
+    PropertyKey, Statement, SwitchStatement, TemplateLiteral, UnaryExpression, VariableDeclaration,
+    VariableDeclarationKind, WhileStatement,
 };
 use oxc_ast_visit::{Visit, walk};
 
@@ -107,6 +108,11 @@ pub enum ImportKind {
 pub struct Census {
     /// Each construct, and how often.
     pub counts: BTreeMap<Construct, u32>,
+    /// The module's own function components, by name: its top-level
+    /// function declarations and `const` declarations of an arrow or a
+    /// function, exported or not. An element of one of these names is the
+    /// module's own component, not one from elsewhere.
+    pub own_components: BTreeSet<String>,
 }
 
 impl Census {
@@ -119,11 +125,61 @@ impl Census {
 /// Counts every construct `program` holds.
 pub(crate) fn count(program: &Program<'_>) -> Census {
     let mut counter = Counter {
-        census: Census::default(),
+        census: Census {
+            counts: BTreeMap::new(),
+            own_components: own_components(program),
+        },
         functions: 0,
     };
     counter.visit_program(program);
     counter.census
+}
+
+/// The names of `program`'s own function components ([`Census::own_components`]).
+fn own_components(program: &Program<'_>) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    for statement in &program.body {
+        let declaration = match statement {
+            Statement::ExportNamedDeclaration(decl) if decl.source.is_none() => {
+                decl.declaration.as_ref()
+            }
+            Statement::ExportDefaultDeclaration(decl) => {
+                if let ExportDefaultDeclarationKind::FunctionDeclaration(function) =
+                    &decl.declaration
+                    && let Some(id) = &function.id
+                {
+                    names.insert(id.name.as_str().to_owned());
+                }
+                continue;
+            }
+            other => other.as_declaration(),
+        };
+        match declaration {
+            Some(Declaration::FunctionDeclaration(function)) => {
+                if let Some(id) = &function.id {
+                    names.insert(id.name.as_str().to_owned());
+                }
+            }
+            Some(Declaration::VariableDeclaration(decl))
+                if decl.kind == VariableDeclarationKind::Const =>
+            {
+                for declarator in &decl.declarations {
+                    if let (
+                        BindingPattern::BindingIdentifier(id),
+                        Some(
+                            Expression::ArrowFunctionExpression(_)
+                            | Expression::FunctionExpression(_),
+                        ),
+                    ) = (&declarator.id, &declarator.init)
+                    {
+                        names.insert(id.name.as_str().to_owned());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    names
 }
 
 struct Counter {

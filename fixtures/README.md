@@ -14,7 +14,10 @@ customer, and none may be added from one.
   the shown frame. `queue-ticket.tsx` uses the
   type scale's roles and Bold, with a slot in the display role, and
   `check-in.tsx` the button variants and surfaces: a header bar, a
-  card and a notice in each tone. `notice-board.tsx` wraps text onto
+  card and a notice in each tone; `check-in-parts.tsx` is the same screen
+  built of its own components and a fragment, expanded at build time, and
+  must convert and draw exactly as `check-in.tsx` does (its approved image
+  is a copy of check-in's). `notice-board.tsx` wraps text onto
   several lines: static text in a notice and a slot in a card;
   `fuelling.tsx` live figures in slots and a progress bar; `tiles.tsx`
   icons on a header bar and on cards; `order-ready.tsx` text aligned

@@ -273,11 +273,12 @@ fn html_and_custom_elements_are_reported_with_their_contents() {
     let all = errors(&screen("<div className=\"x\"><TextInput /></div>"));
     let codes: Vec<Code> = all.iter().map(|d| d.code).collect();
     assert_eq!(codes, [Code::UnknownElement, Code::MissingProp]);
+    // A component the file uses as an element is a part, expanded where
+    // it is used (tests/parts.rs).
     let source = format!(
         "{KIT}function Header() {{ return <Row />; }}\nexport function S() {{ return <Screen><Header /></Screen>; }}\n"
     );
-    let codes: Vec<Code> = errors(&source).iter().map(|d| d.code).collect();
-    assert_eq!(codes, [Code::Unsupported, Code::UnknownElement]);
+    assert_eq!(ok_outline(&source), "row gap=0 padding=0\n");
     let source = "import { Screen } from \"nowayos:kit\";\nexport function S() { return <Screen><Column /></Screen>; }\n";
     let e = error(source);
     assert_eq!(e.code, Code::UnknownElement);
@@ -305,14 +306,14 @@ fn lists_conditionals_fragments_and_spreads_are_reported() {
         codes("<Column>{onGo ? null : <Text>a</Text>}</Column>"),
         [Code::Unsupported]
     );
-    // The fragment, and the <Screen> left without an element child.
+    // A fragment's children take its place: two where <Screen> takes one.
     assert_eq!(
-        codes("<><Text>a</Text></>"),
-        [Code::InvalidChildren, Code::Unsupported]
+        codes("<><Text>a</Text><Text>b</Text></>"),
+        [Code::InvalidChildren]
     );
     assert_eq!(
         codes("<Column><><Text>{x}</Text></></Column>"),
-        [Code::Unsupported, Code::UnknownName]
+        [Code::UnknownName]
     );
     assert_eq!(codes("<Column {...rest} />"), [Code::Unsupported]);
     assert_eq!(codes("<Column gap={1} gap={2} />"), [Code::DuplicateName]);
@@ -461,7 +462,7 @@ fn a_prop_shows_or_hides_one_element_or_chooses_between_two() {
             "\"text",
         ),
         (
-            "<Column>{props.a && <><Text>x</Text></>}</Column>",
+            "<Column>{props.a && <><Text>x</Text><Text>y</Text></>}</Column>",
             Code::Unsupported,
             "<>",
         ),
@@ -1470,7 +1471,11 @@ const PIECES: [Piece; 31] = [
     unsupported("<TextInput placeholder=\"x\" />", Code::MissingProp, 0),
     unsupported("<Column gap=\"16px\" />", Code::InvalidValue, 12),
     unsupported("<Column {...rest} />", Code::Unsupported, 8),
-    unsupported("<><Text>x</Text></>", Code::Unsupported, 0),
+    unsupported(
+        "{onGo && <><Text>x</Text><Text>y</Text></>}",
+        Code::Unsupported,
+        9,
+    ),
     unsupported("<Text>&copy; 2026</Text>", Code::Unsupported, 6),
     unsupported("<Text>{\"a\\u202Eb\"}</Text>", Code::Unsupported, 7),
     unsupported("<TextInput id=\"2fa{n}\" />", Code::InvalidValue, 14),

@@ -16,7 +16,8 @@ use screen_compiler_tsx::syntax::{
     Function, Import, ImportBinding, Item, LogicalOp, Params, PropBinding, Stmt, VarDecl,
 };
 
-use crate::{Analysis, KitComponent, Options};
+use crate::parts::{Expander, Part};
+use crate::{Analysis, KitComponent, Options, parts};
 
 /// What a name in scope refers to.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -89,6 +90,30 @@ struct Component<'a> {
     name: Option<&'a str>,
     function: &'a Function,
     loc: Loc,
+}
+
+/// What a screen's parts are expanded from: the file's parts and every
+/// name it declares.
+struct Expansion<'p, 's> {
+    parts: &'p BTreeMap<&'s str, Part<'s>>,
+    declared: &'p BTreeSet<String>,
+}
+
+/// The values a function returns, as written, for finding the elements
+/// it uses; what else its body holds is reported when it is converted.
+fn returns(function: &Function) -> Vec<&Expr> {
+    match &function.body {
+        Body::Expr(expr) => vec![expr],
+        Body::Block(statements) => statements
+            .iter()
+            .filter_map(|statement| match statement {
+                Stmt::Return {
+                    value: Some(value), ..
+                } => Some(value),
+                _ => None,
+            })
+            .collect(),
+    }
 }
 
 pub(crate) fn analyse(source: &SourceModule, options: &Options) -> Analysis {
@@ -217,9 +242,37 @@ pub(crate) fn analyse(source: &SourceModule, options: &Options) -> Analysis {
                 .or_insert(Binding::Component);
         }
     }
+    // A component the file uses as an element is a part, expanded where it
+    // is used (`parts`); every other is a screen.
+    let mut used = BTreeSet::new();
+    for component in &components {
+        for returned in returns(component.function) {
+            parts::element_names(returned, &mut used, 0);
+        }
+    }
+    let mut parts = BTreeMap::new();
+    for component in &components {
+        if let Some(name) = component.name
+            && used.contains(name)
+        {
+            let part = cx.part(name, component.function);
+            parts.insert(name, part);
+        }
+    }
+    let declared: BTreeSet<String> = cx
+        .values
+        .keys()
+        .chain(cx.bindings.keys())
+        .cloned()
+        .collect();
+    let file = Expansion {
+        parts: &parts,
+        declared: &declared,
+    };
     let screens: Vec<Screen> = components
         .iter()
-        .filter_map(|component| cx.component(component))
+        .filter(|component| component.name.is_none_or(|name| !used.contains(name)))
+        .filter_map(|component| cx.component(component, &file))
         .collect();
 
     let module = Module {
@@ -236,6 +289,8 @@ pub(crate) fn analyse(source: &SourceModule, options: &Options) -> Analysis {
         );
     }
     sort_diagnostics(&mut diagnostics);
+    // A part used twice repeats what is wrong inside it: once is enough.
+    diagnostics.dedup();
     let module = (!has_errors(&diagnostics)).then_some(module);
     Analysis {
         module,
@@ -561,7 +616,55 @@ impl Cx<'_> {
         None
     }
 
-    fn component(&mut self, component: &Component<'_>) -> Option<Screen> {
+    /// A part: a component the file uses as an element. Its parameters are
+    /// checked as a screen's are; what it returns is expanded where it is
+    /// used.
+    fn part<'s>(&mut self, name: &str, function: &'s Function) -> Part<'s> {
+        if function.is_async || function.is_generator {
+            self.error(
+                Code::Unsupported,
+                function.loc,
+                format!("component `{name}` must be a plain function, not async or a generator"),
+            );
+        }
+        match &function.params {
+            Params::Destructured(bindings) => {
+                let mut seen: Vec<&str> = Vec::new();
+                for binding in bindings {
+                    self.reserved_binding(&binding.local, binding.loc);
+                    if seen.contains(&binding.local.as_str()) {
+                        self.error(
+                            Code::DuplicateName,
+                            binding.loc,
+                            format!(
+                                "`{}` is bound twice in the parameters of `{name}` (a syntax error)",
+                                binding.local
+                            ),
+                        );
+                    }
+                    seen.push(&binding.local);
+                }
+            }
+            Params::Named { name: object, loc } => self.reserved_binding(object, *loc),
+            Params::None => {}
+            Params::Unsupported(other) => self.error_help(
+                Code::Unsupported,
+                other.loc,
+                format!("{} in component parameters is not supported", other.kind),
+                format!("destructure its props: function {name}({{ title, children }}) {{ … }}"),
+            ),
+        }
+        Part {
+            params: &function.params,
+            returned: self.returned(name, function),
+        }
+    }
+
+    fn component<'s>(
+        &mut self,
+        component: &Component<'s>,
+        file: &Expansion<'_, 's>,
+    ) -> Option<Screen> {
         let Some(source_name) = component.name else {
             self.error_help(
                 Code::Unsupported,
@@ -627,7 +730,10 @@ impl Cx<'_> {
             }
         };
         let returned = self.returned(source_name, function)?;
-        let element = match returned {
+        let mut expander = Expander::new(file.parts, file.declared, self.options.limits.max_nodes);
+        let expanded = expander.root(returned);
+        self.diagnostics.append(&mut expander.diagnostics);
+        let element = match &expanded {
             Expr::Element(element) => element,
             other => {
                 self.error_help(
@@ -656,7 +762,7 @@ impl Cx<'_> {
                     Code::Unsupported,
                     element.loc,
                     format!("component `{source_name}` returns <{other}>; a screen component returns <Screen>"),
-                    "custom components are outside subset v1: wrap the elements in <Screen>",
+                    "a component the file uses as an element is expanded where it is used; one used nowhere is a screen, which returns <Screen>",
                 );
                 // Still report what is inside, for a complete list.
                 let _ = lower.node(element, 1);

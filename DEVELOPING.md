@@ -59,6 +59,7 @@ its approved image in `contract-check/golden/` pixel for pixel. See
 | `<ScrollView id="answers"><Column>…</Column></ScrollView>` | a clipped column that scrolls (contract v9): `b.scroll_view(ui::Layout::new(), column)`. Exactly one child element; a second in a screen, or one inside another, is refused where written. Also drawn scrolled to its end (`SCREEN.scrolled.png`) |
 | `<Select id="kind" placeholder="…" options={[…]} rows={5} />` | a list picker (contract v10): `b.list_picker(fields::KIND, &[…], ui::Picker::new().placeholder("…").rows(5))`. `id` required; 1 to 64 literal options, each checked as other text; `rows` a whole number 3 to 8 (default 5) |
 | `<Keyboard />` | the on-screen keyboard (contract v11): `b.keyboard()`. No children or props but `id`; a second in a screen, or one in a screen with no `<TextInput>`, is refused where written. Also drawn once for each mode its screen's inputs take (`SCREEN.keys-digits.png` and the others) |
+| `<>…</>`; `function Bar({ title, onHome }) { return <HeaderBar>…</HeaderBar>; }` used as `<Bar title="…" onHome={props.onHome} />` | **fragments and the screen's own components** (*parts*), expanded at build time - no contract change. A fragment's children take its place wherever children are taken (a fragment of one element is that element where a condition shows one). A *part* is a function component of the same file that the file uses as an element (every other component is a screen): each use is replaced by what it returns, each of its props by the value written where it is used - a literal, a design token, one of the screen's props passed through - and `{children}` by the children written between its tags; parts may use parts and pass props and children on, and a screen may be a part at its root (a shared frame). As in React, a prop the use does not give is `undefined`: an attribute set from it is left out, a child or condition made of it shows nothing. The screen is then checked and lowered as if written flat, so actions, groups, slots and fields keep one number each per screen, and an error is reported where it is written. Refused where written: a part that uses itself, directly or through others; a spread on a part; the whole props object passed on; `children` as a prop's value; a name a part uses that is neither its prop nor declared in the file; parts more than 16 deep, or a screen expanding past eight times the walk's node limit. Components in other files: not yet. `fixtures/check-in-parts.tsx` is `check-in.tsx` built of parts, and must draw its approved image |
 | `<FieldError for="phone" />` | the line where a field's error shows (contract v12): `b.field_error(fields::PHONE)`. `for` names the `id` of a control holding a field on the screen, before or after it; one per field. A line high even while empty; the application sets the errors. Each field's error is set in the shown frame |
 
 Every text input, checkbox and radio group is a field the application reads
@@ -69,8 +70,8 @@ share its number and show and hide together. Each screen's `groups` and
 `slots` modules number them from 1 in document order, one per prop, as
 `actions` does. Refused, each with its position: any other condition
 (`!props.a`, `props.n > 0`, `a && b`, a call), `||` and `??`, `null` while
-the condition holds, a condition inside a condition, text or a fragment as
-what a condition shows, a condition as a screen's one child, text mixed with
+the condition holds, a condition inside a condition, text or a fragment of
+several elements as what a condition shows, a condition as a screen's one child, text mixed with
 a prop, the same prop as the text of two elements, two props whose names
 give one group or slot name (`isReady` and `is_ready`, as for actions); a
 character in any text that the glyph atlases of its role do not draw -
@@ -84,8 +85,8 @@ by its number).
 
 Everything else — state and hooks, effects, lists (`.map`), CSS outside the
 declared `style` subset (`className`, stylesheet imports, any other
-property or value), HTML elements, custom components,
-fragments, spread props, inline handlers, computed text (`{a + b}`, a call, a
+property or value), HTML elements, components imported from other files
+or packages, spread props, inline handlers, computed text (`{a + b}`, a call, a
 template), other imports (including `import { type … }`: write `import
 type`), control or invisible characters in text, attribute strings that span
 lines, and anything that is a syntax error in a module — is reported as an
