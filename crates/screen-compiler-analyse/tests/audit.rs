@@ -157,13 +157,30 @@ fn the_road_takes_the_constructs_its_steps_name() {
         }),
         Verdict::Road(Step::CssLayout)
     );
+    // React DOM's name for a press, and a function that only calls a prop.
     assert_eq!(
         road(Construct::Prop {
             element: "Button".into(),
             prop: "onClick".into()
         }),
-        Verdict::Road(Step::DomEvents)
+        Verdict::Subset
     );
+    assert_eq!(
+        road(Construct::InlineFunction {
+            element: "Button".into(),
+            prop: "onClick".into(),
+            only_calls: true
+        }),
+        Verdict::Subset
+    );
+    assert!(matches!(
+        road(Construct::InlineFunction {
+            element: "Button".into(),
+            prop: "onClick".into(),
+            only_calls: false
+        }),
+        Verdict::Out(_)
+    ));
     assert_eq!(
         road(Construct::Html("div".into())),
         Verdict::Road(Step::HtmlElements)

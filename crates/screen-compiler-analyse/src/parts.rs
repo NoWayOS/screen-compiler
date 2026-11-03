@@ -990,6 +990,16 @@ impl<'p, 's> Expander<'p, 's> {
             // Refused by the walk wherever it stands; nothing inside is
             // substituted.
             Expr::Function(_) => expr.clone(),
+            // What it calls is substituted: a part's callback prop not
+            // given leaves the attribute out.
+            Expr::Handler { calls, loc } => {
+                return self
+                    .subst_expr(using, calls, inner)
+                    .map(|calls| Expr::Handler {
+                        calls: Box::new(calls),
+                        loc: *loc,
+                    });
+            }
             Expr::Str { .. }
             | Expr::Num { .. }
             | Expr::Ident { .. }
@@ -1129,6 +1139,7 @@ pub(crate) fn element_names<'e>(expr: &'e Expr, out: &mut BTreeSet<&'e str>, dep
             }
         }
         Expr::Function(_)
+        | Expr::Handler { .. }
         | Expr::Str { .. }
         | Expr::Num { .. }
         | Expr::Ident { .. }

@@ -293,6 +293,14 @@ pub enum Expr {
     },
     /// An arrow function or function expression.
     Function(Box<Function>),
+    /// An arrow function or function expression that only calls `calls`,
+    /// with no arguments: `() => props.onSave()`, `() => { onSave(); }`.
+    Handler {
+        /// What it calls: a name, or a name's member.
+        calls: Box<Expr>,
+        /// Where the function starts.
+        loc: Loc,
+    },
     /// A JSX element.
     Element(Box<Element>),
     /// A JSX fragment `<>…</>`.
@@ -418,7 +426,8 @@ impl Expr {
             | Self::Not { loc, .. }
             | Self::Template { loc, .. }
             | Self::Equals { loc, .. }
-            | Self::Conditional { loc, .. } => *loc,
+            | Self::Conditional { loc, .. }
+            | Self::Handler { loc, .. } => *loc,
             Self::Function(f) => f.loc,
             Self::Element(e) => e.loc,
             Self::Other(o) => o.loc,
@@ -436,6 +445,7 @@ impl Expr {
                 object, property, ..
             } => format!("`{object}.{property}`"),
             Self::Function(_) => "a function".to_owned(),
+            Self::Handler { calls, .. } => format!("a function that calls {}", calls.describe()),
             Self::Element(e) => format!("a <{}> element", e.name.display()),
             Self::Fragment { .. } => "a fragment".to_owned(),
             Self::Null { .. } => "`null`".to_owned(),

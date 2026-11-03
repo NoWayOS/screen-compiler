@@ -154,16 +154,26 @@ declare module "nowayos:kit" {
   }
 
   /** The props of `<Button>`. */
-  export interface ButtonProps {
+  export type ButtonProps = ButtonOneOf & {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */
     id?: string;
-    /** A callback prop of the screen, which becomes an action. */
-    onPress: () => void;
     variant?: "primary" | "secondary" | "quiet";
     style?: ButtonStyle;
     /** Its label: literal text. */
     children: string;
-  }
+  };
+  /** `<Button>` takes one of `onPress` and `onClick`, never both. */
+  export type ButtonOneOf =
+    | {
+        /** A callback prop of the screen, which becomes an action; or a function that only calls one: `() => props.onSave()`. */
+        onPress: () => void;
+        onClick?: never;
+      }
+    | {
+        /** A callback prop of the screen, which becomes an action; or a function that only calls one: `() => props.onSave()`. */
+        onClick: () => void;
+        onPress?: never;
+      };
   /** A button that emits an action. */
   export function Button(props: ButtonProps): JSX.Element;
 

@@ -69,6 +69,34 @@ fn every_component_converts_with_its_required_props_and_not_without_each() {
 }
 
 #[test]
+fn a_component_takes_one_of_a_pair_never_both() {
+    let mut pairs = 0;
+    for component in KitComponent::ALL {
+        for prop in component.props() {
+            let Some(or) = prop.or else { continue };
+            pairs += 1;
+            let other = component.prop(or).expect("the other of a pair is a prop");
+            assert_eq!(
+                other.or,
+                Some(prop.name),
+                "<{component}>: a pair names each other"
+            );
+            assert!(prop.required && other.required);
+            let value = attribute(&valid(prop.value)[0]);
+            converts(&screen(component, &Change::Prop(prop.name, value.clone())))
+                .unwrap_or_else(|e| panic!("<{component} {}>: {e}", prop.name));
+            let both = Change::Prop(or, format!("{value} {}={value}", prop.name));
+            assert!(
+                converts(&screen(component, &both)).is_err(),
+                "<{component}> converts with both {} and {or}",
+                prop.name
+            );
+        }
+    }
+    assert_eq!(pairs, 2, "onPress and onClick on <Button>");
+}
+
+#[test]
 fn every_value_listed_for_a_prop_converts() {
     for component in KitComponent::ALL {
         for prop in component.props() {
@@ -269,11 +297,18 @@ fn screen(component: KitComponent, change: &Change) -> String {
 
 fn element(component: KitComponent, change: &Change) -> String {
     let mut attrs = Vec::new();
-    for prop in component.props() {
+    let props = component.props();
+    for (index, prop) in props.iter().enumerate() {
+        // Of a pair it takes one of, the first is given unless the other is.
+        let first_of_pair = prop
+            .or
+            .is_none_or(|or| !props[..index].iter().any(|p| p.name == or));
         let given = match change {
-            Change::Without(name) if *name == prop.name => None,
+            // Leaving out one of a pair leaves out both.
+            Change::Without(name) if *name == prop.name || prop.or == Some(name) => None,
             Change::Prop(name, value) if *name == prop.name => Some(value.clone()),
-            _ if prop.required => Some(attribute(&valid(prop.value)[0])),
+            Change::Prop(name, _) if prop.or == Some(name) => None,
+            _ if prop.required && first_of_pair => Some(attribute(&valid(prop.value)[0])),
             _ => None,
         };
         if let Some(value) = given {
