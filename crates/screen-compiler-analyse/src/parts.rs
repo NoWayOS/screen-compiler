@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 //! A screen's own components and fragments, expanded at build time.
 //!
-//! A *part* is a function component of the same file that a screen, or
-//! another part, uses as an element. Before a screen is walked, each use of
+//! A *part* is a function component that a screen, or another part, uses
+//! as an element: one of the screen's file, or of a file it imports
+//! ([`crate::files`]). Each name is looked up in the file it is written in
+//! ([`Files`]). Before a screen is walked, each use of
 //! a part is replaced by what the part returns: each of its props by the
 //! value written where it is used - a literal, a design token, one of the
 //! screen's own props passed through - and `{children}` by the children
@@ -76,6 +78,20 @@ pub(crate) struct Part<'s> {
     pub(crate) returned: Option<&'s Expr>,
 }
 
+/// What the parts of a screen's files are expanded from. Each name is
+/// looked up in the file it is written in (its location's file).
+#[derive(Default)]
+pub(crate) struct Files<'s> {
+    /// Each part, by the file it is declared in and its name there.
+    pub(crate) parts: BTreeMap<(u16, &'s str), Part<'s>>,
+    /// The part an element name written in a file names.
+    pub(crate) part_names: BTreeMap<(u16, String), (u16, &'s str)>,
+    /// The top-level `const` array a name written in a file names.
+    pub(crate) lists: BTreeMap<(u16, String), &'s Expr>,
+    /// Every name each file declares or imports, by file.
+    pub(crate) declared: Vec<BTreeSet<String>>,
+}
+
 /// What a part's parameters bind, for substitution.
 #[derive(Clone, Copy)]
 enum Bound<'s> {
@@ -121,19 +137,17 @@ enum Named<'n> {
 
 /// Expands the parts and fragments of one screen.
 pub(crate) struct Expander<'p, 's> {
-    parts: &'p BTreeMap<&'s str, Part<'s>>,
-    /// The file's top-level `const` arrays, by name.
-    lists: &'p BTreeMap<&'s str, &'s Expr>,
+    /// The parts, lists and names of the screen's files.
+    files: &'p Files<'s>,
     /// The screen's parameters, which a list from a prop names.
     screen: Option<&'s Params>,
     /// Whether the expansion is inside a row of a list from a prop.
     in_row: bool,
-    /// Every name declared in the file, which a part may use as it is.
-    declared: &'p BTreeSet<String>,
     /// Problems found, each where it is written.
     pub(crate) diagnostics: Vec<Diagnostic>,
-    /// The parts being expanded, outermost first.
-    stack: Vec<&'s str>,
+    /// The parts being expanded, outermost first: each by the file it is
+    /// declared in and its name there.
+    stack: Vec<(u16, &'s str)>,
     /// Elements made so far, and the most there may be.
     elements: usize,
     max_elements: usize,
@@ -141,18 +155,11 @@ pub(crate) struct Expander<'p, 's> {
 }
 
 impl<'p, 's> Expander<'p, 's> {
-    pub(crate) fn new(
-        parts: &'p BTreeMap<&'s str, Part<'s>>,
-        lists: &'p BTreeMap<&'s str, &'s Expr>,
-        declared: &'p BTreeSet<String>,
-        max_elements: usize,
-    ) -> Self {
+    pub(crate) fn new(files: &'p Files<'s>, max_elements: usize) -> Self {
         Self {
-            parts,
-            lists,
+            files,
             screen: None,
             in_row: false,
-            declared,
             diagnostics: Vec::new(),
             stack: Vec::new(),
             elements: 0,
@@ -276,8 +283,10 @@ impl<'p, 's> Expander<'p, 's> {
             }
             return Vec::new();
         }
+        let files = self.files;
         if let ElementName::Component(name) = &element.name
-            && let Some((&key, part)) = self.parts.get_key_value(name.as_str())
+            && let Some(&key) = files.part_names.get(&(element.loc.file, name.clone()))
+            && let Some(part) = files.parts.get(&key)
         {
             return self.call(key, part, element, depth);
         }
@@ -289,13 +298,19 @@ impl<'p, 's> Expander<'p, 's> {
     /// A use of `part`: what it returns, its props and children given.
     fn call(
         &mut self,
-        name: &'s str,
+        key: (u16, &'s str),
         part: &Part<'s>,
         element: &Element,
         depth: usize,
     ) -> Vec<Child> {
-        if self.stack.contains(&name) {
-            let through = self.stack.join(" > ");
+        let name = key.1;
+        if self.stack.contains(&key) {
+            let through = self
+                .stack
+                .iter()
+                .map(|(_, name)| *name)
+                .collect::<Vec<_>>()
+                .join(" > ");
             self.error(
                 Code::Unsupported,
                 element.loc,
@@ -369,7 +384,7 @@ impl<'p, 's> Expander<'p, 's> {
             Some(returned) => returned,
             None => return Vec::new(),
         };
-        self.stack.push(name);
+        self.stack.push(key);
         let expanded = match &returned {
             Expr::Element(inner) => self.element(inner, depth.saturating_add(1)),
             Expr::Fragment { children, .. } => self.children(children, depth.saturating_add(1)),
@@ -449,7 +464,7 @@ impl<'p, 's> Expander<'p, 's> {
         };
         let items = match list {
             Expr::Array { elements, .. } => Some(elements.as_slice()),
-            Expr::Ident { name, .. } => match self.lists.get(name.as_str()) {
+            Expr::Ident { name, loc } => match self.files.lists.get(&(loc.file, name.clone())) {
                 Some(Expr::Array { elements, .. }) => Some(elements.as_slice()),
                 _ => None,
             },
@@ -686,7 +701,12 @@ impl<'p, 's> Expander<'p, 's> {
     /// declared in the file: it would be the screen's, which React does not
     /// give a part.
     fn declared_here(&mut self, using: &Use<'_>, name: &str, loc: Loc) {
-        if !using.closure && !self.declared.contains(name) {
+        let declared = self
+            .files
+            .declared
+            .get(usize::from(loc.file))
+            .is_some_and(|names| names.contains(name));
+        if !using.closure && !declared {
             let part = using.part;
             self.error(
                 Code::UnknownName,

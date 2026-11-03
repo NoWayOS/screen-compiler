@@ -214,8 +214,17 @@ impl<'m> Emitter<'m> {
 
     /// ` (file.tsx:3:14)` for a location, or nothing.
     fn at(&self, loc: Option<Loc>) -> String {
-        loc.map(|l| format!(" ({}:{l})", self.source))
+        loc.map(|l| format!(" ({}:{l})", self.file(l)))
             .unwrap_or_default()
+    }
+
+    /// The name of the file `loc` is in, as comments show it.
+    fn file(&self, loc: Loc) -> String {
+        if loc.file == 0 {
+            self.source.clone()
+        } else {
+            rust::file_label(self.module.file_name(loc.file))
+        }
     }
 
     fn module(mut self) -> String {
@@ -248,10 +257,14 @@ impl<'m> Emitter<'m> {
 
     fn tokens(&mut self) {
         let source = self.source.clone();
-        self.line(
-            0,
-            &format!("/// Design tokens declared in `{source}`, in logical pixels."),
-        );
+        let doc = if self.module.imported.is_empty() {
+            format!("/// Design tokens declared in `{source}`, in logical pixels.")
+        } else {
+            format!(
+                "/// Design tokens declared in `{source}` and the files it imports, in logical pixels."
+            )
+        };
+        self.line(0, &doc);
         self.line(0, "pub mod tokens {");
         for token in &self.module.tokens {
             let doc = format!("/// `{}`{}.", token.name, self.at(token.loc));
@@ -747,7 +760,7 @@ impl<'m> Emitter<'m> {
         };
         let at = node
             .loc
-            .map(|l| format!("{}:{l} ", self.source))
+            .map(|l| format!("{}:{l} ", self.file(l)))
             .unwrap_or_default();
         let what = match &node.kind {
             NodeKind::Group(group) if group.children.len() > 1 => {
@@ -889,6 +902,7 @@ mod tests {
     fn module(root: Node) -> Module {
         Module {
             source_name: "demo.tsx".into(),
+            imported: Vec::new(),
             tokens: vec![Token {
                 name: name("GAP"),
                 value: 4,

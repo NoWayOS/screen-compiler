@@ -28,7 +28,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use args::Command;
-use screen_compiler_analyse::{Options, analyse};
+use screen_compiler_analyse::files::Folder;
+use screen_compiler_analyse::{Options, analyse_with};
 use screen_compiler_ir::{Code, Diagnostic, Module, escape_special, has_errors};
 
 const USAGE: &str = "\
@@ -146,15 +147,32 @@ fn run(input: &Path) -> Outcome {
             return Outcome::Rejected;
         }
     };
-    let analysis = analyse(&parsed, &Options::new(source_name));
-    report(&display, &analysis.diagnostics);
+    // The files it imports are read from its folder and below, only.
+    let mut folder = match Folder::of(input) {
+        Ok(folder) => folder,
+        Err(error) => {
+            let error = error.to_string();
+            eprint_best_effort(&format!(
+                "screen-compiler: cannot read the folder of {display}: {}\n",
+                escape_special(&error)
+            ));
+            return Outcome::Unreadable;
+        }
+    };
+    let analysis = analyse_with(&parsed, &Options::new(source_name), &mut folder);
+    let names = analysis.file_names(&input.display().to_string());
+    let names: Vec<String> = names
+        .iter()
+        .map(|name| escape_special(name).into_owned())
+        .collect();
+    report_in(&names, &analysis.diagnostics);
     let Some(module) = analysis.module else {
         return Outcome::Rejected;
     };
     match screen_compiler_codegen_rust::generate(&module) {
         Ok(rust) => Outcome::Converted { module, rust },
         Err(diagnostics) => {
-            report(&display, &diagnostics);
+            report_in(&names, &diagnostics);
             Outcome::Rejected
         }
     }
@@ -302,9 +320,17 @@ fn read_source(path: &Path) -> Result<String, ReadError> {
 }
 
 fn report(display: &str, diagnostics: &[Diagnostic]) {
+    report_in(&[display.to_owned()], diagnostics);
+}
+
+/// Prints each diagnostic naming its file, `files[0]` the screen's own,
+/// then the count of errors.
+fn report_in(files: &[String], diagnostics: &[Diagnostic]) {
+    let names: Vec<&str> = files.iter().map(String::as_str).collect();
+    let display = names.first().copied().unwrap_or_default();
     let mut text = String::new();
     for diagnostic in diagnostics {
-        text.push_str(&diagnostic.render(display));
+        text.push_str(&diagnostic.render_in(&names));
         text.push('\n');
     }
     if has_errors(diagnostics) {

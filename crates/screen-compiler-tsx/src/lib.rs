@@ -81,10 +81,26 @@ pub const PARSER_STACK_BYTES: usize = 256 * 1024 * 1024;
 /// Returns the diagnostics (sorted by position) when the source is too large
 /// or too deeply nested, or does not parse.
 pub fn parse(source: &str) -> Result<SourceModule, Vec<Diagnostic>> {
+    parse_file(source, 0)
+}
+
+/// As [`parse`], for file number `file` of a screen's files: every location,
+/// in the tree and in the diagnostics, is in that file.
+///
+/// # Errors
+///
+/// As [`parse`].
+pub fn parse_file(source: &str, file: u16) -> Result<SourceModule, Vec<Diagnostic>> {
     on_parser_thread(source, |program| {
-        let mut module = convert::Converter::new(source).module(program);
+        let mut module = convert::Converter::new(source, file).module(program);
         sort_diagnostics(&mut module.diagnostics);
         module
+    })
+    .map_err(|mut diagnostics| {
+        for diagnostic in &mut diagnostics {
+            diagnostic.loc = diagnostic.loc.map(|loc| loc.in_file(file));
+        }
+        diagnostics
     })
 }
 

@@ -570,6 +570,7 @@ mod tests {
     fn module(tokens: Vec<Token>, root: Node) -> Module {
         Module {
             source_name: "t.tsx".into(),
+            imported: Vec::new(),
             tokens,
             screens: vec![Screen {
                 name: name("Test"),

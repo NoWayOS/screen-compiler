@@ -333,6 +333,7 @@ mod tests {
         }));
         let module = Module {
             source_name: "t.tsx".into(),
+            imported: Vec::new(),
             tokens: Vec::new(),
             screens: vec![Screen {
                 name: name("S"),
@@ -404,6 +405,7 @@ mod tests {
         }));
         let module = Module {
             source_name: "t.tsx".into(),
+            imported: Vec::new(),
             tokens: vec![Token {
                 name: name("GAP"),
                 value: 8,

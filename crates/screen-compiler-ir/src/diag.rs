@@ -5,12 +5,17 @@ use std::fmt;
 
 use crate::escape_special;
 
-/// A position in a source file: 1-based line and 1-based column.
+/// A position in a source file: which file, 1-based line and 1-based
+/// column.
 ///
-/// Columns count Unicode scalar values (characters), not bytes, so they match
-/// what an editor shows for a UTF-8 file.
+/// File 0 is the screen's own file; a file it imports, directly or through
+/// another, has the number it was given when first read (see
+/// `Module::imported`). Columns count Unicode scalar values (characters),
+/// not bytes, so they match what an editor shows for a UTF-8 file.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Loc {
+    /// The file: 0 for the screen's own.
+    pub file: u16,
     /// 1-based line number.
     pub line: u32,
     /// 1-based column, in characters.
@@ -18,13 +23,24 @@ pub struct Loc {
 }
 
 impl Loc {
-    /// A location from a 1-based line and column.
+    /// A location in the screen's own file from a 1-based line and column.
     #[must_use]
     pub const fn new(line: u32, column: u32) -> Self {
-        Self { line, column }
+        Self {
+            file: 0,
+            line,
+            column,
+        }
+    }
+
+    /// The same line and column in file `file`.
+    #[must_use]
+    pub const fn in_file(self, file: u16) -> Self {
+        Self { file, ..self }
     }
 }
 
+/// `LINE:COLUMN`; the file is named by whoever renders it.
 impl fmt::Display for Loc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.line, self.column)
@@ -154,6 +170,20 @@ impl Diagnostic {
     /// terminal that shows it.
     #[must_use]
     pub fn render(&self, file: &str) -> String {
+        self.render_in(&[file])
+    }
+
+    /// As [`render`](Self::render), naming the file the location is in:
+    /// `files[n]` for file `n`, the screen's own (`files[0]`) for one the
+    /// list does not have.
+    #[must_use]
+    pub fn render_in(&self, files: &[&str]) -> String {
+        let file = self
+            .loc
+            .and_then(|loc| files.get(usize::from(loc.file)))
+            .or(files.first())
+            .copied()
+            .unwrap_or_default();
         let file = escape_special(file);
         let mut out = match self.loc {
             Some(loc) => format!("{file}:{loc}: "),
@@ -179,8 +209,8 @@ pub fn has_errors(diagnostics: &[Diagnostic]) -> bool {
 }
 
 /// Sorts diagnostics into a deterministic order: by position (diagnostics
-/// without a position first), then code, then message. Exact duplicates are
-/// removed.
+/// without a position first, then by file, line and column), then code, then
+/// message. Exact duplicates are removed.
 pub fn sort_diagnostics(diagnostics: &mut Vec<Diagnostic>) {
     diagnostics.sort_by(|a, b| {
         (a.loc, a.code, &a.message, &a.help, a.severity)
@@ -200,6 +230,26 @@ mod tests {
         assert_eq!(
             d.render("screen.tsx"),
             "screen.tsx:3:14: error[unknown-prop]: no prop `x`\n  help: remove it"
+        );
+    }
+
+    #[test]
+    fn renders_the_file_a_location_is_in() {
+        let d = Diagnostic::error(
+            Code::UnknownProp,
+            Some(Loc::new(3, 14).in_file(1)),
+            "no prop `x`",
+        );
+        let files = ["screens/check-in.tsx", "screens/parts/header.tsx"];
+        assert_eq!(
+            d.render_in(&files),
+            "screens/parts/header.tsx:3:14: error[unknown-prop]: no prop `x`"
+        );
+        // A file the list does not have is shown as the screen's own.
+        let d = Diagnostic::error(Code::Limit, Some(Loc::new(1, 1).in_file(7)), "big");
+        assert_eq!(
+            d.render_in(&files),
+            "screens/check-in.tsx:1:1: error[limit]: big"
         );
     }
 

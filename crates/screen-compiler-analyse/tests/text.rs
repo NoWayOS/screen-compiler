@@ -23,6 +23,7 @@ fn run(source: &str) -> Analysis {
         Err(diagnostics) => Analysis {
             module: None,
             diagnostics,
+            imported: Vec::new(),
         },
     }
 }

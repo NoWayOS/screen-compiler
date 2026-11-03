@@ -129,6 +129,45 @@ fn convert_writes_nothing_when_the_input_is_not_supported() {
 }
 
 #[test]
+fn a_screen_reads_the_files_it_imports_from_its_folder_and_names_them() {
+    // Converted from the folder, or from above it: the same Rust.
+    let out = screen_compiler(&fixtures(), &["convert", "check-in-files.tsx"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(text(&out.stdout), snapshot("check-in-files.rs"));
+    let out = screen_compiler(&workspace(), &["convert", "fixtures/check-in-files.tsx"]);
+    assert_eq!(text(&out.stdout), snapshot("check-in-files.rs"));
+
+    let dir = scratch("a_screen_reads_the_files_it_imports");
+    fs::create_dir_all(dir.join("screens/parts")).unwrap();
+    fs::write(
+        dir.join("screens/screen.tsx"),
+        "import { Column, Screen } from \"nowayos:kit\";\nimport { Card } from \"./parts/card\";\nimport { Secret } from \"../secret\";\nexport function S() { return <Screen><Column><Card /></Column></Screen>; }\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("screens/parts/card.tsx"),
+        "import { Text } from \"nowayos:kit\";\nexport function Card() { return <Text colour=\"red\">Fuel</Text>; }\n",
+    )
+    .unwrap();
+    fs::write(dir.join("secret.tsx"), "export const Secret = 1;\n").unwrap();
+    let out = screen_compiler(&dir, &["check", "screens/screen.tsx"]);
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = text(&out.stderr);
+    assert!(
+        stderr.contains("screens/screen.tsx:3:1: error[unsupported]: \"../secret\" is outside the screen's folder"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("screens/parts/card.tsx:2:39: error[unknown-prop]"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.ends_with("screens/screen.tsx: 2 errors\n"),
+        "{stderr}"
+    );
+}
+
+#[test]
 fn syntax_errors_have_positions() {
     let dir = scratch("syntax_errors_have_positions");
     fs::write(

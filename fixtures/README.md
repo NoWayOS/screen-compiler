@@ -17,7 +17,10 @@ customer, and none may be added from one.
   card and a notice in each tone; `check-in-parts.tsx` is the same screen
   built of its own components and a fragment, expanded at build time, and
   must convert and draw exactly as `check-in.tsx` does (its approved image
-  is a copy of check-in's); `order-summary.tsx` has lists: steps from a
+  is a copy of check-in's), and `check-in-files.tsx` too, built of parts
+  imported from `parts/visitor.tsx` and its design tokens from
+  `parts/theme.tsx` - files of parts, not screens, which the fixture
+  loops do not check alone; `order-summary.tsx` has lists: steps from a
   `const` array, expanded at build time, and up to four order lines from a
   prop, rows the application shows and fills (`order_summary.shown.png`);
   `bike-hire.tsx` has contract v13's conditions: a note shown while a prop

@@ -24,6 +24,7 @@ fn run_with(source: &str, options: &Options) -> Analysis {
         Err(diagnostics) => Analysis {
             module: None,
             diagnostics,
+            imported: Vec::new(),
         },
     }
 }

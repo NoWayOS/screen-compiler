@@ -16,8 +16,12 @@ use screen_compiler_tsx::syntax::{
     Function, Import, ImportBinding, Item, LogicalOp, Params, PropBinding, Stmt, VarDecl,
 };
 
-use crate::parts::{Expander, Part};
+use crate::files::{self, Load, LoadError, MAX_FILES};
+use crate::parts::{Expander, Files, Part};
 use crate::{Analysis, KitComponent, Options, parts};
+
+/// Where a component or list is declared: its file and its name there.
+type Origin = (u16, String);
 
 /// What a name in scope refers to.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -29,8 +33,13 @@ enum Binding {
     /// The theme's spacing tokens, `space` from the kit:
     /// `space.xs` to `space.xl`.
     Space,
-    /// A component declared in this file.
-    Component,
+    /// A component, by where it is declared.
+    Component(Origin),
+    /// A top-level `const` array, which `.map` expands, by where it is
+    /// declared.
+    List(Origin),
+    /// Imported from a file of the screen's, until the import is resolved.
+    Pending,
     /// `React` from `import React from "react"`.
     React,
     /// Something imported from another module (already reported).
@@ -74,7 +83,16 @@ enum DeclKind {
 struct Cx<'o> {
     options: &'o Options,
     diagnostics: Vec<Diagnostic>,
+    /// The file being read: what each name at its top level refers to.
     bindings: BTreeMap<String, Binding>,
+    /// Each name the file being read exports, and the name it exports.
+    exports: BTreeMap<String, String>,
+    /// Each file read so far, by number.
+    scopes: Vec<FileScope>,
+    /// The screen's files.
+    read: &'o Read,
+    /// Imports from the screen's files, resolved once every file is read.
+    pending: Vec<Pending>,
     tokens: Vec<Token>,
     /// Module-scope value declarations: where each name is first declared.
     values: BTreeMap<String, (Loc, DeclKind)>,
@@ -92,181 +110,306 @@ struct Component<'a> {
     loc: Loc,
 }
 
-/// What a screen's parts are expanded from: the file's parts, its `const`
-/// arrays and every name it declares.
-struct Expansion<'p, 's> {
-    parts: &'p BTreeMap<&'s str, Part<'s>>,
-    lists: &'p BTreeMap<&'s str, &'s Expr>,
-    declared: &'p BTreeSet<String>,
+/// One of the screen's files, once read: the names at its top level.
+struct FileScope {
+    /// What each name refers to.
+    bindings: BTreeMap<String, Binding>,
+    /// Every name it declares or imports.
+    declared: BTreeSet<String>,
+    /// Each name it exports, and the name it exports.
+    exports: BTreeMap<String, String>,
+    /// Its type-level names, which an import may name but a screen cannot
+    /// use.
+    types: BTreeSet<String>,
 }
 
-pub(crate) fn analyse(source: &SourceModule, options: &Options) -> Analysis {
+/// An import from one of the screen's files.
+struct Pending {
+    /// The file the import is in.
+    file: u16,
+    /// The name it binds there.
+    local: String,
+    /// The name it imports: `default` for a default import.
+    imported: String,
+    /// The file it imports from.
+    target: u16,
+    /// What the import is written as, for messages.
+    specifier: String,
+    loc: Loc,
+}
+
+/// The screen's files: its own, file 0, and each it imports.
+#[derive(Default)]
+struct Read {
+    /// Each file's path from the screen's folder, the screen's own first.
+    paths: Vec<String>,
+    /// The imported files' trees: file `n` is `modules[n - 1]`.
+    modules: Vec<SourceModule>,
+    /// The file each import reads, by where the import is written.
+    targets: BTreeMap<Loc, u16>,
+    /// Files that did not parse, whose names are not resolved.
+    broken: BTreeSet<u16>,
+}
+
+impl Read {
+    /// Reads every file `source` imports, directly or through another,
+    /// reporting each that cannot be read where it is imported.
+    fn files(
+        source: &SourceModule,
+        options: &Options,
+        load: &mut dyn Load,
+        diagnostics: &mut Vec<Diagnostic>,
+    ) -> Self {
+        let own = options
+            .source_name
+            .rsplit(['/', '\\'])
+            .next()
+            .unwrap_or(&options.source_name);
+        let mut read = Self {
+            paths: vec![own.to_owned()],
+            ..Self::default()
+        };
+        let mut next = 0_usize;
+        loop {
+            let module = match next.checked_sub(1) {
+                None => source,
+                Some(index) => match read.modules.get(index) {
+                    Some(module) => module,
+                    None => break,
+                },
+            };
+            let wanted: Vec<(Loc, String)> = module
+                .items
+                .iter()
+                .filter_map(|item| match item {
+                    Item::Import(import) if reads_file(import) => {
+                        Some((import.loc, import.module.clone()))
+                    }
+                    _ => None,
+                })
+                .collect();
+            let from = read.paths.get(next).cloned().unwrap_or_default();
+            for (loc, specifier) in wanted {
+                read.import(&from, &specifier, loc, load, diagnostics);
+            }
+            next = next.saturating_add(1);
+        }
+        read
+    }
+
+    /// Reads the file `specifier` names, imported at `loc` by the file at
+    /// `from`, unless it has been read.
+    fn import(
+        &mut self,
+        from: &str,
+        specifier: &str,
+        loc: Loc,
+        load: &mut dyn Load,
+        diagnostics: &mut Vec<Diagnostic>,
+    ) {
+        let path = match files::resolve(from, specifier) {
+            Ok(path) => path,
+            Err((message, help)) => {
+                diagnostics
+                    .push(Diagnostic::error(Code::Unsupported, Some(loc), message).with_help(help));
+                return;
+            }
+        };
+        if let Some(index) = self.paths.iter().position(|read| *read == path) {
+            if let Ok(file) = u16::try_from(index)
+                && !self.broken.contains(&file)
+            {
+                self.targets.insert(loc, file);
+            }
+            return;
+        }
+        let file = match u16::try_from(self.paths.len()) {
+            Ok(file) if self.paths.len() < MAX_FILES => file,
+            _ => {
+                diagnostics.push(
+                    Diagnostic::error(
+                        Code::Limit,
+                        Some(loc),
+                        format!("a screen reads at most {MAX_FILES} files, its own among them"),
+                    )
+                    .with_help("import from fewer files: put parts that go together in one"),
+                );
+                return;
+            }
+        };
+        let text = match load.load(&path) {
+            Ok(text) => text,
+            Err(error) => {
+                let code = match error {
+                    LoadError::Missing | LoadError::Unreadable(_) => Code::UnknownName,
+                    LoadError::TooLarge => Code::Limit,
+                    LoadError::NotUtf8 => Code::Syntax,
+                    LoadError::Outside | LoadError::NotGiven => Code::Unsupported,
+                };
+                diagnostics.push(Diagnostic::error(
+                    code,
+                    Some(loc),
+                    format!(
+                        "\"{specifier}\" ({path}) cannot be read: {}",
+                        error.describe()
+                    ),
+                ));
+                return;
+            }
+        };
+        // The path is kept even when the file does not parse, so the
+        // errors inside it name it.
+        self.paths.push(path.clone());
+        match screen_compiler_tsx::parse_file(&text, file) {
+            Ok(parsed) => {
+                diagnostics.extend(parsed.diagnostics.iter().cloned());
+                self.modules.push(parsed);
+                self.targets.insert(loc, file);
+            }
+            Err(errors) => {
+                for mut error in errors {
+                    if error.loc.is_none() {
+                        error.loc = Some(loc);
+                        error.message = format!("in {path}: {}", error.message);
+                    }
+                    diagnostics.push(error);
+                }
+                // Nothing more is read from it; its number stays its own.
+                self.modules.push(SourceModule::default());
+                self.broken.insert(file);
+            }
+        }
+    }
+
+    /// File `file`'s tree.
+    fn module<'r>(&'r self, source: &'r SourceModule, file: u16) -> Option<&'r SourceModule> {
+        match usize::from(file).checked_sub(1) {
+            None => Some(source),
+            Some(index) => self.modules.get(index),
+        }
+    }
+
+    /// File `file`'s path from the screen's folder.
+    fn path(&self, file: u16) -> &str {
+        self.paths.get(usize::from(file)).map_or("", String::as_str)
+    }
+}
+
+/// Whether `import` reads one of the screen's files: values imported from
+/// a path. (Importing a path for its side effects alone is refused where
+/// it is written, unread.)
+fn reads_file(import: &Import) -> bool {
+    files::is_path(&import.module)
+        && !import.type_only
+        && !import.side_effect_only
+        && import.bindings.iter().any(|binding| {
+            !matches!(
+                binding,
+                ImportBinding::Named {
+                    type_only: true,
+                    ..
+                }
+            )
+        })
+}
+
+pub(crate) fn analyse(source: &SourceModule, options: &Options, load: &mut dyn Load) -> Analysis {
+    let mut diagnostics = source.diagnostics.clone();
+    let read = Read::files(source, options, load, &mut diagnostics);
     let mut cx = Cx {
         options,
-        diagnostics: source.diagnostics.clone(),
+        diagnostics,
         bindings: BTreeMap::new(),
+        exports: BTreeMap::new(),
+        scopes: Vec::new(),
+        read: &read,
+        pending: Vec::new(),
         tokens: Vec::new(),
         values: BTreeMap::new(),
         types: BTreeSet::new(),
         exported: BTreeMap::new(),
     };
-    let mut components = Vec::new();
-    let mut lists = BTreeMap::new();
-    // Checked once every declaration is known: exports may come first.
-    let mut export_specifiers: Vec<&ExportSpecifier> = Vec::new();
-    let mut default_names: Vec<(&str, Loc)> = Vec::new();
-    for item in &source.items {
-        match item {
-            Item::Import(import) => cx.import(import),
-            Item::Var(var) => {
-                let kind = if var.keyword == DeclKeyword::Var {
-                    DeclKind::Var
-                } else {
-                    DeclKind::Lexical
-                };
-                if !cx.declare(&var.name, var.name_loc, kind) {
-                    continue;
-                }
-                if var.export == Export::Named {
-                    cx.export(&var.name, var.name_loc);
-                }
-                match &var.init {
-                    Some(Expr::Function(function)) if var.keyword == DeclKeyword::Const => {
-                        components.push(Component {
-                            name: Some(&var.name),
-                            function,
-                            loc: var.loc,
-                        });
-                    }
-                    // A list, which `.map` expands at build time.
-                    Some(list @ Expr::Array { .. }) if var.keyword == DeclKeyword::Const => {
-                        lists.insert(var.name.as_str(), list);
-                    }
-                    _ => cx.token(var),
-                }
-            }
-            Item::Function(decl) => {
-                let loc = decl.function.loc;
-                if let Some(name) = decl.name.as_deref()
-                    && !cx.declare(name, loc, DeclKind::Lexical)
-                {
-                    continue;
-                }
-                match (decl.export, decl.name.as_deref()) {
-                    (Export::Default, _) => cx.export("default", loc),
-                    (Export::Named, Some(name)) => cx.export(name, loc),
-                    _ => {}
-                }
-                components.push(Component {
-                    name: decl.name.as_deref(),
-                    function: &decl.function,
-                    loc,
-                });
-            }
-            Item::ExportDefaultExpr(expr) => {
-                cx.export("default", expr.loc());
-                match expr {
-                    Expr::Function(function) => components.push(Component {
-                        name: None,
-                        function,
-                        loc: function.loc,
-                    }),
-                    Expr::Ident { name, loc } => default_names.push((name, *loc)),
-                    other => cx.error(
-                        Code::Unsupported,
-                        other.loc(),
-                        format!("default export of {} is not supported", other.describe()),
-                    ),
-                }
-            }
-            Item::ExportList { specifiers, .. } => {
-                for specifier in specifiers {
-                    cx.export(&specifier.exported, specifier.loc);
-                    export_specifiers.push(specifier);
-                }
-            }
-            Item::TypeOnly { names, .. } => cx.types.extend(names.iter().cloned()),
-            Item::Other(other) => cx.error(
-                Code::Unsupported,
-                other.loc,
-                format!("{} is not supported in subset v1", other.kind),
-            ),
-        }
-    }
-    for specifier in export_specifiers {
-        let local = &specifier.local;
-        if !cx.values.contains_key(local) && !cx.types.contains(local) {
-            cx.error_help(
-                Code::UnknownName,
-                specifier.loc,
-                format!("`{local}` is exported but not declared in this file"),
-                "a module can export only names it declares or imports (anything else is a syntax error)",
-            );
-        }
-    }
-    for (name, loc) in default_names {
-        if cx.values.contains_key(name) {
+    // Each file's top level, in its own scope; then the imports between them.
+    let mut components: Vec<(u16, Component<'_>)> = Vec::new();
+    let mut lists: BTreeMap<Origin, &Expr> = BTreeMap::new();
+    for index in 0..read.paths.len() {
+        let Ok(file) = u16::try_from(index) else {
+            break;
+        };
+        let Some(module) = read.module(source, file) else {
             continue;
-        }
-        if cx.types.contains(name) {
-            cx.error(
-                Code::InvalidValue,
-                loc,
-                format!(
-                    "`export default {name}` exports a type, but `export default` needs a value"
-                ),
-            );
-        } else {
-            cx.error(
-                Code::UnknownName,
-                loc,
-                format!("`{name}` is not declared in this file"),
-            );
-        }
+        };
+        let (found, arrays) = cx.top_level(file, module);
+        components.extend(found.into_iter().map(|component| (file, component)));
+        lists.extend(
+            arrays
+                .into_iter()
+                .map(|(name, list)| ((file, name.to_owned()), list)),
+        );
     }
-    for component in &components {
-        if let Some(name) = component.name {
-            cx.bindings
-                .entry(name.to_owned())
-                .or_insert(Binding::Component);
-        }
-    }
-    // A component the file uses as an element is a part, expanded where it
-    // is used (`parts`); every other is a screen.
-    let mut used = BTreeSet::new();
-    for component in &components {
+    cx.resolve_imports();
+    // A component any file uses as an element is a part, expanded where it
+    // is used (`parts`); every other of the screen's own file is a screen,
+    // and one of another file is not converted.
+    let mut used: BTreeSet<Origin> = BTreeSet::new();
+    for (file, component) in &components {
+        let mut names = BTreeSet::new();
         for returned in parts::returned_values(component.function) {
-            parts::element_names(returned, &mut used, 0);
+            parts::element_names(returned, &mut names, 0);
+        }
+        for name in names {
+            if let Some(Binding::Component(origin)) = cx.binding(*file, name) {
+                used.insert(origin.clone());
+            }
         }
     }
-    let mut parts = BTreeMap::new();
-    for component in &components {
+    let mut files = Files::default();
+    for (file, component) in &components {
         if let Some(name) = component.name
-            && used.contains(name)
+            && used.contains(&(*file, name.to_owned()))
         {
             let part = cx.part(name, component.function);
-            parts.insert(name, part);
+            files.parts.insert((*file, name), part);
         }
     }
-    let declared: BTreeSet<String> = cx
-        .values
+    let keys: BTreeMap<Origin, (u16, &str)> = files
+        .parts
         .keys()
-        .chain(cx.bindings.keys())
-        .cloned()
+        .map(|&(file, name)| ((file, name.to_owned()), (file, name)))
         .collect();
-    let file = Expansion {
-        parts: &parts,
-        lists: &lists,
-        declared: &declared,
-    };
+    for (file, scope) in (0_u16..).zip(&cx.scopes) {
+        for (local, binding) in &scope.bindings {
+            match binding {
+                Binding::Component(origin) => {
+                    if let Some(&key) = keys.get(origin) {
+                        files.part_names.insert((file, local.clone()), key);
+                    }
+                }
+                Binding::List(origin) => {
+                    if let Some(&list) = lists.get(origin) {
+                        files.lists.insert((file, local.clone()), list);
+                    }
+                }
+                _ => {}
+            }
+        }
+        files.declared.push(scope.declared.clone());
+    }
     let screens: Vec<Screen> = components
         .iter()
-        .filter(|component| component.name.is_none_or(|name| !used.contains(name)))
-        .filter_map(|component| cx.component(component, &file))
+        .filter(|(file, component)| {
+            *file == 0
+                && component
+                    .name
+                    .is_none_or(|name| !used.contains(&(0, name.to_owned())))
+        })
+        .filter_map(|(_, component)| cx.component(component, &files))
         .collect();
 
+    let imported: Vec<String> = read.paths.iter().skip(1).cloned().collect();
     let module = Module {
         source_name: options.source_name.clone(),
+        imported: imported.clone(),
         tokens: std::mem::take(&mut cx.tokens),
         screens,
     };
@@ -285,6 +428,252 @@ pub(crate) fn analyse(source: &SourceModule, options: &Options) -> Analysis {
     Analysis {
         module,
         diagnostics,
+        imported,
+    }
+}
+
+impl<'o> Cx<'o> {
+    /// Reads file `file`'s top level in a scope of its own, which is kept
+    /// in [`Cx::scopes`]: its components, and its `const` arrays by name.
+    fn top_level<'s>(
+        &mut self,
+        file: u16,
+        module: &'s SourceModule,
+    ) -> (Vec<Component<'s>>, Vec<(&'s str, &'s Expr)>) {
+        let mut components = Vec::new();
+        let mut lists = Vec::new();
+        // Checked once every declaration is known: exports may come first.
+        let mut export_specifiers: Vec<&ExportSpecifier> = Vec::new();
+        let mut default_names: Vec<(&str, Loc)> = Vec::new();
+        for item in &module.items {
+            match item {
+                Item::Import(import) => self.import(file, import),
+                Item::Var(var) => {
+                    let kind = if var.keyword == DeclKeyword::Var {
+                        DeclKind::Var
+                    } else {
+                        DeclKind::Lexical
+                    };
+                    if !self.declare(&var.name, var.name_loc, kind) {
+                        continue;
+                    }
+                    if var.export == Export::Named {
+                        self.export(&var.name, &var.name, var.name_loc);
+                    }
+                    match &var.init {
+                        Some(Expr::Function(function)) if var.keyword == DeclKeyword::Const => {
+                            components.push(Component {
+                                name: Some(&var.name),
+                                function,
+                                loc: var.loc,
+                            });
+                        }
+                        // A list, which `.map` expands at build time.
+                        Some(list @ Expr::Array { .. }) if var.keyword == DeclKeyword::Const => {
+                            self.bindings
+                                .insert(var.name.clone(), Binding::List((file, var.name.clone())));
+                            lists.push((var.name.as_str(), list));
+                        }
+                        _ => self.token(var),
+                    }
+                }
+                Item::Function(decl) => {
+                    let loc = decl.function.loc;
+                    if let Some(name) = decl.name.as_deref()
+                        && !self.declare(name, loc, DeclKind::Lexical)
+                    {
+                        continue;
+                    }
+                    match (decl.export, decl.name.as_deref()) {
+                        (Export::Default, name) => {
+                            self.export("default", name.unwrap_or_default(), loc);
+                        }
+                        (Export::Named, Some(name)) => self.export(name, name, loc),
+                        _ => {}
+                    }
+                    components.push(Component {
+                        name: decl.name.as_deref(),
+                        function: &decl.function,
+                        loc,
+                    });
+                }
+                Item::ExportDefaultExpr(expr) => match expr {
+                    Expr::Ident { name, loc } => {
+                        self.export("default", name, *loc);
+                        default_names.push((name, *loc));
+                    }
+                    Expr::Function(function) => {
+                        self.export("default", "", expr.loc());
+                        components.push(Component {
+                            name: None,
+                            function,
+                            loc: function.loc,
+                        });
+                    }
+                    other => {
+                        self.export("default", "", expr.loc());
+                        self.error(
+                            Code::Unsupported,
+                            other.loc(),
+                            format!("default export of {} is not supported", other.describe()),
+                        );
+                    }
+                },
+                Item::ExportList { specifiers, .. } => {
+                    for specifier in specifiers {
+                        self.export(&specifier.exported, &specifier.local, specifier.loc);
+                        export_specifiers.push(specifier);
+                    }
+                }
+                Item::TypeOnly { names, .. } => self.types.extend(names.iter().cloned()),
+                Item::Other(other) => self.error(
+                    Code::Unsupported,
+                    other.loc,
+                    format!("{} is not supported in subset v1", other.kind),
+                ),
+            }
+        }
+        for specifier in export_specifiers {
+            let local = &specifier.local;
+            if !self.values.contains_key(local) && !self.types.contains(local) {
+                self.error_help(
+                    Code::UnknownName,
+                    specifier.loc,
+                    format!("`{local}` is exported but not declared in this file"),
+                    "a module can export only names it declares or imports (anything else is a syntax error)",
+                );
+            }
+        }
+        for (name, loc) in default_names {
+            if self.values.contains_key(name) {
+                continue;
+            }
+            if self.types.contains(name) {
+                self.error(
+                    Code::InvalidValue,
+                    loc,
+                    format!(
+                        "`export default {name}` exports a type, but `export default` needs a value"
+                    ),
+                );
+            } else {
+                self.error(
+                    Code::UnknownName,
+                    loc,
+                    format!("`{name}` is not declared in this file"),
+                );
+            }
+        }
+        for component in &components {
+            if let Some(name) = component.name {
+                self.bindings
+                    .entry(name.to_owned())
+                    .or_insert_with(|| Binding::Component((file, name.to_owned())));
+            }
+        }
+        let bindings = std::mem::take(&mut self.bindings);
+        let declared: BTreeSet<String> = std::mem::take(&mut self.values)
+            .into_keys()
+            .chain(bindings.keys().cloned())
+            .collect();
+        self.exported.clear();
+        self.scopes.push(FileScope {
+            bindings,
+            declared,
+            exports: std::mem::take(&mut self.exports),
+            types: std::mem::take(&mut self.types),
+        });
+        (components, lists)
+    }
+
+    /// What `name` refers to at the top level of file `file`.
+    fn binding(&self, file: u16, name: &str) -> Option<&Binding> {
+        self.scopes
+            .get(usize::from(file))
+            .and_then(|scope| scope.bindings.get(name))
+    }
+
+    /// Binds each import from the screen's files to what it names, once
+    /// every file is read: an import may name what another file imports.
+    fn resolve_imports(&mut self) {
+        let mut pending = std::mem::take(&mut self.pending);
+        loop {
+            let before = pending.len();
+            pending.retain(|import| !self.bind_import(import));
+            if pending.len() == before {
+                break;
+            }
+        }
+        for import in pending {
+            self.error_help(
+                Code::Unsupported,
+                import.loc,
+                format!(
+                    "`{}` from \"{}\" is imported in a circle: each file imports it from another",
+                    import.imported, import.specifier
+                ),
+                "import it from the file that declares it",
+            );
+            self.set_binding(import.file, &import.local, Binding::OtherImport);
+        }
+    }
+
+    /// Binds `import` if what it names is known; `false` if that is an
+    /// import still to be resolved.
+    fn bind_import(&mut self, import: &Pending) -> bool {
+        let path = self.read.path(import.target).to_owned();
+        let Some(scope) = self.scopes.get(usize::from(import.target)) else {
+            return true;
+        };
+        let local = match scope.exports.get(&import.imported) {
+            Some(local) => Some(local),
+            // A type, whose exports are not recorded: erased, as the
+            // import's use of it is.
+            None if scope.types.contains(&import.imported) => None,
+            None => {
+                self.no_export(import, &path);
+                return true;
+            }
+        };
+        match local.and_then(|local| scope.bindings.get(local)) {
+            Some(Binding::Pending) => return false,
+            Some(binding) => {
+                let binding = binding.clone();
+                self.set_binding(import.file, &import.local, binding);
+            }
+            // A type, an unnamed default export, or a declaration that is
+            // reported where it is: nothing a screen can use, which is
+            // reported wherever it is used.
+            None => {
+                if let Some(scope) = self.scopes.get_mut(usize::from(import.file)) {
+                    scope.bindings.remove(&import.local);
+                }
+            }
+        }
+        true
+    }
+
+    /// Reports that the file `import` reads, at `path`, does not export
+    /// what it names.
+    fn no_export(&mut self, import: &Pending, path: &str) {
+        let what = if import.imported == "default" {
+            "default export".to_owned()
+        } else {
+            format!("export `{}`", import.imported)
+        };
+        self.error_help(
+            Code::UnknownName,
+            import.loc,
+            format!("{path} has no {what}"),
+            format!("export it from {path}, or import a name it exports"),
+        );
+        self.set_binding(import.file, &import.local, Binding::OtherImport);
+    }
+
+    fn set_binding(&mut self, file: u16, name: &str, binding: Binding) {
+        if let Some(scope) = self.scopes.get_mut(usize::from(file)) {
+            scope.bindings.insert(name.to_owned(), binding);
+        }
     }
 }
 
@@ -320,8 +709,12 @@ impl Cx<'_> {
         false
     }
 
-    /// Records an exported name, reporting one exported twice.
-    fn export(&mut self, name: &str, loc: Loc) {
+    /// Records that `name` is exported, as the file's `local`, reporting a
+    /// name exported twice.
+    fn export(&mut self, name: &str, local: &str, loc: Loc) {
+        self.exports
+            .entry(name.to_owned())
+            .or_insert_with(|| local.to_owned());
         if let Some(&first) = self.exported.get(name) {
             let message = if name == "default" {
                 format!("a module may have only one default export; the first is at {first}")
@@ -350,7 +743,7 @@ impl Cx<'_> {
             .push(Diagnostic::error(code, Some(loc), message).with_help(help));
     }
 
-    fn import(&mut self, import: &Import) {
+    fn import(&mut self, file: u16, import: &Import) {
         if import.has_attributes {
             self.error(
                 Code::Unsupported,
@@ -360,6 +753,7 @@ impl Cx<'_> {
         }
         let is_kit = import.module == self.options.kit_module;
         let is_react = import.module == "react";
+        let is_path = files::is_path(&import.module);
         if import.type_only {
             for binding in &import.bindings {
                 let (ImportBinding::Named { local, .. }
@@ -452,6 +846,21 @@ impl Cx<'_> {
                         ),
                     );
                 }
+                ImportBinding::Namespace { local, loc } if is_path => {
+                    self.bindings.insert(local.clone(), Binding::OtherImport);
+                    self.error_help(
+                        Code::Unsupported,
+                        *loc,
+                        format!("\"{}\" must be imported by name", import.module),
+                        format!("import {{ Header, Footer }} from \"{}\";", import.module),
+                    );
+                }
+                ImportBinding::Named {
+                    imported, local, ..
+                } if is_path => self.import_from_file(file, import, imported, local),
+                ImportBinding::Default { local, .. } if is_path => {
+                    self.import_from_file(file, import, "default", local);
+                }
                 ImportBinding::Named { local, .. }
                 | ImportBinding::Default { local, .. }
                 | ImportBinding::Namespace { local, .. } => {
@@ -468,7 +877,8 @@ impl Cx<'_> {
                 }
             )
         });
-        if is_kit || is_react {
+        if is_kit || is_react || (is_path && has_value_bindings) {
+            // A path that is not read was reported where it is imported.
             return;
         }
         // `import {} from "m"` keeps the import (Babel; TypeScript too under
@@ -508,10 +918,31 @@ impl Cx<'_> {
                 import.loc,
                 format!("imports from \"{}\" are not supported in subset v1", import.module),
                 format!(
-                    "import components only from \"{}\" and declare design tokens as `const` in this file",
+                    "import components from \"{}\", or your own from a .tsx file in the screen's folder (\"./header\"); declare design tokens as `const`",
                     self.options.kit_module
                 ),
             );
+        }
+    }
+
+    /// `local`, bound to what `imported` names in the file `import` reads,
+    /// once every file is read; an import that read no file was reported.
+    fn import_from_file(&mut self, file: u16, import: &Import, imported: &str, local: &str) {
+        match self.read.targets.get(&import.loc) {
+            Some(&target) => {
+                self.bindings.insert(local.to_owned(), Binding::Pending);
+                self.pending.push(Pending {
+                    file,
+                    local: local.to_owned(),
+                    imported: imported.to_owned(),
+                    target,
+                    specifier: import.module.clone(),
+                    loc: import.loc,
+                });
+            }
+            None => {
+                self.bindings.insert(local.to_owned(), Binding::OtherImport);
+            }
         }
     }
 
@@ -650,11 +1081,7 @@ impl Cx<'_> {
         }
     }
 
-    fn component<'s>(
-        &mut self,
-        component: &Component<'s>,
-        file: &Expansion<'_, 's>,
-    ) -> Option<Screen> {
+    fn component<'s>(&mut self, component: &Component<'s>, files: &Files<'s>) -> Option<Screen> {
         let Some(source_name) = component.name else {
             self.error_help(
                 Code::Unsupported,
@@ -720,12 +1147,7 @@ impl Cx<'_> {
             }
         };
         let returned = self.returned(source_name, function)?;
-        let mut expander = Expander::new(
-            file.parts,
-            file.lists,
-            file.declared,
-            self.options.limits.max_nodes,
-        );
+        let mut expander = Expander::new(files, self.options.limits.max_nodes);
         let expanded = expander.root(returned, &function.params);
         self.diagnostics.append(&mut expander.diagnostics);
         let element = match &expanded {
@@ -979,10 +1401,16 @@ struct Lower<'c, 'o, 'a> {
 }
 
 impl Lower<'_, '_, '_> {
-    fn lookup(&self, name: &str) -> Option<Binding> {
+    /// What `name`, written at `loc`, refers to: in the screen's own file a
+    /// prop of the screen's or a name at its top level; in another file a
+    /// name at that file's top level.
+    fn lookup(&self, name: &str, loc: Loc) -> Option<Binding> {
         // A prop the expansion made: a list row's group or slot.
         if let Some(made) = name.strip_prefix(parts::MADE_PROP) {
             return Some(Binding::Prop(made.to_owned()));
+        }
+        if loc.file != 0 {
+            return self.cx.binding(loc.file, name).cloned();
         }
         match &self.scope {
             Scope::Destructured(bindings) => {
@@ -993,7 +1421,7 @@ impl Lower<'_, '_, '_> {
             Scope::Object(object) if *object == name => return Some(Binding::PropsObject),
             _ => {}
         }
-        self.cx.bindings.get(name).cloned()
+        self.cx.binding(0, name).cloned()
     }
 
     fn limits(&self) -> &crate::Limits {
@@ -1005,9 +1433,11 @@ impl Lower<'_, '_, '_> {
         let loc = element.loc;
         let kit = self.cx.options.kit_module.clone();
         match &element.name {
-            ElementName::Component(name) => match self.lookup(name) {
+            ElementName::Component(name) => match self.lookup(name, loc) {
                 Some(Binding::Kit(component)) => Some(component),
-                Some(Binding::Component) => {
+                // Reported where it is imported.
+                Some(Binding::OtherImport) => None,
+                Some(Binding::Component(_)) => {
                     self.cx.error_help(
                         Code::UnknownElement,
                         loc,
@@ -1640,7 +2070,7 @@ impl Lower<'_, '_, '_> {
                 property,
                 loc,
             } => {
-                if matches!(self.lookup(object), Some(Binding::PropsObject)) {
+                if matches!(self.lookup(object, *loc), Some(Binding::PropsObject)) {
                     PropRef::Prop(property.clone(), *loc)
                 } else {
                     self.cx.error_help(
@@ -1654,7 +2084,7 @@ impl Lower<'_, '_, '_> {
                     PropRef::Reported
                 }
             }
-            Expr::Ident { name, loc } => match self.lookup(name) {
+            Expr::Ident { name, loc } => match self.lookup(name, *loc) {
                 Some(Binding::Prop(key)) => PropRef::Prop(key, *loc),
                 Some(Binding::PropsObject) => {
                     self.cx.error_help(
@@ -2866,7 +3296,7 @@ impl Lower<'_, '_, '_> {
                 .cx
                 .pixels(*value, raw, *loc, &format!("`{prop}`"))
                 .map(Length::Px),
-            Expr::Ident { name, loc } => match self.lookup(name) {
+            Expr::Ident { name, loc } => match self.lookup(name, *loc) {
                 Some(Binding::Token(index)) => self
                     .cx
                     .tokens
@@ -2913,7 +3343,7 @@ impl Lower<'_, '_, '_> {
                 object,
                 property,
                 loc,
-            } if matches!(self.lookup(object), Some(Binding::Space)) => {
+            } if matches!(self.lookup(object, *loc), Some(Binding::Space)) => {
                 match Space::parse(property) {
                     Some(space) => Some(Length::Space(space)),
                     None => {
@@ -2986,7 +3416,7 @@ impl Lower<'_, '_, '_> {
                 let bytes = *value as u16;
                 (Length::Px(bytes), bytes, *loc)
             }
-            AttrValue::Expr(Expr::Ident { name, loc }) => match self.lookup(name) {
+            AttrValue::Expr(Expr::Ident { name, loc }) => match self.lookup(name, *loc) {
                 Some(Binding::Token(index)) => {
                     let token = self.cx.tokens.get(index)?;
                     (Length::Token(token.name.clone()), token.value, *loc)
@@ -3283,7 +3713,7 @@ impl Lower<'_, '_, '_> {
     fn action(&mut self, value: &AttrValue, loc: Loc) -> Option<Name> {
         let help = "pass a callback prop of the component: onPress={onContinue}";
         match value {
-            AttrValue::Expr(Expr::Ident { name, loc }) => match self.lookup(name) {
+            AttrValue::Expr(Expr::Ident { name, loc }) => match self.lookup(name, *loc) {
                 Some(Binding::Prop(key)) => self.action_name(&key, *loc),
                 Some(Binding::PropsObject) => {
                     self.cx.error_help(
@@ -3318,7 +3748,7 @@ impl Lower<'_, '_, '_> {
                 property,
                 loc,
             }) => {
-                if matches!(self.lookup(object), Some(Binding::PropsObject)) {
+                if matches!(self.lookup(object, *loc), Some(Binding::PropsObject)) {
                     self.action_name(property, *loc)
                 } else {
                     self.cx.error_help(

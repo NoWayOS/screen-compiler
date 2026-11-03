@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 use screen_compiler_analyse::audit::{
     FileResult, Step, Verdict, audit_dir, audit_source, verdict, verdict_in,
 };
-use screen_compiler_tsx::census::Construct;
+use screen_compiler_tsx::census::{Construct, ImportKind};
 
 fn manifest_dir() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -111,11 +111,17 @@ export function Odd() {
 #[test]
 fn the_road_takes_the_constructs_its_steps_name() {
     let road = |construct: Construct| verdict(&construct);
-    // A component from another file; the module's own are expanded.
-    assert_eq!(
+    // A component from a package, or from outside the screen's folder; the
+    // module's own, and those it imports from beside it, are expanded.
+    assert!(matches!(
         road(Construct::Component("PriceCard".into())),
-        Verdict::Road(Step::Components)
-    );
+        Verdict::Out(_)
+    ));
+    assert_eq!(road(Construct::Import(ImportKind::Local)), Verdict::Subset);
+    assert!(matches!(
+        road(Construct::Import(ImportKind::Outside)),
+        Verdict::Out(_)
+    ));
     let own = std::collections::BTreeSet::from(["PriceCard".to_owned()]);
     for construct in [
         Construct::Fragment,

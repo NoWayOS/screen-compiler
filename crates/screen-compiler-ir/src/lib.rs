@@ -41,6 +41,10 @@ pub struct Module {
     /// show only its last path component, restricted to characters that are
     /// safe in comments and documentation.
     pub source_name: String,
+    /// The files the screens import components from, each as a path from
+    /// the source file's folder, in the order first read: a location in
+    /// file `n` (from 1) is in `imported[n - 1]`.
+    pub imported: Vec<String>,
     /// Design tokens: named integer constants.
     pub tokens: Vec<Token>,
     /// Screens, one per screen component.
@@ -48,6 +52,16 @@ pub struct Module {
 }
 
 impl Module {
+    /// The name of file `file`: the source file's for 0 (and for a number
+    /// it does not have), else the imported file's.
+    #[must_use]
+    pub fn file_name(&self, file: u16) -> &str {
+        usize::from(file)
+            .checked_sub(1)
+            .and_then(|index| self.imported.get(index))
+            .unwrap_or(&self.source_name)
+    }
+
     /// The token whose name has the same words as `name`.
     #[must_use]
     pub fn token(&self, name: &Name) -> Option<&Token> {
