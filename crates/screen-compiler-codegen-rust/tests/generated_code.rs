@@ -130,6 +130,15 @@ mod fixture_form_controls {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_parking_paid_css {
+    use crate::nowayos_ui;
+    include!("snapshots/parking-paid-css.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_order_summary {
     use crate::nowayos_ui;
     include!("snapshots/order-summary.rs");
@@ -208,7 +217,7 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 20] = [
+const COMPILED: [&str; 21] = [
     "bike-hire",
     "check-in",
     "check-in-parts",
@@ -223,6 +232,7 @@ const COMPILED: [&str; 20] = [
     "order-ready",
     "order-summary",
     "parking-paid",
+    "parking-paid-css",
     "parcel-status",
     "queue-ticket",
     "table-ready",

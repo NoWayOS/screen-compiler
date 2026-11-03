@@ -2564,7 +2564,25 @@ impl Lower<'_, '_, '_> {
             );
             return None;
         };
-        let colour = Colour::parse(text);
+        // CSS's custom property, `var(--text-muted)`, names it too; a
+        // fallback would be a colour value.
+        let named = match text
+            .strip_prefix("var(--")
+            .and_then(|rest| rest.strip_suffix(')'))
+        {
+            Some(name) if name.contains(',') => {
+                self.cx.error_help(
+                    Code::InvalidValue,
+                    *loc,
+                    format!("\"{text}\" has a fallback, which would be a colour value"),
+                    help,
+                );
+                return None;
+            }
+            Some(name) => name,
+            None => text.as_str(),
+        };
+        let colour = Colour::parse(named);
         if colour.is_none() {
             self.cx.error_help(
                 Code::InvalidValue,
@@ -2839,8 +2857,7 @@ impl Lower<'_, '_, '_> {
                 return None;
             }
             AttrValue::Str { value, loc } => {
-                self.string_length(prop, value, *loc);
-                return None;
+                return self.css_length(prop, value, *loc).map(Length::Px);
             }
             AttrValue::Expr(expr) => expr,
         };
@@ -2929,10 +2946,7 @@ impl Lower<'_, '_, '_> {
                 );
                 None
             }
-            Expr::Str { value, loc } => {
-                self.string_length(prop, value, *loc);
-                None
-            }
+            Expr::Str { value, loc } => self.css_length(prop, value, *loc).map(Length::Px),
             other => {
                 self.cx.error(
                     Code::Unsupported,
@@ -3217,15 +3231,53 @@ impl Lower<'_, '_, '_> {
         true
     }
 
-    fn string_length(&mut self, prop: &str, value: &str, loc: Loc) {
-        self.cx.error_help(
-            Code::InvalidValue,
-            loc,
-            format!(
-                "`{prop}` must be a number of pixels or a design token, not the string \"{value}\""
-            ),
-            format!("CSS values are not supported: write {prop}={{16}} or use a design token"),
-        );
+    /// A CSS length as a string: `"16px"`, a whole number of px, is that
+    /// many layout units, as a number is. Other units - `rem`, `em`, `%`,
+    /// `vh`, `vw` and the rest - and anything else are reported.
+    fn css_length(&mut self, prop: &str, value: &str, loc: Loc) -> Option<u16> {
+        let help = format!("write {prop}=\"16px\", {prop}={{16}} or a design token");
+        let Some(number) = value.strip_suffix("px") else {
+            let unit = value.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
+            let units = [
+                "rem", "em", "%", "vh", "vw", "vmin", "vmax", "ch", "ex", "pt", "pc", "cm", "mm",
+                "in", "q",
+            ];
+            if !unit.is_empty() && unit.len() < value.len() && units.contains(&unit) {
+                self.cx.error_help(
+                    Code::Unsupported,
+                    loc,
+                    format!("`{prop}` in `{unit}` is not supported: lengths are layout units, written in px"),
+                    help,
+                );
+            } else {
+                self.cx.error_help(
+                    Code::InvalidValue,
+                    loc,
+                    format!(
+                        "`{prop}` must be a length in px, a number or a design token, not the string \"{value}\""
+                    ),
+                    help,
+                );
+            }
+            return None;
+        };
+        let whole = !number.is_empty()
+            && number.bytes().all(|b| b.is_ascii_digit())
+            && (number == "0" || !number.starts_with('0'));
+        match number.parse::<u16>() {
+            Ok(units) if whole => Some(units),
+            _ => {
+                self.cx.error_help(
+                    Code::InvalidValue,
+                    loc,
+                    format!(
+                        "`{prop}` must be a whole number of px from 0 to 65535, not \"{value}\""
+                    ),
+                    help,
+                );
+                None
+            }
+        }
     }
 
     fn action(&mut self, value: &AttrValue, loc: Loc) -> Option<Name> {

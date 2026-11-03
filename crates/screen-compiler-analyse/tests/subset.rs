@@ -184,8 +184,13 @@ fn valid(value: Value) -> Vec<String> {
         Value::Id => vec!["\"subject\"".into()],
         Value::FieldId => vec!["\"field\"".into()],
         Value::Text => vec!["\"Sample\"".into()],
-        Value::Length => vec!["8".into(), "TOKEN".into(), "space.md".into()],
-        Value::Size => vec!["120".into(), "TOKEN".into()],
+        Value::Length => vec![
+            "8".into(),
+            "\"8px\"".into(),
+            "TOKEN".into(),
+            "space.md".into(),
+        ],
+        Value::Size => vec!["120".into(), "\"120px\"".into(), "TOKEN".into()],
         Value::Whole { least, most, token } => {
             let mut values = vec![least.to_string(), most.to_string()];
             if token {
@@ -194,7 +199,10 @@ fn valid(value: Value) -> Vec<String> {
             values
         }
         Value::Choice(names) => names.iter().map(|n| format!("\"{n}\"")).collect(),
-        Value::Colour => Colour::NAMES.iter().map(|n| format!("\"{n}\"")).collect(),
+        Value::Colour => Colour::NAMES
+            .iter()
+            .flat_map(|n| [format!("\"{n}\""), format!("\"var(--{n})\"")])
+            .collect(),
         Value::Action => vec!["props.onGo".into()],
         Value::Prop => vec!["props.done".into()],
         Value::Options { most } => vec![options(1), options(most)],
@@ -208,8 +216,8 @@ fn invalid(value: Value) -> Vec<String> {
         Value::Id => vec!["\"1st\"".into(), "props.done".into()],
         Value::FieldId => vec!["\"nowhere\"".into()],
         Value::Text => vec!["props.done".into()],
-        Value::Length => vec!["\"8px\"".into(), "props.done".into()],
-        Value::Size => vec!["space.md".into(), "\"120px\"".into()],
+        Value::Length => vec!["\"1rem\"".into(), "\"8\"".into(), "props.done".into()],
+        Value::Size => vec!["space.md".into(), "\"50%\"".into()],
         Value::Whole { least, most, .. } => {
             let mut values = vec![(most + 1).to_string(), "\"1\"".into()];
             if least > 0 {
@@ -218,7 +226,11 @@ fn invalid(value: Value) -> Vec<String> {
             values
         }
         Value::Choice(_) => vec!["\"not-a-value\"".into()],
-        Value::Colour => vec!["\"#ffffff\"".into(), "\"red\"".into()],
+        Value::Colour => vec![
+            "\"#ffffff\"".into(),
+            "\"red\"".into(),
+            "\"var(--red)\"".into(),
+        ],
         Value::Action => vec!["\"go\"".into(), "TOKEN".into()],
         Value::Prop => vec!["5".into()],
         Value::Options { most } => vec![options(most + 1), "[]".into(), "props.done".into()],

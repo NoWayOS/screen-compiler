@@ -177,9 +177,11 @@ fn design_tokens_must_be_const_whole_numbers() {
 
 #[test]
 fn lengths_are_pixels_or_tokens() {
-    let e = error(&screen("<Column gap=\"16px\" />"));
-    assert_eq!((e.code, e.loc), (Code::InvalidValue, at(2, 69)));
-    assert!(e.help.unwrap().contains("CSS"));
+    // A length in px is that many layout units (tests/css_units.rs);
+    // other units are refused where written.
+    let e = error(&screen("<Column gap=\"1rem\" />"));
+    assert_eq!((e.code, e.loc), (Code::Unsupported, at(2, 69)));
+    assert!(e.help.unwrap().contains("16px"));
     let e = error(&screen("<Column gap={NOPE} />"));
     assert_eq!((e.code, e.loc), (Code::UnknownName, at(2, 70)));
     let e = error(&screen("<Column gap={onGo} />"));
@@ -1449,7 +1451,7 @@ const fn unsupported(tsx: &'static str, code: Code, offset: u32) -> Piece {
     }
 }
 
-const PIECES: [Piece; 33] = [
+const PIECES: [Piece; 34] = [
     supported("<Text>Hello</Text>", 1),
     supported("<Spacer />", 1),
     supported("<Spacer size={8} />", 1),
@@ -1492,7 +1494,8 @@ const PIECES: [Piece; 33] = [
     ),
     unsupported("<Button>Go</Button>", Code::MissingProp, 0),
     unsupported("<TextInput placeholder=\"x\" />", Code::MissingProp, 0),
-    unsupported("<Column gap=\"16px\" />", Code::InvalidValue, 12),
+    supported("<Column gap=\"16px\" />", 1),
+    unsupported("<Column gap=\"1rem\" />", Code::Unsupported, 12),
     unsupported("<Column {...rest} />", Code::Unsupported, 8),
     unsupported(
         "{onGo && <><Text>x</Text><Text>y</Text></>}",

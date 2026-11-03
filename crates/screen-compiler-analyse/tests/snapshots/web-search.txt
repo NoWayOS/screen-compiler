@@ -6,8 +6,6 @@ web-search.tsx:8:16: error[unsupported]: top-level constant `tokens` must be a w
   help: design tokens are written `const SPACE_MD = 16;`
 web-search.tsx:11:3: error[unsupported]: React hook `useState` in a component body is not supported
   help: state and effects are outside subset v1: keep state in the application and pass callbacks as props
-web-search.tsx:14:19: error[invalid-value]: `gap` must be a number of pixels or a design token, not the string "16px"
-  help: CSS values are not supported: write gap={16} or use a design token
 web-search.tsx:14:35: error[unknown-prop]: `background` is not a style property of <Column> in subset v1
   help: <Column>'s style takes gap, padding, width, height, minWidth, maxWidth, alignItems, justifyContent, backgroundColor, borderColor, borderWidth, borderRadius
 web-search.tsx:15:9: error[unknown-element]: HTML element <h1> is not supported

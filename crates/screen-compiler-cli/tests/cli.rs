@@ -104,7 +104,7 @@ fn check_reports_every_unsupported_construct_with_positions() {
     .unwrap();
     assert_eq!(
         text(&out.stderr),
-        format!("{expected}web-search.tsx: 15 errors\n")
+        format!("{expected}web-search.tsx: 14 errors\n")
     );
 }
 
