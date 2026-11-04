@@ -366,6 +366,30 @@ declare module "nowayos:kit" {
   /** One of Lucide's icons, by name. */
   export function Icon(props: IconProps): JSX.Element;
 
+  /** What `style` on `<Image>` may name. */
+  export interface ImageStyle {
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    width?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    height?: number | `${number}px`;
+    objectFit?: "fill" | "contain" | "cover";
+  }
+
+  /** The props of `<Image>`. */
+  export interface ImageProps {
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    id?: string;
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    src: string;
+    /** A string literal. */
+    alt: string;
+    fit?: "fill" | "contain" | "cover";
+    style?: ImageStyle;
+    children?: never;
+  }
+  /** One of the product's pictures, converted at build time, by name: with words saying what it shows. */
+  export function Image(props: ImageProps): JSX.Element;
+
   /** The props of `<ScrollView>`. */
   export interface ScrollViewProps {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */

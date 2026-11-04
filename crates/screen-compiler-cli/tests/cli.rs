@@ -408,3 +408,53 @@ fn subset_prints_the_committed_tables() {
     let extra = screen_compiler(&workspace(), &["subset", "fixtures"]);
     assert_eq!(extra.status.code(), Some(2));
 }
+
+/// `<Image src>` names one of the pictures `--pictures` lists: converted with
+/// the list, as its snapshot; refused without it, or for a name outside it;
+/// and a list that is not one is a usage error, nothing converted.
+#[test]
+fn pictures_are_named_from_the_list_given() {
+    let dir = fixtures();
+    let out = screen_compiler(
+        &dir,
+        &["convert", "--pictures", "pictures.names", "photo-card.tsx"],
+    );
+    assert!(out.status.success(), "{}", text(&out.stderr));
+    assert_eq!(text(&out.stdout), snapshot("photo-card.rs"));
+
+    let out = screen_compiler(&dir, &["check", "photo-card.tsx"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(text(&out.stderr).contains("no pictures were given"));
+
+    let scratch = scratch("pictures_are_named_from_the_list_given");
+    fs::write(scratch.join("names"), "badge\n").unwrap();
+    let names = scratch.join("names");
+    let out = screen_compiler(
+        &dir,
+        &[
+            "check",
+            "--pictures",
+            names.to_str().unwrap(),
+            "photo-card.tsx",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(1));
+    assert!(text(&out.stderr).contains("there is no picture named \"landscape\""));
+
+    fs::write(&names, "Not A Name\n").unwrap();
+    let out = screen_compiler(
+        &dir,
+        &["check", "--pictures=".to_owned().as_str(), "photo-card.tsx"],
+    );
+    assert_eq!(out.status.code(), Some(2));
+    let out = screen_compiler(
+        &dir,
+        &[
+            "check",
+            &format!("--pictures={}", names.display()),
+            "photo-card.tsx",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(2));
+    assert!(text(&out.stderr).contains("is not a picture's name"));
+}

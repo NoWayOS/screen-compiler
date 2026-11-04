@@ -36,8 +36,8 @@ const USAGE: &str = "\
 screen-compiler - converts a supported subset of React/TSX into Rust for NoWayOS's UI runtime
 
 Usage:
-  screen-compiler convert <INPUT.tsx> [-o <OUTPUT.rs>]
-  screen-compiler check <INPUT.tsx>
+  screen-compiler convert <INPUT.tsx> [-o <OUTPUT.rs>] [--pictures <NAMES>]
+  screen-compiler check <INPUT.tsx> [--pictures <NAMES>]
   screen-compiler audit <DIR>
   screen-compiler subset [--dts]
   screen-compiler --help | --version
@@ -47,6 +47,9 @@ Commands:
             Nothing is written if anything is outside the supported subset.
   check     Report every construct outside the supported subset, with its
             line and column, without writing anything.
+            With --pictures, an <Image src> may name any picture NAMES
+            lists, one a line: the names file the product's picture tool
+            writes beside its pictures.
   audit     Count every construct written in DIR's .tsx files: in the
             subset, on the road towards React and CSS, out by design or
             unknown; and which files convert. Names constructs, quotes no
@@ -66,8 +69,12 @@ fn main() -> ExitCode {
         Ok(Command::Version) => {
             emit_stdout(&format!("screen-compiler {}\n", env!("CARGO_PKG_VERSION")))
         }
-        Ok(Command::Convert { input, output }) => convert(&input, output.as_deref()),
-        Ok(Command::Check { input }) => check(&input),
+        Ok(Command::Convert {
+            input,
+            output,
+            pictures,
+        }) => convert(&input, output.as_deref(), pictures.as_deref()),
+        Ok(Command::Check { input, pictures }) => check(&input, pictures.as_deref()),
         Ok(Command::Audit { dir }) => audit(&dir),
         Ok(Command::Subset { dts: false }) => emit_stdout(&screen_compiler_analyse::subset::json()),
         Ok(Command::Subset { dts: true }) => {
@@ -118,10 +125,57 @@ enum Outcome {
     Unreadable,
 }
 
+/// The most bytes a pictures' names file may hold.
+const MAX_PICTURE_NAMES_BYTES: u64 = 64 * 1024;
+
+/// The names a pictures' names file lists, one a line (blank lines and
+/// `#` comments skipped), each a lower-case letter, then lower-case
+/// letters, digits and `_`.
+fn read_pictures(path: &Path) -> Result<Vec<String>, String> {
+    let file = File::open(path).map_err(|error| error.to_string())?;
+    let mut bytes = Vec::new();
+    file.take(MAX_PICTURE_NAMES_BYTES.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > MAX_PICTURE_NAMES_BYTES {
+        return Err(format!("larger than {MAX_PICTURE_NAMES_BYTES} bytes"));
+    }
+    let text = String::from_utf8(bytes).map_err(|_| "not UTF-8".to_owned())?;
+    let mut names = Vec::new();
+    for line in text.lines().map(str::trim) {
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let valid = line.starts_with(|c: char| c.is_ascii_lowercase())
+            && line
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+        if !valid {
+            return Err(format!(
+                "`{}` is not a picture's name: a lower-case letter, then lower-case letters, digits and _",
+                escape_special(line)
+            ));
+        }
+        names.push(line.to_owned());
+    }
+    Ok(names)
+}
+
 /// Reads, parses, analyses and generates, printing diagnostics to standard
 /// error.
-fn run(input: &Path) -> Outcome {
+fn run(input: &Path, pictures: Option<&Path>) -> Outcome {
     let display = shown(input);
+    let pictures = match pictures.map(read_pictures).transpose() {
+        Ok(pictures) => pictures,
+        Err(error) => {
+            eprint_best_effort(&format!(
+                "screen-compiler: cannot read the pictures' names {}: {}\n",
+                shown(pictures.unwrap_or(input)),
+                escape_special(&error)
+            ));
+            return Outcome::Unreadable;
+        }
+    };
     let source = match read_source(input) {
         Ok(source) => source,
         Err(ReadError::Io(error)) => {
@@ -159,7 +213,9 @@ fn run(input: &Path) -> Outcome {
             return Outcome::Unreadable;
         }
     };
-    let analysis = analyse_with(&parsed, &Options::new(source_name), &mut folder);
+    let mut options = Options::new(source_name);
+    options.pictures = pictures;
+    let analysis = analyse_with(&parsed, &options, &mut folder);
     let names = analysis.file_names(&input.display().to_string());
     let names: Vec<String> = names
         .iter()
@@ -178,9 +234,9 @@ fn run(input: &Path) -> Outcome {
     }
 }
 
-fn convert(input: &Path, output: Option<&Path>) -> ExitCode {
+fn convert(input: &Path, output: Option<&Path>, pictures: Option<&Path>) -> ExitCode {
     let display = shown(input);
-    match run(input) {
+    match run(input, pictures) {
         Outcome::Converted { rust, .. } => match output {
             Some(path) => match write_whole(path, &rust) {
                 Ok(()) => ExitCode::SUCCESS,
@@ -204,9 +260,9 @@ fn convert(input: &Path, output: Option<&Path>) -> ExitCode {
     }
 }
 
-fn check(input: &Path) -> ExitCode {
+fn check(input: &Path, pictures: Option<&Path>) -> ExitCode {
     let display = shown(input);
-    match run(input) {
+    match run(input, pictures) {
         Outcome::Converted { module, .. } => {
             let nodes: usize = module.screens.iter().map(|s| s.nodes().len()).sum();
             let actions: usize = module.screens.iter().map(|s| s.actions().len()).sum();

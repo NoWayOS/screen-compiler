@@ -208,6 +208,45 @@ impl TextAlign {
     }
 }
 
+/// How a picture fills a box of another shape: `<Image fit="…">`, or
+/// CSS's `objectFit` in its style (contract v15).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Fit {
+    /// Stretched to the box: CSS's default.
+    #[default]
+    Fill,
+    /// As large as fits inside the box, its shape kept.
+    Contain,
+    /// As small as covers the box, its shape kept, cut on two sides.
+    Cover,
+}
+
+impl Fit {
+    /// Every value it takes, in order.
+    pub const NAMES: [&'static str; 3] = ["fill", "contain", "cover"];
+
+    /// The fit a value names.
+    #[must_use]
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "fill" => Some(Self::Fill),
+            "contain" => Some(Self::Contain),
+            "cover" => Some(Self::Cover),
+            _ => None,
+        }
+    }
+
+    /// Its name in the target API (`ui::Fit::…`).
+    #[must_use]
+    pub const fn rust(self) -> &'static str {
+        match self {
+            Self::Fill => "Fill",
+            Self::Contain => "Contain",
+            Self::Cover => "Cover",
+        }
+    }
+}
+
 /// One of the theme's colours, named by a style: `color`,
 /// `backgroundColor` or `borderColor` take its TSX name - `"text-muted"` -
 /// never a colour value, so the large-text, high-contrast theme recolours

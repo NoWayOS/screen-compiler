@@ -7,9 +7,9 @@
 use std::fmt;
 
 use screen_compiler_ir::{
-    AlignItems, ButtonVariant, ICON_NAMES, InputMode, Justify, MAX_BORDER_WIDTH, MAX_INPUT_LEN,
-    MAX_LINES, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, SELECT_ROWS, TextAlign, TextRole,
-    Tone, Weight,
+    AlignItems, ButtonVariant, Fit, ICON_NAMES, InputMode, Justify, MAX_BORDER_WIDTH,
+    MAX_INPUT_LEN, MAX_LINES, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, SELECT_ROWS,
+    TextAlign, TextRole, Tone, Weight,
 };
 
 /// What a component holds between its opening and closing tags.
@@ -214,6 +214,8 @@ pub enum KitComponent {
     ProgressBar,
     /// One of Lucide's icons, by name.
     Icon,
+    /// One of the product's pictures, by name (contract v15).
+    Image,
     /// One child shown through a view that scrolls: at most one
     /// in a screen, never nested.
     ScrollView,
@@ -228,7 +230,7 @@ pub enum KitComponent {
 
 impl KitComponent {
     /// Every component, in documentation order.
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 19] = [
         Self::Screen,
         Self::Column,
         Self::Row,
@@ -243,6 +245,7 @@ impl KitComponent {
         Self::HeaderBar,
         Self::ProgressBar,
         Self::Icon,
+        Self::Image,
         Self::ScrollView,
         Self::Select,
         Self::Keyboard,
@@ -284,6 +287,7 @@ impl KitComponent {
             Self::HeaderBar => "HeaderBar",
             Self::ProgressBar => "ProgressBar",
             Self::Icon => "Icon",
+            Self::Image => "Image",
             Self::ScrollView => "ScrollView",
             Self::Select => "Select",
             Self::Keyboard => "Keyboard",
@@ -309,6 +313,9 @@ impl KitComponent {
             Self::HeaderBar => "Children side by side on a header bar.",
             Self::ProgressBar => "A bar the application fills, from a prop.",
             Self::Icon => "One of Lucide's icons, by name.",
+            Self::Image => {
+                "One of the product's pictures, converted at build time, by name: with words saying what it shows."
+            }
             Self::ScrollView => {
                 "One child shown through a view that scrolls: at most one in a screen, never nested."
             }
@@ -346,6 +353,7 @@ impl KitComponent {
             | Self::RadioGroup
             | Self::ProgressBar
             | Self::Icon
+            | Self::Image
             | Self::Select
             | Self::Keyboard
             | Self::FieldError => Children::None,
@@ -434,6 +442,19 @@ impl KitComponent {
             }
             Self::ProgressBar => const { &[ID, Prop::required("value", Value::Prop)] },
             Self::Icon => const { &[ID, Prop::required("name", Value::Choice(&ICON_NAMES))] },
+            Self::Image => {
+                const {
+                    &[
+                        ID,
+                        // React DOM's names: the picture, and the words for
+                        // anyone who cannot see it ("" for decoration).
+                        Prop::required("src", Value::Id),
+                        Prop::required("alt", Value::Text),
+                        Prop::optional("fit", Value::Choice(&Fit::NAMES)),
+                        STYLE,
+                    ]
+                }
+            }
             Self::ScrollView | Self::Keyboard => &[ID],
             Self::FieldError => const { &[ID, Prop::required("for", Value::FieldId)] },
             Self::Select => {
@@ -491,6 +512,15 @@ impl KitComponent {
                     ]
                 }
             }
+            Self::Image => {
+                const {
+                    &[
+                        styled("width", Value::Size),
+                        styled("height", Value::Size),
+                        styled("objectFit", Value::Choice(&Fit::NAMES)),
+                    ]
+                }
+            }
             _ => &[],
         }
     }
@@ -512,10 +542,10 @@ impl KitComponent {
     pub fn unknown_prop_help(self, prop: &str) -> String {
         match (self, prop) {
             (_, "style") => {
-                "a style is taken by Column, Row, Card, Notice, HeaderBar, Text and Button".to_owned()
+                "a style is taken by Column, Row, Card, Notice, HeaderBar, Text, Button and Image".to_owned()
             }
             (_, "className" | "class" | "sx") => {
-                "Screen Compiler does not implement CSS classes: write style={{ … }} with the declared properties, on Column, Row, Card, Notice, HeaderBar, Text or Button"
+                "Screen Compiler does not implement CSS classes: write style={{ … }} with the declared properties, on Column, Row, Card, Notice, HeaderBar, Text, Button or Image"
                     .to_owned()
             }
             (_, "key") => "keys matter only in lists, which are outside subset v1".to_owned(),

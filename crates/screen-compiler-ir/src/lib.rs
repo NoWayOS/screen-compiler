@@ -28,7 +28,7 @@ pub use diag::{Code, Diagnostic, Loc, Severity, has_errors, sort_diagnostics};
 pub use name::{Name, NameError};
 pub use outline::outline;
 pub use style::{
-    AlignItems, ButtonVariant, Colour, ICON_NAMES, Justify, Look, MAX_BORDER_WIDTH, MAX_LINES,
+    AlignItems, ButtonVariant, Colour, Fit, ICON_NAMES, Justify, Look, MAX_BORDER_WIDTH, MAX_LINES,
     MAX_RADIUS, Space, Surface, TextAlign, TextRole, TextStyle, Tone, Weight, is_display,
     is_printable,
 };
@@ -258,6 +258,7 @@ impl Node {
             NodeKind::FieldError { .. } => "FieldError",
             NodeKind::Progress { .. } => "ProgressBar",
             NodeKind::Icon { .. } => "Icon",
+            NodeKind::Image { .. } => "Image",
             NodeKind::Group(group) if group.children.len() > 1 => "cond ? ... : ...",
             NodeKind::Group(group) if group.unless => "!cond && ...",
             NodeKind::Group(_) => "cond && ...",
@@ -379,6 +380,21 @@ pub enum NodeKind {
     Icon {
         /// Its Lucide name.
         name: String,
+    },
+    /// One of the product's pictures, converted at build time (contract
+    /// v15): `<Image src="harbour" alt="…" fit="cover" />`, `src` one of
+    /// the names the picture tool lists (`--pictures`).
+    Image {
+        /// The picture's name, as the product's `pictures.toml` gives it.
+        picture: String,
+        /// What it shows, in words: empty for decoration.
+        alt: String,
+        /// How it fills a box of another shape.
+        fit: Fit,
+        /// Its fixed width, from its style; its own when absent.
+        width: Option<Length>,
+        /// Its fixed height, from its style; its own when absent.
+        height: Option<Length>,
     },
     /// How far something has gone, as a bar the application fills at run
     /// time: `<ProgressBar value={props.fuelled} />`. Its prop

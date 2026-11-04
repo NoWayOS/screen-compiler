@@ -66,7 +66,7 @@ pixel. (Shortened from `fixtures/welcome.tsx` and its generated Rust.)
 
 Screens built from `Screen`, `Column`, `Row`, `Text`, `Button`, `TextInput`,
 `Checkbox`, `RadioGroup`, `Spacer`, `Card`, `Notice`, `HeaderBar`,
-`ProgressBar` and `Icon`, imported from the Screen Compiler's kit; design tokens as
+`ProgressBar`, `Icon` and `Image` (a picture converted at build time), imported from the Screen Compiler's kit; design tokens as
 constants; callback props that become actions; text the application sets at
 run time; and parts the application shows or hides. The full subset, element
 by element: [DEVELOPING.md](DEVELOPING.md).

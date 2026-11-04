@@ -121,6 +121,13 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v15 adds `image`: one of the product's pictures, converted at
+//! build time, by its static in the `pictures` module at the root of the
+//! crate the screens are compiled in (`crate::pictures::HARBOUR`, which the
+//! product's picture tool writes), fitted by a [`builder::Fit`], with
+//! words saying what it shows and the size its style gives it
+//! (`<Image src="harbour" alt="…" style={{ width: 320, objectFit: "cover" }} />`).
+//!
 //! Contract v14 adds `slot_template` and `slot_template_styled`: a slot
 //! between literal text compiled in (`<Text>Hello, {props.name}!</Text>`),
 //! the literals a static `Template`, the application setting only its part.
@@ -133,7 +140,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 14;
+pub const VERSION: u32 = 15;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -195,6 +202,11 @@ pub const MAPPINGS: &[Mapping] = &[
         tsx: "<Icon name=\"fuel\" />",
         ir: "NodeKind::Icon { name: \"fuel\" }",
         rust: "b.icon(&ui::icons::FUEL)?",
+    },
+    Mapping {
+        tsx: "<Image src=\"harbour\" alt=\"…\" fit=\"cover\" style={{ width: 320, height: 200 }} /> (fit, or a style's objectFit)",
+        ir: "NodeKind::Image { picture: \"harbour\", alt, fit: Cover, width, height }",
+        rust: "b.image(&crate::pictures::HARBOUR, ui::Fit::Cover, \"…\", ui::Layout::new().width(320).height(200))? (contract v15)",
     },
     Mapping {
         tsx: "<ProgressBar value={props.fuelled} />",
@@ -368,6 +380,59 @@ pub mod builder {
         pub static SHIELD_CHECK: Icon = Icon("shield-check");
         /// `user-check`.
         pub static USER_CHECK: Icon = Icon("user-check");
+    }
+
+    /// One of the product's pictures (contract v15): NoWayOS's
+    /// `nowayos_pictures::Picture`, here only its name, for tests, and its
+    /// size in layout units.
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct Picture {
+        name: &'static str,
+        width: u32,
+        height: u32,
+    }
+
+    impl Picture {
+        /// The picture `name`, `width` x `height` layout units.
+        #[must_use]
+        pub const fn new(name: &'static str, width: u32, height: u32) -> Self {
+            Self {
+                name,
+                width,
+                height,
+            }
+        }
+
+        /// Its name, as the product's `pictures.toml` gives it.
+        #[must_use]
+        pub const fn name(&self) -> &'static str {
+            self.name
+        }
+
+        /// Its width, in layout units.
+        #[must_use]
+        pub const fn width(&self) -> u32 {
+            self.width
+        }
+
+        /// Its height, in layout units.
+        #[must_use]
+        pub const fn height(&self) -> u32 {
+            self.height
+        }
+    }
+
+    /// How a picture fills a box of another shape (contract v15): CSS's
+    /// `object-fit`.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub enum Fit {
+        /// Stretched to the box.
+        #[default]
+        Fill,
+        /// As large as fits inside it, its shape kept.
+        Contain,
+        /// As small as covers it, its shape kept, cut on two sides.
+        Cover,
     }
 
     /// An action a screen emits, such as a button press.
@@ -1308,6 +1373,21 @@ pub mod builder {
         ///
         /// The builder's error, for example when it is full.
         fn icon(&mut self, icon: &'static icons::Icon) -> Result<Self::Node, Self::Error>;
+
+        /// One of the product's pictures, by its static, fitted by `fit`,
+        /// with `alt` saying what it shows ("" for decoration), sized by
+        /// `layout`'s width and height, else its own (contract v15).
+        ///
+        /// # Errors
+        ///
+        /// The builder's error, for example when it is full.
+        fn image(
+            &mut self,
+            picture: &'static Picture,
+            fit: Fit,
+            alt: &'static str,
+            layout: Layout,
+        ) -> Result<Self::Node, Self::Error>;
 
         /// A progress bar bound to `slot`, empty until the application
         /// fills it (contract v5).

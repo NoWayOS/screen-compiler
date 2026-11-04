@@ -211,6 +211,25 @@ fn describe(module: &Module, numbers: &Numbers<'_>, node: &Node) -> String {
         ),
         NodeKind::Progress { slot } => format!("progress slot {}", number(&numbers.slots, slot)),
         NodeKind::Icon { name } => format!("icon {name}"),
+        NodeKind::Image {
+            picture,
+            alt,
+            fit,
+            width,
+            height,
+        } => {
+            let sized = |side: &str, length: &Option<Length>| {
+                length
+                    .as_ref()
+                    .map_or_else(String::new, |l| format!(" {side}={}", px(Some(l))))
+            };
+            format!(
+                "image {picture} alt={alt:?} fit={}{}{}",
+                fit.rust().to_lowercase(),
+                sized("width", width),
+                sized("height", height)
+            )
+        }
         NodeKind::Group(group) if group.unless => {
             format!("unless group {}", number(&numbers.groups, &group.name))
         }

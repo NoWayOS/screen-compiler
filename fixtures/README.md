@@ -32,7 +32,10 @@ customer, and none may be added from one.
   converted since text could mix literals and a prop. `notice-board.tsx` wraps text onto
   several lines: static text in a notice and a slot in a card;
   `fuelling.tsx` live figures in slots and a progress bar; `tiles.tsx`
-  icons on a header bar and on cards; `order-ready.tsx` text aligned
+  icons on a header bar and on cards; `photo-card.tsx` pictures (contract
+  v15) - NoWayOS's samples, which `pictures.names` lists and every
+  conversion here is given - covering a box, at their own size and
+  contained; `order-ready.tsx` text aligned
   to the centre and the end, and the theme's spacing tokens, so
   `make contract-check` draws it in the large-text theme too
   (`order_ready.large.png`); `parking-paid.tsx` every property a

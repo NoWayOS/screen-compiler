@@ -216,6 +216,22 @@
       "style": []
     },
     {
+      "name": "Image",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "src", "required": true, "value": { "kind": "id" } },
+        { "name": "alt", "required": true, "value": { "kind": "text" } },
+        { "name": "fit", "required": false, "value": { "kind": "choice", "values": ["fill", "contain", "cover"] } },
+        { "name": "style", "required": false, "value": { "kind": "style" } }
+      ],
+      "style": [
+        { "name": "width", "value": { "kind": "size" } },
+        { "name": "height", "value": { "kind": "size" } },
+        { "name": "objectFit", "value": { "kind": "choice", "values": ["fill", "contain", "cover"] } }
+      ]
+    },
+    {
       "name": "ScrollView",
       "children": "one-element",
       "props": [
