@@ -1,10 +1,10 @@
-screen-compiler audit: 27 files
-  convert                25  92.5%
+screen-compiler audit: 28 files
+  convert                26  92.8%
   do not convert          2
   cannot be read          0
 
-constructs            861
-  in the subset       850  98.7%
+constructs            999
+  in the subset       988  98.8%
   on the road           2  0.2%
   out by design         5  0.5%
   unknown               4  0.4%
@@ -47,6 +47,7 @@ files
   notice-board.tsx  converts
   order-ready.tsx  converts
   order-summary.tsx  converts
+  panels.tsx  converts
   parcel-status.tsx  converts
   parking-paid-css.tsx  converts
   parking-paid.tsx  converts

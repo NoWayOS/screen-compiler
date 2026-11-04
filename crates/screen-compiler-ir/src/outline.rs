@@ -32,6 +32,23 @@ pub fn outline(module: &Module, screen: &Screen) -> String {
     let mut out = String::new();
     let mut stack: Vec<(&Node, usize)> = vec![(&screen.root, 0)];
     while let Some((node, depth)) = stack.pop() {
+        // A container that scrolls (contract v17): a scroll view of its
+        // size, then the container inside it.
+        let mut depth = depth;
+        if let NodeKind::Column(container) | NodeKind::Row(container) = &node.kind
+            && let Some(axes) = container.overflow
+        {
+            for _ in 0..depth {
+                out.push_str("  ");
+            }
+            out.push_str(&format!(
+                "scroll axes={}{}",
+                axes.outline(),
+                sized(module, container)
+            ));
+            out.push('\n');
+            depth = depth.saturating_add(1);
+        }
         for _ in 0..depth {
             out.push_str("  ");
         }
@@ -97,6 +114,26 @@ fn styled(style: TextStyle) -> String {
 /// surface: ` width=W height=H min-width=W max-width=W align=A justify=J`
 /// then its look, each only where named.
 fn styled_container(module: &Module, container: &Container) -> String {
+    // A container that scrolls leaves its size to its scroll view.
+    let mut out = if container.overflow.is_some() {
+        String::new()
+    } else {
+        sized(module, container)
+    };
+    // Each only where it is not the default: stretched, from the start.
+    if let Some(align) = container.align.filter(|a| *a != crate::AlignItems::Stretch) {
+        out.push_str(&format!(" align={}", align.tsx()));
+    }
+    if let Some(justify) = container.justify.filter(|j| *j != crate::Justify::Start) {
+        out.push_str(&format!(" justify={}", justify.tsx()));
+    }
+    out.push_str(&looked(container.look));
+    out
+}
+
+/// A container's size in the outline: ` width=N height=N min-width=N
+/// max-width=N`, each only where named.
+fn sized(module: &Module, container: &Container) -> String {
     let mut out = String::new();
     for (name, length) in [
         ("width", &container.width),
@@ -110,14 +147,6 @@ fn styled_container(module: &Module, container: &Container) -> String {
             out.push_str(&format!(" {name}={units}"));
         }
     }
-    // Each only where it is not the default: stretched, from the start.
-    if let Some(align) = container.align.filter(|a| *a != crate::AlignItems::Stretch) {
-        out.push_str(&format!(" align={}", align.tsx()));
-    }
-    if let Some(justify) = container.justify.filter(|j| *j != crate::Justify::Start) {
-        out.push_str(&format!(" justify={}", justify.tsx()));
-    }
-    out.push_str(&looked(container.look));
     out
 }
 

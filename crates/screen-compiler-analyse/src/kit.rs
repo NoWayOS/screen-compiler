@@ -9,7 +9,7 @@ use std::fmt;
 use screen_compiler_ir::{
     AlignItems, ButtonVariant, Fit, ICON_NAMES, InputMode, Justify, MAX_BORDER_WIDTH,
     MAX_INPUT_LEN, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS,
-    SELECT_ROWS, TextAlign, TextRole, Tone, Weight,
+    SELECT_ROWS, ScrollAxes, TextAlign, TextRole, Tone, Weight,
 };
 
 /// What a component holds between its opening and closing tags.
@@ -181,6 +181,10 @@ const CONTAINER_STYLE: &[StyleProperty] = &[
             token: false,
         },
     ),
+    // A container that scrolls (contract v17).
+    styled("overflow", Value::Choice(&ScrollAxes::NAMES)),
+    styled("overflowX", Value::Choice(&ScrollAxes::NAMES)),
+    styled("overflowY", Value::Choice(&ScrollAxes::NAMES)),
 ];
 
 /// A component of the kit screens import from the kit module.

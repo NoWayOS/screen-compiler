@@ -84,7 +84,6 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
     let mut cases: BTreeMap<&[String], Seen> = BTreeMap::new();
     let mut too_deep = false;
     // Each node with its depth, and whether a scroll view holds it.
-    let mut scroll_views = 0_usize;
     // The first keyboard, and whether the screen has a text input for it.
     let mut keyboard: Option<Option<Loc>> = None;
     let mut text_input = false;
@@ -94,30 +93,6 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
     let mut stack = vec![(&screen.root, 1_usize, false)];
     while let Some((node, depth, scrolled)) = stack.pop() {
         let is_scroll = matches!(node.kind, NodeKind::ScrollView { .. });
-        if is_scroll {
-            scroll_views = scroll_views.saturating_add(1);
-            if scrolled {
-                diagnostics.push(
-                    Diagnostic::error(
-                        Code::InvalidChildren,
-                        node.loc,
-                        "a <ScrollView> cannot hold another",
-                    )
-                    .with_help("a screen scrolls in one place: keep the outer one"),
-                );
-            } else if scroll_views > 1 {
-                diagnostics.push(
-                    Diagnostic::error(
-                        Code::Limit,
-                        node.loc,
-                        format!("screen `{}` has more than one <ScrollView>", screen.name),
-                    )
-                    .with_help(
-                        "a screen scrolls in one place: put what scrolls in one <ScrollView>",
-                    ),
-                );
-            }
-        }
         match node.kind {
             NodeKind::TextInput { .. } => text_input = true,
             NodeKind::Keyboard if keyboard.is_some() => diagnostics.push(

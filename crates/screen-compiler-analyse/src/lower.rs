@@ -7,9 +7,9 @@ use screen_compiler_ir::{
     AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Fit, Group, ICON_NAMES,
     InputMode, Justify, Length, Loc, Look, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LABEL_BYTES,
     MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS,
-    MAX_TEMPLATE_BYTES, Module, Name, Node, NodeKind, SELECT_ROWS, Screen, Space, Surface,
-    Template, TextAlign, TextRole, TextStyle, Token, Tone, Weight, has_errors, sort_diagnostics,
-    special_char, validate,
+    MAX_TEMPLATE_BYTES, Module, Name, Node, NodeKind, SELECT_ROWS, Screen, ScrollAxes, Space,
+    Surface, Template, TextAlign, TextRole, TextStyle, Token, Tone, Weight, has_errors,
+    sort_diagnostics, special_char, validate,
 };
 use screen_compiler_tsx::SourceModule;
 use screen_compiler_tsx::syntax::{
@@ -1310,6 +1310,10 @@ struct StyleProps {
     colour: Option<Colour>,
     /// `<Image>`'s `objectFit`.
     fit: Option<Fit>,
+    /// A container's `overflow` (both ways), `overflowX` and `overflowY`
+    /// (contract v17): which ways it scrolls.
+    scroll_x: bool,
+    scroll_y: bool,
     /// Where `style` is written.
     at: Option<Loc>,
 }
@@ -1612,6 +1616,12 @@ impl Lower<'_, '_, '_> {
                     align: props.style.align,
                     justify: props.style.justify,
                     look: props.style.look,
+                    overflow: match (props.style.scroll_x, props.style.scroll_y) {
+                        (true, true) => Some(ScrollAxes::Both),
+                        (true, false) => Some(ScrollAxes::Horizontal),
+                        (false, true) => Some(ScrollAxes::Vertical),
+                        (false, false) => None,
+                    },
                 };
                 if component == KitComponent::Notice && surface.is_none() {
                     return None;
@@ -3035,6 +3045,15 @@ impl Lower<'_, '_, '_> {
                 }
                 "objectFit" => {
                     style.fit = self.keyword(key, &prop.value, &Fit::NAMES, Fit::parse);
+                }
+                "overflow" | "overflowX" | "overflowY" => {
+                    let scrolls = self
+                        .keyword(key, &prop.value, &ScrollAxes::NAMES, |value| {
+                            ScrollAxes::NAMES.contains(&value).then_some(())
+                        })
+                        .is_some();
+                    style.scroll_x |= scrolls && key != "overflowY";
+                    style.scroll_y |= scrolls && key != "overflowX";
                 }
                 _ => {}
             }

@@ -29,8 +29,8 @@ pub use name::{Name, NameError};
 pub use outline::outline;
 pub use style::{
     AlignItems, ButtonVariant, Colour, Fit, ICON_NAMES, Justify, Look, MAX_BORDER_WIDTH, MAX_LINES,
-    MAX_RADIUS, Space, Surface, TextAlign, TextRole, TextStyle, Tone, Weight, is_display,
-    is_printable,
+    MAX_RADIUS, ScrollAxes, Space, Surface, TextAlign, TextRole, TextStyle, Tone, Weight,
+    is_display, is_printable,
 };
 pub use validate::{MAX_DEPTH, validate};
 
@@ -547,6 +547,10 @@ pub struct Container {
     pub justify: Option<Justify>,
     /// Its fill, border and corners.
     pub look: Look,
+    /// Whether its style names `overflow`, `overflowX` or `overflowY` of
+    /// `auto` or `scroll` (contract v17), and so which ways it scrolls: it
+    /// is then a scroll view of its size holding it, which keeps the rest.
+    pub overflow: Option<ScrollAxes>,
 }
 
 /// A length: a literal number of logical pixels, a screen's own design

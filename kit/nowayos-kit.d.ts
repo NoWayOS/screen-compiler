@@ -66,6 +66,9 @@ declare module "nowayos:kit" {
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
     borderRadius?: number;
+    overflow?: "auto" | "scroll";
+    overflowX?: "auto" | "scroll";
+    overflowY?: "auto" | "scroll";
   }
 
   /** The props of `<Column>`. */
@@ -106,6 +109,9 @@ declare module "nowayos:kit" {
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
     borderRadius?: number;
+    overflow?: "auto" | "scroll";
+    overflowX?: "auto" | "scroll";
+    overflowY?: "auto" | "scroll";
   }
 
   /** The props of `<Row>`. */
@@ -250,6 +256,9 @@ declare module "nowayos:kit" {
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
     borderRadius?: number;
+    overflow?: "auto" | "scroll";
+    overflowX?: "auto" | "scroll";
+    overflowY?: "auto" | "scroll";
   }
 
   /** The props of `<Card>`. */
@@ -290,6 +299,9 @@ declare module "nowayos:kit" {
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
     borderRadius?: number;
+    overflow?: "auto" | "scroll";
+    overflowX?: "auto" | "scroll";
+    overflowY?: "auto" | "scroll";
   }
 
   /** The props of `<Notice>`. */
@@ -331,6 +343,9 @@ declare module "nowayos:kit" {
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
     borderRadius?: number;
+    overflow?: "auto" | "scroll";
+    overflowX?: "auto" | "scroll";
+    overflowY?: "auto" | "scroll";
   }
 
   /** The props of `<HeaderBar>`. */

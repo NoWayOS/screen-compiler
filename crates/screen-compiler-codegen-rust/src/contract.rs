@@ -121,6 +121,12 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v17 adds `scroll_view_axes`: a container whose style names
+//! `overflow`, `overflowX` or `overflowY` of `auto` or `scroll` is a scroll
+//! view of its size, down, across or both ways ([`builder::ScrollAxes`]),
+//! holding the container with the rest of its style. A screen may have any
+//! number of scroll views, one inside another.
+//!
 //! Contract v16 adds `long_text`: paragraphs of any length the
 //! application sets at run time, bound to a slot and numbered with the
 //! slots, up to the bytes the screen gives
@@ -146,7 +152,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 16;
+pub const VERSION: u32 = 17;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -290,6 +296,11 @@ pub const MAPPINGS: &[Mapping] = &[
         rust: "b.keyboard()?",
     },
     Mapping {
+        tsx: "<Column style={{ overflowY: \"auto\", height: 200 }}>…</Column> (overflowX across; overflow, or both, both ways)",
+        ir: "NodeKind::Column(Container { overflow: Some(ScrollAxes::Vertical), height, … })",
+        rust: "{ let inner = b.column(layout, &[…])?; b.scroll_view_axes(ui::Layout::new().height(200), ui::ScrollAxes::Vertical, inner) }? (contract v17)",
+    },
+    Mapping {
         tsx: "<ScrollView><Column>…</Column></ScrollView>",
         ir: "NodeKind::ScrollView { children: [column] }",
         rust: "b.scroll_view(ui::Layout::new(), column)?",
@@ -431,6 +442,18 @@ pub mod builder {
         pub const fn height(&self) -> u32 {
             self.height
         }
+    }
+
+    /// Which ways a scroll view scrolls (contract v17).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub enum ScrollAxes {
+        /// Down.
+        #[default]
+        Vertical,
+        /// Across.
+        Horizontal,
+        /// Both ways.
+        Both,
     }
 
     /// How a picture fills a box of another shape (contract v15): CSS's
@@ -1281,11 +1304,24 @@ pub mod builder {
         ///
         /// # Errors
         ///
-        /// The builder's error: for example when it is full, when the
-        /// screen already has a scroll view, or when `child` holds one.
+        /// The builder's error: for example when it is full.
         fn scroll_view(
             &mut self,
             layout: Layout,
+            child: Self::Node,
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// A scroll view of `child` along `axes`, of `layout`'s size: a
+        /// container whose style names `overflow`, `overflowX` or
+        /// `overflowY` (contract v17).
+        ///
+        /// # Errors
+        ///
+        /// The builder's error: for example when it is full.
+        fn scroll_view_axes(
+            &mut self,
+            layout: Layout,
+            axes: ScrollAxes,
             child: Self::Node,
         ) -> Result<Self::Node, Self::Error>;
 

@@ -13,8 +13,8 @@
 
 use screen_compiler_codegen_rust::contract::builder::{
     ActionId, Align, ButtonVariant, Colour, FieldId, Fit, GroupId, Input, InputMode, Justify,
-    Layout, Look, Picker, Picture, SlotId, Space, Surface, SwitchId, Template, TextAlign,
-    TextStyle, Tone, UiBuilder, Weight, icons,
+    Layout, Look, Picker, Picture, ScrollAxes, SlotId, Space, Surface, SwitchId, Template,
+    TextAlign, TextStyle, Tone, UiBuilder, Weight, icons,
 };
 
 /// A theme colour's TSX name, as `screen_compiler_ir::outline` writes it.
@@ -307,6 +307,23 @@ impl UiBuilder for Recorder {
 
     fn scroll_view(&mut self, _layout: Layout, child: NodeRef) -> Result<NodeRef, RecordError> {
         self.add("scroll".to_owned(), &[child])
+    }
+
+    fn scroll_view_axes(
+        &mut self,
+        layout: Layout,
+        axes: ScrollAxes,
+        child: NodeRef,
+    ) -> Result<NodeRef, RecordError> {
+        let axes = match axes {
+            ScrollAxes::Vertical => "vertical",
+            ScrollAxes::Horizontal => "horizontal",
+            ScrollAxes::Both => "both",
+        };
+        self.add(
+            format!("scroll axes={axes}{}", container_style(layout)),
+            &[child],
+        )
     }
 
     fn keyboard(&mut self) -> Result<NodeRef, RecordError> {
