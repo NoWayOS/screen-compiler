@@ -417,6 +417,25 @@ impl UiBuilder for Recorder {
         Ok(node)
     }
 
+    fn long_text(
+        &mut self,
+        slot: SlotId,
+        capacity: u16,
+        style: TextStyle,
+    ) -> Result<NodeRef, RecordError> {
+        if self.slots.contains(&slot.get()) {
+            return Err(RecordError::Duplicate);
+        }
+        let line = format!(
+            "long-text slot {} capacity={capacity}{}",
+            slot.get(),
+            styled(style)
+        );
+        let node = self.add(line, &[])?;
+        self.slots.push(slot.get());
+        Ok(node)
+    }
+
     fn slot_styled(&mut self, slot: SlotId, style: TextStyle) -> Result<NodeRef, RecordError> {
         if self.slots.contains(&slot.get()) {
             return Err(RecordError::Duplicate);

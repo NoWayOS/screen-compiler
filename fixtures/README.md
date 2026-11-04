@@ -32,7 +32,8 @@ customer, and none may be added from one.
   converted since text could mix literals and a prop. `notice-board.tsx` wraps text onto
   several lines: static text in a notice and a slot in a card;
   `fuelling.tsx` live figures in slots and a progress bar; `tiles.tsx`
-  icons on a header bar and on cards; `photo-card.tsx` pictures (contract
+  icons on a header bar and on cards; `article.tsx` a long text (contract v16), which `make contract-check`
+  fills with `article.txt`, a synthetic 10 KB article; `photo-card.tsx` pictures (contract
   v15) - NoWayOS's samples, which `pictures.names` lists and every
   conversion here is given - covering a box, at their own size and
   contained; `order-ready.tsx` text aligned

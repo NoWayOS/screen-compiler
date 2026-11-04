@@ -8,8 +8,8 @@ use std::fmt;
 
 use screen_compiler_ir::{
     AlignItems, ButtonVariant, Fit, ICON_NAMES, InputMode, Justify, MAX_BORDER_WIDTH,
-    MAX_INPUT_LEN, MAX_LINES, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, SELECT_ROWS,
-    TextAlign, TextRole, Tone, Weight,
+    MAX_INPUT_LEN, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS,
+    SELECT_ROWS, TextAlign, TextRole, Tone, Weight,
 };
 
 /// What a component holds between its opening and closing tags.
@@ -392,6 +392,15 @@ impl KitComponent {
                             },
                         ),
                         Prop::optional("align", Value::Choice(&TextAlign::NAMES)),
+                        // A long text's most bytes (contract v16).
+                        Prop::optional(
+                            "maxLength",
+                            Value::Whole {
+                                least: 1,
+                                most: MAX_LONG_TEXT,
+                                token: true,
+                            },
+                        ),
                         STYLE,
                     ]
                 }

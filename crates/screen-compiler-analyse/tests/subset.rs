@@ -247,7 +247,7 @@ fn invalid(value: Value) -> Vec<String> {
         Value::Length => vec!["\"1rem\"".into(), "\"8\"".into(), "props.done".into()],
         Value::Size => vec!["space.md".into(), "\"50%\"".into()],
         Value::Whole { least, most, .. } => {
-            let mut values = vec![(most + 1).to_string(), "\"1\"".into()];
+            let mut values = vec![(u32::from(most) + 1).to_string(), "\"1\"".into()];
             if least > 0 {
                 values.push((least - 1).to_string());
             }
@@ -327,10 +327,14 @@ fn element(component: KitComponent, change: &Change) -> String {
         .chain(attrs)
         .collect::<Vec<_>>()
         .join(" ");
+    // A text with a most length is a long text, which shows one prop
+    // alone (contract v16).
+    let long = matches!(change, Change::Prop("maxLength", _)) && component == KitComponent::Text;
     match component.children() {
         Children::None => format!("<{open} />"),
         Children::One => format!("<{open}><Column><Text>SAMPLE</Text></Column></{name}>"),
         Children::Elements => format!("<{open}><Text>SAMPLE</Text></{name}>"),
+        Children::TextOrProp if long => format!("<{open}>{{props.article}}</{name}>"),
         Children::TextOrProp | Children::Text => format!("<{open}>SAMPLE</{name}>"),
     }
 }

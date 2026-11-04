@@ -85,6 +85,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         "/// Nodes a screen may use: more than any fixture needs."
     )?;
     writeln!(out, "pub const CAPACITY: usize = 128;")?;
+    writeln!(
+        out,
+        "/// Bytes of long text a screen may hold (contract v16): more than any fixture needs."
+    )?;
+    writeln!(out, "pub const TEXT: usize = 16_384;")?;
     for file in &files {
         let screens = screens(&file.source);
         if screens.is_empty() {
@@ -121,7 +126,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             writeln!(out, "///\n/// # Errors\n///\n/// The tree's error.")?;
             writeln!(
                 out,
-                "pub fn build_{module}_{screen}(tree: &mut nowayos_ui::Tree<CAPACITY>) -> Result<nowayos_ui::NodeId, nowayos_ui::UiError> {{"
+                "pub fn build_{module}_{screen}(tree: &mut nowayos_ui::Tree<CAPACITY, TEXT>) -> Result<nowayos_ui::NodeId, nowayos_ui::UiError> {{"
             )?;
             writeln!(
                 out,
@@ -288,7 +293,11 @@ mod run {
     use nowayos_testkit::Framebuffer;
     use nowayos_ui::{GroupId, NodeId, SlotId, SwitchId, Tree, UiError};
 
-    use super::CAPACITY;
+    use super::{CAPACITY, TEXT};
+
+    /// What a long text shows in a screen's shown frame (contract v16): a
+    /// synthetic article of 10 KB, `fixtures/article.txt`.
+    const ARTICLE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fixtures/article.txt"));
 
     /// The viewport every screen is laid out and drawn in: 800 x 480, the
     /// Raspberry Pi Touch Display's resolution.
@@ -297,13 +306,13 @@ mod run {
 
     /// Builds a screen on a real tree, makes it the root, lays it out in the
     /// viewport with the light theme's font and draws it with that theme.
-    fn frame(build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>) -> Framebuffer {
+    fn frame(build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>) -> Framebuffer {
         frame_in(false, build, &[], &[], None, false, None, false)
     }
 
     /// As `frame`, in the large-text, high-contrast theme, whose spacing
     /// tokens measure half again.
-    fn frame_large(build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>) -> Framebuffer {
+    fn frame_large(build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>) -> Framebuffer {
         frame_in(true, build, &[], &[], None, false, None, false)
     }
 
@@ -314,7 +323,7 @@ mod run {
     /// field's error set: the screen as the application would show
     /// it with every condition holding.
     fn frame_shown(
-        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
         groups: &[u16],
         slots: &[u16],
     ) -> Framebuffer {
@@ -323,7 +332,7 @@ mod run {
 
     /// As `frame_shown`, with `case`'s switch set to its case.
     fn frame_case(
-        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
         groups: &[u16],
         slots: &[u16],
         case: (u16, u8),
@@ -335,10 +344,10 @@ mod run {
     /// roles' own - stands out from what lies beneath it as WCAG 2 asks of
     /// text, 4.5:1 as the screen shows it, in the light and the large-text
     /// theme.
-    fn contrast_holds(build: fn(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>) {
+    fn contrast_holds(build: fn(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>) {
         use nowayos_render_eg::contrast::{Need, as_shown, ratio, text_colours};
         for (name, theme) in Theme::all() {
-            let mut tree = Tree::<CAPACITY>::new();
+            let mut tree = Tree::<CAPACITY, TEXT>::new();
             let root = build(&mut tree).unwrap();
             tree.set_root(root).unwrap();
             tree.layout(Rect::new(0, 0, WIDTH, HEIGHT), &theme.metrics())
@@ -366,7 +375,7 @@ mod run {
     )]
     fn frame_in(
         large: bool,
-        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
         groups: &[u16],
         slots: &[u16],
         case: Option<(u16, u8)>,
@@ -379,7 +388,7 @@ mod run {
         } else {
             Theme::light()
         };
-        let mut tree = Tree::<CAPACITY>::new();
+        let mut tree = Tree::<CAPACITY, TEXT>::new();
         let root = build(&mut tree).unwrap();
         tree.set_root(root).unwrap();
         for &group in groups {
@@ -389,6 +398,16 @@ mod run {
             tree.set_case(SwitchId::new(switch), Some(when)).unwrap();
         }
         for &slot in slots {
+            // A long text (contract v16) shows a 10 KB article.
+            let long = tree
+                .find_slot(SlotId::new(slot))
+                .and_then(|id| tree.get(id))
+                .and_then(|node| tree.long_text_of(node))
+                .is_some();
+            if long {
+                tree.set_slot(SlotId::new(slot), ARTICLE).unwrap();
+                continue;
+            }
             let text = std::format!("Text from the application, {slot}");
             match tree.set_slot(SlotId::new(slot), &text) {
                 Err(UiError::NoGlyph) => {
@@ -458,7 +477,7 @@ const RUN_IMAGES: &str = r#"
     /// for pixel - or, with NOWAYOS_UPDATE_SNAPSHOTS=1 (`make bless-images`),
     /// rewrites the image, to be reviewed by eye.
     fn matches_approved(
-        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
         image: &str,
     ) {
         if let Err(err) = check_snapshot(&frame(build), &golden().join(image)) {
@@ -469,7 +488,7 @@ const RUN_IMAGES: &str = r#"
     /// As `matches_approved_shown`, with the screen's scroll view scrolled
     /// to its end.
     fn matches_approved_scrolled(
-        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
         groups: &[u16],
         slots: &[u16],
         image: &str,
@@ -483,7 +502,7 @@ const RUN_IMAGES: &str = r#"
     /// As `matches_approved`, with the first text input in `typing` focused
     /// so the on-screen keyboard shows its layout.
     fn matches_approved_keys(
-        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
         typing: nowayos_ui::InputMode,
         image: &str,
     ) {
@@ -496,7 +515,7 @@ const RUN_IMAGES: &str = r#"
     /// As `matches_approved`, for the frame in the large-text theme
     /// (`frame_large`).
     fn matches_approved_large(
-        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
         image: &str,
     ) {
         if let Err(err) = check_snapshot(&frame_large(build), &golden().join(image)) {
@@ -507,7 +526,7 @@ const RUN_IMAGES: &str = r#"
     /// As `matches_approved`, for the frame with every group visible and
     /// every slot filled (`frame_shown`).
     fn matches_approved_shown(
-        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
         groups: &[u16],
         slots: &[u16],
         image: &str,
@@ -521,7 +540,7 @@ const RUN_IMAGES: &str = r#"
     /// As `matches_approved_shown`, with `case`'s switch set to its case
     /// (`frame_case`).
     fn matches_approved_case(
-        build: impl FnOnce(&mut Tree<CAPACITY>) -> Result<NodeId, UiError>,
+        build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
         groups: &[u16],
         slots: &[u16],
         case: (u16, u8),
