@@ -64,6 +64,17 @@ pub fn json() -> String {
         component_json(&mut out, *component);
     }
     out.push_str("\n  ],\n");
+    let inline: Vec<String> = crate::kit::INLINE
+        .iter()
+        .map(|(name, props)| {
+            format!(
+                "{{ \"name\": {}, \"props\": {} }}",
+                string(name),
+                strings(props)
+            )
+        })
+        .collect();
+    let _ = writeln!(out, "  \"inline\": [{}],", inline.join(", "));
     let _ = writeln!(out, "  \"colours\": {},", strings(&Colour::NAMES));
     let _ = writeln!(out, "  \"space\": {}", strings(&Space::NAMES));
     out.push_str("}\n");
@@ -189,8 +200,16 @@ pub fn declarations() -> String {
          \x20 interface Element {\n\
          \x20   readonly \"nowayos:kit\": true;\n\
          \x20 }\n\
-         \x20 /** None: a screen is built from the kit's components only. */\n\
-         \x20 interface IntrinsicElements {}\n\
+         \x20 /** Only inside a <Text>, around its words (contract v21): a rich text. */\n\
+         \x20 interface IntrinsicElements {\n\
+         \x20   strong: { children?: unknown };\n\
+         \x20   b: { children?: unknown };\n\
+         \x20   em: { children?: unknown };\n\
+         \x20   i: { children?: unknown };\n\
+         \x20   code: { children?: unknown };\n\
+         \x20   a: { onClick?: () => void; onPress?: () => void; children?: unknown };\n\
+         \x20   span: { style: { color: import(\"nowayos:kit\").Colour }; children?: unknown };\n\
+         \x20 }\n\
          \x20 interface ElementChildrenAttribute {\n\
          \x20   children: {};\n\
          \x20 }\n\

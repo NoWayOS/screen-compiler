@@ -38,6 +38,24 @@ pub use validate::{MAX_DEPTH, validate};
 /// `long_text::MAX_LONG_TEXT`.
 pub const MAX_LONG_TEXT: u16 = u16::MAX;
 
+/// One run of a rich text (contract v21): its words and how they are
+/// set, from the inline elements around them.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct RichRun {
+    /// Its text.
+    pub text: String,
+    /// In Bold: `<strong>`, `<b>`.
+    pub bold: bool,
+    /// In italics: `<em>`, `<i>`.
+    pub italic: bool,
+    /// As code: `<code>`.
+    pub code: bool,
+    /// In a theme colour: `<span style={{ color: "error" }}>`.
+    pub colour: Option<Colour>,
+    /// A link: `<a onClick={props.onGuide}>`, the action it reports.
+    pub link: Option<Name>,
+}
+
 /// What a layer over the screen is (contract v20).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LayerKind {
@@ -156,10 +174,18 @@ impl Screen {
     pub fn actions(&self) -> Vec<&Name> {
         let mut actions: Vec<&Name> = Vec::new();
         for node in self.nodes() {
-            if let NodeKind::Button { action, .. } = &node.kind
-                && !actions.iter().any(|a| a.same_words(action))
-            {
-                actions.push(action);
+            let named: Vec<&Name> = match &node.kind {
+                NodeKind::Button { action, .. } => vec![action],
+                // A rich text's links (contract v21).
+                NodeKind::Rich { runs, .. } => {
+                    runs.iter().filter_map(|run| run.link.as_ref()).collect()
+                }
+                _ => Vec::new(),
+            };
+            for action in named {
+                if !actions.iter().any(|a| a.same_words(action)) {
+                    actions.push(action);
+                }
             }
         }
         actions
@@ -314,7 +340,7 @@ impl Node {
                 Some(Surface::Header) => "HeaderBar",
                 _ => "Row",
             },
-            NodeKind::Text { .. } | NodeKind::Slot { .. } => "Text",
+            NodeKind::Text { .. } | NodeKind::Slot { .. } | NodeKind::Rich { .. } => "Text",
             NodeKind::Button { .. } => "Button",
             NodeKind::TextInput { .. } => "TextInput",
             NodeKind::TextArea { .. } => "TextArea",
@@ -464,6 +490,15 @@ pub enum NodeKind {
         /// may hold, 1 to [`MAX_LONG_TEXT`]; wrapped onto as many lines as
         /// it needs. Never with a template.
         capacity: Option<Length>,
+    },
+    /// One paragraph of runs (contract v21): `<Text>Press
+    /// <strong>Save</strong>, or read <a onClick={props.onGuide}>the
+    /// guide</a>.</Text>`, wrapped as one text in its style.
+    Rich {
+        /// Its runs, in order.
+        runs: Vec<RichRun>,
+        /// Its role, weight and colour.
+        style: TextStyle,
     },
     /// A layer over the screen (contract v20): `<Dialog
     /// open={props.confirming}>`, or `<Menu for="more" open={props.menu}>`

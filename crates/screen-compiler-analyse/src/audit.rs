@@ -143,6 +143,8 @@ pub fn verdict_in(construct: &Construct, own: &BTreeSet<String>) -> Verdict {
         }
         Construct::Component(name) => component(name),
         Construct::Html(name) => match name.as_str() {
+            // Inside a text, runs of a rich text (contract v21).
+            name if crate::kit::INLINE.iter().any(|(inline, _)| *inline == name) => Verdict::Subset,
             "img" => Verdict::Road(Step::ImagesAndMasking),
             name if HTML.contains(&name) => Verdict::Road(Step::HtmlElements),
             _ => Verdict::Unknown,
@@ -206,6 +208,14 @@ fn prop_verdict(element: &str, prop: &str) -> Verdict {
     let road = |step| Verdict::Road(step);
     match (KitComponent::from_name(element), prop) {
         (Some(kit), prop) if kit.prop(prop).is_some() => Verdict::Subset,
+        // A rich text's link and coloured span (contract v21).
+        (None, prop)
+            if crate::kit::INLINE
+                .iter()
+                .any(|(inline, props)| *inline == element && props.contains(&prop)) =>
+        {
+            Verdict::Subset
+        }
         (_, "className" | "class") => road(Step::CssModules),
         (_, "key") => Verdict::Subset,
         (Some(KitComponent::TextInput), "type") => road(Step::ImagesAndMasking),
@@ -233,6 +243,7 @@ fn style_verdict(element: &str, property: &str) -> Verdict {
     let declared = |property: &str| KitComponent::ALL.iter().any(|kit| kit.styles(property));
     match KitComponent::from_name(element) {
         Some(kit) if kit.styles(property) => Verdict::Subset,
+        None if element == "span" && property == "color" => Verdict::Subset,
         _ if LAYOUT.contains(&property) => Verdict::Road(Step::CssLayout),
         _ if POSITION.contains(&property) || property == "zIndex" => Verdict::Road(Step::Layering),
         _ if property.starts_with("animation") || property.starts_with("transition") => {

@@ -1,10 +1,10 @@
-screen-compiler audit: 31 files
-  convert                29  93.5%
+screen-compiler audit: 32 files
+  convert                30  93.7%
   do not convert          2
   cannot be read          0
 
-constructs           1112
-  in the subset      1101  99.0%
+constructs           1139
+  in the subset      1128  99.0%
   on the road           2  0.1%
   out by design         5  0.4%
   unknown               4  0.3%
@@ -42,6 +42,7 @@ files
   feedback.tsx  converts
   form-controls.tsx  converts
   fuelling.tsx  converts
+  help.tsx  converts
   inbox.tsx  converts
   lost-property-1-item.tsx  converts
   lost-property-2-contact.tsx  converts

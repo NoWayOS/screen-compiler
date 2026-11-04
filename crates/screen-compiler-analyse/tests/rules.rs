@@ -2000,6 +2000,48 @@ fn a_text_area_s_bounds_are_refused_where_written() {
     }
 }
 
+#[test]
+fn a_text_with_inline_elements_is_rich() {
+    assert_eq!(
+        ok_outline(&format!(
+            "{KIT}export function S(props: P) {{ return <Screen><Text>A <strong>b <em>c</em></strong> <code>d</code> <a onClick={{props.onGo}}>e</a>{{\" \"}}<span style={{{{ color: \"error\" }}}}>f</span></Text></Screen>; }}\n"
+        )),
+        "rich \"A \" \"b \" bold \"c\" bold italic \" \" \"d\" code \" \" \"e\" link=1 \" \" \"f\" colour=error\n"
+    );
+}
+
+#[test]
+fn a_rich_text_s_bounds_are_refused_where_written() {
+    for (body, code, marker) in [
+        ("<Text>A <u>b</u></Text>", Code::Unsupported, "<u"),
+        (
+            "<Text>A <a href=\"x\">b</a></Text>",
+            Code::UnknownProp,
+            "href",
+        ),
+        ("<Text>A <a>b</a></Text>", Code::MissingProp, "<a"),
+        (
+            "<Text>A <strong>{props.name}</strong></Text>",
+            Code::Unsupported,
+            "props.name",
+        ),
+        (
+            "<Text lines={2}>A <b>b</b></Text>",
+            Code::Unsupported,
+            "<Text",
+        ),
+    ] {
+        let source =
+            format!("{KIT}export function S(props: P) {{ return <Screen>{body}</Screen>; }}\n");
+        let e = error(&source);
+        assert_eq!(
+            (e.code, e.loc),
+            (code, at(2, column_of(body, marker))),
+            "{body}: {e:?}"
+        );
+    }
+}
+
 /// `KIT` with the layers, plus a component taking `props`, returning
 /// `<Screen>{body}</Screen>` on line 2.
 fn layered_screen(body: &str) -> String {

@@ -3,6 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use screen_compiler_ir::RichRun;
 use screen_compiler_ir::{
     AREA_ROWS, AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Fit, Group,
     ICON_NAMES, InputMode, Justify, LayerKind, Length, Loc, Look, MAX_AREA_LEN, MAX_BORDER_WIDTH,
@@ -1684,6 +1685,26 @@ impl Lower<'_, '_, '_> {
                     }
                 }
             }
+            // Inline elements inside: a rich text (contract v21).
+            KitComponent::Text if has_inline(&element.children) => {
+                let style = self.text_style(&props)?;
+                if style.role == TextRole::Display
+                    || style.lines != 1
+                    || style.align != TextAlign::Start
+                {
+                    self.cx.error_help(
+                        Code::Unsupported,
+                        element.loc,
+                        "a text with <strong>, <em>, <code>, <a> or <span> inside wraps as it needs, in the start's alignment, never in the display role",
+                        "leave out `lines`, `align` and role=\"display\" on a text of runs",
+                    );
+                    return None;
+                }
+                let mut runs = Vec::new();
+                self.rich_runs(&element.children, &RichRun::default(), &mut runs, 0)
+                    .then_some(())?;
+                NodeKind::Rich { runs, style }
+            }
             KitComponent::Text => {
                 let style = self.text_style(&props);
                 let role = style.map_or(TextRole::Body, |style| style.role);
@@ -2919,6 +2940,139 @@ impl Lower<'_, '_, '_> {
 
     /// `value={…}` on a `<ProgressBar>`: a prop of the component,
     /// which names the bar's slot.
+    /// The runs of a rich text's `children` (contract v21), each set as
+    /// `marks` and the inline elements around it say: `false` once an
+    /// error is reported.
+    fn rich_runs(
+        &mut self,
+        children: &[Child],
+        marks: &RichRun,
+        runs: &mut Vec<RichRun>,
+        depth: usize,
+    ) -> bool {
+        const INLINE: &str = "inside a text: literal text, and <strong>, <b>, <em>, <i>, <code>, <a onClick={props.onX}> and <span style={{ color: \"error\" }}> around it";
+        if depth > 8 {
+            return false;
+        }
+        let mut ok = true;
+        for child in children {
+            match child {
+                Child::Text { value, .. } => runs.push(RichRun {
+                    text: value.clone(),
+                    ..marks.clone()
+                }),
+                Child::Empty { .. } => {}
+                Child::Fragment { children, .. } => {
+                    ok &= self.rich_runs(children, marks, runs, depth.saturating_add(1));
+                }
+                Child::Element(element) => {
+                    let name = element.name.display();
+                    let mut inner = marks.clone();
+                    match name {
+                        "strong" | "b" => inner.bold = true,
+                        "em" | "i" => inner.italic = true,
+                        "code" => inner.code = true,
+                        "a" | "span" => {}
+                        _ => {
+                            self.cx.error_help(
+                                Code::Unsupported,
+                                element.loc,
+                                format!("<{name}> inside a text does not convert"),
+                                INLINE,
+                            );
+                            ok = false;
+                            continue;
+                        }
+                    }
+                    for attr in &element.attrs {
+                        let screen_compiler_tsx::syntax::Attr::Named {
+                            name: prop,
+                            value,
+                            loc,
+                        } = attr
+                        else {
+                            self.cx.error_help(
+                                Code::Unsupported,
+                                element.loc,
+                                "a spread inside a text does not convert",
+                                INLINE,
+                            );
+                            ok = false;
+                            continue;
+                        };
+                        match (name, prop.as_str()) {
+                            ("a", "onClick" | "onPress") => match self.action(prop, value, *loc) {
+                                Some(action) => inner.link = Some(action),
+                                None => ok = false,
+                            },
+                            ("span", "style") => {
+                                let style = self.style_object(KitComponent::Text, value, *loc);
+                                match style.colour {
+                                    Some(colour) if style.text_align.is_none() => {
+                                        inner.colour = Some(colour)
+                                    }
+                                    _ => {
+                                        self.cx.error_help(
+                                            Code::InvalidValue,
+                                            *loc,
+                                            "a <span>'s style names its colour alone",
+                                            "write style={{ color: \"error\" }}, one of the theme's colours",
+                                        );
+                                        ok = false;
+                                    }
+                                }
+                            }
+                            _ => {
+                                self.cx.error_help(
+                                    Code::UnknownProp,
+                                    *loc,
+                                    format!("<{name}> inside a text takes no `{prop}`"),
+                                    "a link takes onClick (or onPress) alone - a station never leaves for an address - and a span its style's colour",
+                                );
+                                ok = false;
+                            }
+                        }
+                    }
+                    if name == "a" && inner.link.is_none() && ok {
+                        self.cx.error_help(
+                            Code::MissingProp,
+                            element.loc,
+                            "<a> inside a text needs onClick",
+                            "write <a onClick={props.onGuide}>the guide</a>: the application handles the action",
+                        );
+                        ok = false;
+                    }
+                    ok &= self.rich_runs(&element.children, &inner, runs, depth.saturating_add(1));
+                }
+                // React's `{" "}`: a string literal is text.
+                Child::Expr(Expr::Str { value, .. }) => runs.push(RichRun {
+                    text: value.clone(),
+                    ..marks.clone()
+                }),
+                Child::Expr(expr) => {
+                    self.cx.error_help(
+                        Code::Unsupported,
+                        expr.loc(),
+                        "a text with runs holds literal text only",
+                        "a prop's text is a text of its own: <Text>{props.name}</Text>",
+                    );
+                    ok = false;
+                }
+                Child::InvalidText { .. } => ok = false,
+                Child::Spread { loc } => {
+                    self.cx.error_help(
+                        Code::Unsupported,
+                        *loc,
+                        "a spread inside a text does not convert",
+                        INLINE,
+                    );
+                    ok = false;
+                }
+            }
+        }
+        ok
+    }
+
     /// `open={props.confirming}` on a layer (contract v20): the prop whose
     /// layer the application opens and closes.
     fn open_prop(&mut self, value: &AttrValue, loc: Loc) -> Option<Name> {
@@ -4289,4 +4443,18 @@ fn literal_string(value: &AttrValue) -> Option<(&str, Loc)> {
         }
         _ => None,
     }
+}
+
+/// Whether `children` hold an inline element - `<strong>`, `<em>` and
+/// the rest, which make a text rich (contract v21) - at any depth of
+/// fragments.
+fn has_inline(children: &[Child]) -> bool {
+    children.iter().any(|child| match child {
+        Child::Element(element) => matches!(
+            element.name,
+            screen_compiler_tsx::syntax::ElementName::Intrinsic(_)
+        ),
+        Child::Fragment { children, .. } => has_inline(children),
+        _ => false,
+    })
 }

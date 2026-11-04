@@ -248,6 +248,15 @@ mod fixture_message {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_help {
+    use crate::nowayos_ui;
+    include!("snapshots/help.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_order_ready {
     use crate::nowayos_ui;
     include!("snapshots/order-ready.rs");
@@ -290,7 +299,7 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 28] = [
+const COMPILED: [&str; 29] = [
     "article",
     "bike-hire",
     "check-in",
@@ -301,6 +310,7 @@ const COMPILED: [&str; 28] = [
     "feedback",
     "form-controls",
     "fuelling",
+    "help",
     "inbox",
     "lost-property-1-item",
     "lost-property-2-contact",
@@ -339,6 +349,22 @@ fn welcome_builds_exactly_its_ir() {
     assert_eq!(screen::actions::START.get(), 1);
     assert_eq!(screen::actions::HELP.get(), 2);
     assert_eq!((tokens::SPACE_SM, tokens::SPACE_LG), (8, 24));
+}
+
+/// Rich text - Bold, italics, code, a theme colour and links, whose
+/// actions are numbered with the buttons' - builds exactly as the IR says
+/// (contract v21).
+#[test]
+fn help_builds_exactly_its_ir() {
+    let mut recorder = Recorder::with_capacity(16);
+    let nodes = fixture_help::help::build(&mut recorder).unwrap();
+    let outline = recorder.outline(nodes.root);
+    assert_eq!(outline, ir_outline("help.tsx"));
+    assert!(
+        outline.contains("\"every command\" bold link=2"),
+        "{outline}"
+    );
+    assert_eq!(fixture_help::help::actions::BACK.get(), 3);
 }
 
 /// Layers over the screen - a menu, a tooltip and a popover beside the

@@ -268,6 +268,28 @@ fn describe(module: &Module, numbers: &Numbers<'_>, node: &Node) -> String {
         ),
         NodeKind::Progress { slot } => format!("progress slot {}", number(&numbers.slots, slot)),
         NodeKind::Icon { name } => format!("icon {name}"),
+        NodeKind::Rich { runs, style } => {
+            let mut out = format!("rich{}", styled(*style));
+            for run in runs {
+                out.push_str(&format!(" {:?}", run.text));
+                for (set, word) in [
+                    (run.bold, "bold"),
+                    (run.italic, "italic"),
+                    (run.code, "code"),
+                ] {
+                    if set {
+                        out.push_str(&format!(" {word}"));
+                    }
+                }
+                if let Some(colour) = run.colour {
+                    out.push_str(&format!(" colour={}", colour.tsx()));
+                }
+                if let Some(link) = &run.link {
+                    out.push_str(&format!(" link={}", number(&numbers.actions, link)));
+                }
+            }
+            out
+        }
         NodeKind::Layer {
             kind, open, anchor, ..
         } => {

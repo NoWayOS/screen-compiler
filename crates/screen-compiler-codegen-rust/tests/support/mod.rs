@@ -13,8 +13,8 @@
 
 use screen_compiler_codegen_rust::contract::builder::{
     ActionId, Align, ButtonVariant, Colour, FieldId, Fit, GroupId, Input, InputMode, Justify,
-    LayerId, Layout, ListId, Look, Picker, Picture, ScrollAxes, SlotId, Space, Surface, SwitchId,
-    Template, TextAlign, TextStyle, Tone, UiBuilder, Weight, icons,
+    LayerId, Layout, ListId, Look, Picker, Picture, Run, ScrollAxes, SlotId, Space, Surface,
+    SwitchId, Template, TextAlign, TextStyle, Tone, UiBuilder, Weight, icons,
 };
 
 /// A theme colour's TSX name, as `screen_compiler_ir::outline` writes it.
@@ -378,6 +378,30 @@ impl UiBuilder for Recorder {
         style: TextStyle,
     ) -> Result<NodeRef, RecordError> {
         self.add(format!("text {text:?}{}", styled(style)), &[])
+    }
+
+    fn rich_text(
+        &mut self,
+        runs: &'static [Run],
+        style: TextStyle,
+    ) -> Result<NodeRef, RecordError> {
+        let mut line = format!("rich{}", styled(style));
+        for run in runs {
+            let (text, bold, italic, code, tint, link) = run.parts();
+            line.push_str(&format!(" {text:?}"));
+            for (set, word) in [(bold, "bold"), (italic, "italic"), (code, "code")] {
+                if set {
+                    line.push_str(&format!(" {word}"));
+                }
+            }
+            if let Some(tint) = tint {
+                line.push_str(&format!(" colour={}", colour(tint)));
+            }
+            if let Some(link) = link {
+                line.push_str(&format!(" link={}", link.get()));
+            }
+        }
+        self.add(line, &[])
     }
 
     fn icon(&mut self, icon: &'static icons::Icon) -> Result<NodeRef, RecordError> {
