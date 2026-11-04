@@ -13,8 +13,8 @@
 
 use screen_compiler_codegen_rust::contract::builder::{
     ActionId, Align, ButtonVariant, Colour, FieldId, Fit, GroupId, Input, InputMode, Justify,
-    Layout, ListId, Look, Picker, Picture, ScrollAxes, SlotId, Space, Surface, SwitchId, Template,
-    TextAlign, TextStyle, Tone, UiBuilder, Weight, icons,
+    LayerId, Layout, ListId, Look, Picker, Picture, ScrollAxes, SlotId, Space, Surface, SwitchId,
+    Template, TextAlign, TextStyle, Tone, UiBuilder, Weight, icons,
 };
 
 /// A theme colour's TSX name, as `screen_compiler_ir::outline` writes it.
@@ -221,6 +221,14 @@ impl Recorder {
         let node = self.add(line, &[])?;
         self.fields.push(field.get());
         Ok(node)
+    }
+
+    /// The line recorded for `node`: what a layer shows beside.
+    fn line_of(&self, node: NodeRef) -> Result<String, RecordError> {
+        self.nodes
+            .get(node.0)
+            .map(|recorded| recorded.line.clone())
+            .ok_or(RecordError::UnknownNode)
     }
 
     fn add(&mut self, line: String, children: &[NodeRef]) -> Result<NodeRef, RecordError> {
@@ -575,6 +583,39 @@ impl UiBuilder for Recorder {
             line.push_str(&format!(" placeholder={:?}", input.placeholder_text()));
         }
         self.add_field(field, line)
+    }
+
+    fn dialog(&mut self, layer: LayerId, child: NodeRef) -> Result<NodeRef, RecordError> {
+        self.add(format!("dialog layer {}", layer.get()), &[child])
+    }
+
+    fn menu(
+        &mut self,
+        layer: LayerId,
+        anchor: NodeRef,
+        child: NodeRef,
+    ) -> Result<NodeRef, RecordError> {
+        let line = format!("menu layer {} for ({})", layer.get(), self.line_of(anchor)?);
+        self.add(line, &[child])
+    }
+
+    fn popover(
+        &mut self,
+        layer: LayerId,
+        anchor: NodeRef,
+        child: NodeRef,
+    ) -> Result<NodeRef, RecordError> {
+        let line = format!(
+            "popover layer {} for ({})",
+            layer.get(),
+            self.line_of(anchor)?
+        );
+        self.add(line, &[child])
+    }
+
+    fn tooltip(&mut self, anchor: NodeRef, text: &'static str) -> Result<NodeRef, RecordError> {
+        let line = format!("tooltip {text:?} for ({})", self.line_of(anchor)?);
+        self.add(line, &[])
     }
 
     fn text_area(

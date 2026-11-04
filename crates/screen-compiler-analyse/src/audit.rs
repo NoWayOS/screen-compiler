@@ -117,7 +117,7 @@ const POSITION: &[&str] = &["position", "top", "right", "bottom", "left"];
 /// The HTML elements the road maps by fixed rules.
 const HTML: &[&str] = &[
     "div", "span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "label", "button", "input", "textarea",
-    "hr",
+    "dialog", "hr",
 ];
 
 /// What the subset makes of `construct`, in a module that declares no

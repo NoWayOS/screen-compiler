@@ -467,6 +467,58 @@ declare module "nowayos:kit" {
   /** One choice of up to 64 options in a list that scrolls inside itself. */
   export function Select(props: SelectProps): JSX.Element;
 
+  /** The props of `<Dialog>`. */
+  export interface DialogProps {
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    id?: string;
+    /** A prop of the screen, whose value the application sets. */
+    open: number;
+    /** Exactly one element. */
+    children: JSX.Element;
+  }
+  /** A modal dialog over the screen, opened while a prop is true: the screen beneath veiled and out of reach. */
+  export function Dialog(props: DialogProps): JSX.Element;
+
+  /** The props of `<Menu>`. */
+  export interface MenuProps {
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    id?: string;
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    for: string;
+    /** A prop of the screen, whose value the application sets. */
+    open: number;
+    /** Exactly one element. */
+    children: JSX.Element;
+  }
+  /** Choices beside the control `for` names, opened while a prop is true; closed by Escape, a press outside or a choice. */
+  export function Menu(props: MenuProps): JSX.Element;
+
+  /** The props of `<Popover>`. */
+  export interface PopoverProps {
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    id?: string;
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    for: string;
+    /** A prop of the screen, whose value the application sets. */
+    open: number;
+    /** Exactly one element. */
+    children: JSX.Element;
+  }
+  /** Content beside the control `for` names, opened while a prop is true; closed by Escape or a press outside. */
+  export function Popover(props: PopoverProps): JSX.Element;
+
+  /** The props of `<Tooltip>`. */
+  export interface TooltipProps {
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    id?: string;
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    for: string;
+    /** Its label: literal text. */
+    children: string;
+  }
+  /** A line of text beside the control `for` names, shown while the pointer rests on it or it has focus. */
+  export function Tooltip(props: TooltipProps): JSX.Element;
+
   /** The props of `<Keyboard>`. */
   export interface KeyboardProps {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */

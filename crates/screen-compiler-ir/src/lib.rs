@@ -38,6 +38,39 @@ pub use validate::{MAX_DEPTH, validate};
 /// `long_text::MAX_LONG_TEXT`.
 pub const MAX_LONG_TEXT: u16 = u16::MAX;
 
+/// What a layer over the screen is (contract v20).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LayerKind {
+    /// A modal dialog: `<Dialog>`.
+    Dialog,
+    /// A menu: `<Menu>`.
+    Menu,
+    /// A popover: `<Popover>`.
+    Popover,
+}
+
+impl LayerKind {
+    /// The kit component that writes it.
+    #[must_use]
+    pub const fn component(self) -> &'static str {
+        match self {
+            Self::Dialog => "Dialog",
+            Self::Menu => "Menu",
+            Self::Popover => "Popover",
+        }
+    }
+
+    /// The builder call that makes it, and the outline's word for it.
+    #[must_use]
+    pub const fn call(self) -> &'static str {
+        match self {
+            Self::Dialog => "dialog",
+            Self::Menu => "menu",
+            Self::Popover => "popover",
+        }
+    }
+}
+
 /// The most bytes a text area may hold (contract v19): NoWayOS's
 /// `area::MAX_AREA`.
 pub const MAX_AREA_LEN: u16 = u16::MAX;
@@ -180,6 +213,17 @@ impl Screen {
             .collect()
     }
 
+    /// The layers on this screen, in document order, one per prop that
+    /// opens one (contract v20). Generated code numbers layers from 1 in
+    /// this order.
+    #[must_use]
+    pub fn layers(&self) -> Vec<&Name> {
+        self.distinct(|kind| match kind {
+            NodeKind::Layer { open, .. } => Some(open),
+            _ => None,
+        })
+    }
+
     /// The virtual lists on this screen, in document order, one per prop
     /// (contract v18). Generated code numbers lists from 1 in this order.
     #[must_use]
@@ -251,6 +295,7 @@ impl Node {
             NodeKind::Case(case) => &case.children,
             NodeKind::ScrollView { children } => children,
             NodeKind::VirtualList { rows, .. } => rows,
+            NodeKind::Layer { children, .. } => children,
             _ => &[],
         }
     }
@@ -284,6 +329,8 @@ impl Node {
             NodeKind::Icon { .. } => "Icon",
             NodeKind::Image { .. } => "Image",
             NodeKind::VirtualList { .. } => "VirtualList",
+            NodeKind::Layer { kind, .. } => kind.component(),
+            NodeKind::Tooltip { .. } => "Tooltip",
             NodeKind::Group(group) if group.children.len() > 1 => "cond ? ... : ...",
             NodeKind::Group(group) if group.unless => "!cond && ...",
             NodeKind::Group(_) => "cond && ...",
@@ -417,6 +464,31 @@ pub enum NodeKind {
         /// may hold, 1 to [`MAX_LONG_TEXT`]; wrapped onto as many lines as
         /// it needs. Never with a template.
         capacity: Option<Length>,
+    },
+    /// A layer over the screen (contract v20): `<Dialog
+    /// open={props.confirming}>`, or `<Menu for="more" open={props.menu}>`
+    /// or `<Popover …>` beside the control `for` names; one child. The
+    /// application opens and closes it by the layer its prop names.
+    Layer {
+        /// What it is.
+        kind: LayerKind,
+        /// The prop that opens it, which names the layer.
+        open: Name,
+        /// The id of the control a menu or popover shows beside: an
+        /// element written before it, not around it. `None` for a dialog.
+        anchor: Option<Name>,
+        /// Its one child.
+        children: Vec<Node>,
+    },
+    /// A tooltip (contract v20): `<Tooltip for="delete">Deletes it for
+    /// good</Tooltip>`, beside the control `for` names, shown while the
+    /// pointer rests on it or it has focus after a key.
+    Tooltip {
+        /// The id of its control: an element written before it, not
+        /// around it.
+        anchor: Name,
+        /// What it says.
+        text: String,
     },
     /// A virtual list (contract v18): `<VirtualList rowHeight={56}>`
     /// around one list from a prop, `{props.items.slice(0, 12).map(…)}` -

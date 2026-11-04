@@ -32,7 +32,8 @@ customer, and none may be added from one.
   converted since text could mix literals and a prop. `notice-board.tsx` wraps text onto
   several lines: static text in a notice and a slot in a card;
   `fuelling.tsx` live figures in slots and a progress bar; `tiles.tsx`
-  icons on a header bar and on cards; `feedback.tsx` a text area (contract v19), which
+  icons on a header bar and on cards; `message.tsx` layers (contract v20) - a menu, a tooltip, a
+  popover and a dialog - which `make contract-check` draws open one at a time; `feedback.tsx` a text area (contract v19), which
   `make contract-check` fills with two paragraphs in its shown frame; `inbox.tsx` a virtual list (contract v18) through a pool of twelve rows,
   which `make contract-check` gives a thousand items; `panels.tsx` containers that scroll (contract v17): a side panel down, a row of
   tiles across and a grid both ways; `article.tsx` a long text (contract v16), which `make contract-check`

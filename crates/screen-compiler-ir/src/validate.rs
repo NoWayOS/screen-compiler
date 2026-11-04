@@ -220,9 +220,9 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
                 template: Some(template),
                 ..
             } => (vec![&template.before, &template.after], style.role),
-            NodeKind::Button { label, .. } | NodeKind::Checkbox { label } => {
-                (vec![label], TextRole::Body)
-            }
+            NodeKind::Button { label, .. }
+            | NodeKind::Checkbox { label }
+            | NodeKind::Tooltip { text: label, .. } => (vec![label], TextRole::Body),
             NodeKind::TextInput { placeholder, .. } | NodeKind::TextArea { placeholder, .. } => (
                 placeholder.iter().map(String::as_str).collect(),
                 TextRole::Body,
@@ -461,6 +461,67 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
             ),
         );
     }
+    check_layers(screen, diagnostics);
+}
+
+/// Reports a layer or tooltip (contract v20) whose `for` names no element
+/// written before it - one around it, after it, or none - and a prop that
+/// opens two layers.
+fn check_layers(screen: &Screen, diagnostics: &mut Vec<Diagnostic>) {
+    let nodes = screen.nodes();
+    let mut opened: Vec<&crate::Name> = Vec::new();
+    for (index, node) in nodes.iter().enumerate() {
+        let anchor = match &node.kind {
+            NodeKind::Layer { open, anchor, .. } => {
+                if opened.iter().any(|seen| seen.same_words(open)) {
+                    diagnostics.push(
+                        Diagnostic::error(
+                            Code::DuplicateName,
+                            node.loc,
+                            format!("prop `{open}` opens two layers"),
+                        )
+                        .with_help("each layer opens with a prop of its own"),
+                    );
+                }
+                opened.push(open);
+                anchor.as_ref()
+            }
+            NodeKind::Tooltip { anchor, .. } => Some(anchor),
+            _ => None,
+        };
+        let Some(anchor) = anchor else {
+            continue;
+        };
+        let target = nodes
+            .iter()
+            .position(|other| other.id.as_ref().is_some_and(|id| id.same_words(anchor)));
+        let around = target
+            .and_then(|at| nodes.get(at))
+            .is_some_and(|other| contains(other, node));
+        let before = target.is_some_and(|at| at < index);
+        if !before || around {
+            let why = if target.is_none() {
+                format!("names no element on screen `{}`", screen.name)
+            } else if around {
+                "names an element around it".to_owned()
+            } else {
+                "names an element written after it".to_owned()
+            };
+            diagnostics.push(
+                Diagnostic::error(
+                    Code::UnknownName,
+                    node.loc,
+                    format!("<{} for=\"{anchor}\"> {why}", node.component()),
+                )
+                .with_help("`for` is the id of the control it belongs to, written before it: <Button id=\"more\" …/><Menu for=\"more\" …>"),
+            );
+        }
+    }
+}
+
+/// Whether `node` is `inner` or holds it.
+fn contains(node: &crate::Node, inner: &crate::Node) -> bool {
+    core::ptr::eq(node, inner) || node.children().iter().any(|child| contains(child, inner))
 }
 
 /// Reports a style in a weight its role is not drawn in - display, title
