@@ -577,6 +577,23 @@ impl UiBuilder for Recorder {
         self.add_field(field, line)
     }
 
+    fn text_area(
+        &mut self,
+        field: FieldId,
+        rows: u8,
+        max_len: u16,
+        placeholder: &'static str,
+    ) -> Result<NodeRef, RecordError> {
+        let mut line = format!(
+            "text-area field={} rows={rows} max_len={max_len}",
+            field.get()
+        );
+        if !placeholder.is_empty() {
+            line.push_str(&format!(" placeholder={placeholder:?}"));
+        }
+        self.add_field(field, line)
+    }
+
     fn checkbox(&mut self, field: FieldId, label: &'static str) -> Result<NodeRef, RecordError> {
         self.add_field(field, format!("checkbox field={} {label:?}", field.get()))
     }

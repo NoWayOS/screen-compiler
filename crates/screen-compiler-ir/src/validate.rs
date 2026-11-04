@@ -94,7 +94,7 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
     while let Some((node, depth, scrolled)) = stack.pop() {
         let is_scroll = matches!(node.kind, NodeKind::ScrollView { .. });
         match node.kind {
-            NodeKind::TextInput { .. } => text_input = true,
+            NodeKind::TextInput { .. } | NodeKind::TextArea { .. } => text_input = true,
             NodeKind::Keyboard if keyboard.is_some() => diagnostics.push(
                 Diagnostic::error(
                     Code::Limit,
@@ -146,6 +146,7 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
             }
             NodeKind::Spacer { size } => size.iter().collect(),
             NodeKind::TextInput { max_len, .. } => max_len.iter().collect(),
+            NodeKind::TextArea { max_len, .. } => vec![max_len],
             _ => Vec::new(),
         };
         if node.kind.is_field() && node.id.is_none() {
@@ -161,6 +162,10 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
         // A theme's spacing token measures space; it is no number of bytes.
         if let NodeKind::TextInput {
             max_len: Some(Length::Space(_)),
+            ..
+        }
+        | NodeKind::TextArea {
+            max_len: Length::Space(_),
             ..
         } = &node.kind
         {
@@ -218,7 +223,7 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
             NodeKind::Button { label, .. } | NodeKind::Checkbox { label } => {
                 (vec![label], TextRole::Body)
             }
-            NodeKind::TextInput { placeholder, .. } => (
+            NodeKind::TextInput { placeholder, .. } | NodeKind::TextArea { placeholder, .. } => (
                 placeholder.iter().map(String::as_str).collect(),
                 TextRole::Body,
             ),
@@ -423,7 +428,7 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
                         screen.name
                     ),
                 )
-                .with_help("`for` is the id of a <TextInput>, <Checkbox>, <RadioGroup> or <Select> on the same screen"),
+                .with_help("`for` is the id of a <TextInput>, <TextArea>, <Checkbox>, <RadioGroup> or <Select> on the same screen"),
             );
         } else if field_errors
             .get(..index)
@@ -451,7 +456,9 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
                     screen.name
                 ),
             )
-            .with_help("add a <TextInput> for it to type into, or leave the keyboard out"),
+            .with_help(
+                "add a <TextInput> or <TextArea> for it to type into, or leave the keyboard out",
+            ),
         );
     }
 }

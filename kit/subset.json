@@ -105,6 +105,17 @@
       "style": []
     },
     {
+      "name": "TextArea",
+      "children": "none",
+      "props": [
+        { "name": "id", "required": true, "value": { "kind": "id" } },
+        { "name": "placeholder", "required": false, "value": { "kind": "text" } },
+        { "name": "rows", "required": false, "value": { "kind": "whole", "least": 1, "most": 32, "token": false } },
+        { "name": "maxLength", "required": true, "value": { "kind": "whole", "least": 1, "most": 65535, "token": true } }
+      ],
+      "style": []
+    },
+    {
       "name": "Spacer",
       "children": "none",
       "props": [

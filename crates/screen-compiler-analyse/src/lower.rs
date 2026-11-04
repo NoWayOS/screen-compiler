@@ -4,12 +4,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use screen_compiler_ir::{
-    AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Fit, Group, ICON_NAMES,
-    InputMode, Justify, Length, Loc, Look, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LABEL_BYTES,
-    MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS,
-    MAX_TEMPLATE_BYTES, Module, Name, Node, NodeKind, SELECT_ROWS, Screen, ScrollAxes, Space,
-    Surface, Template, TextAlign, TextRole, TextStyle, Token, Tone, Weight, has_errors,
-    sort_diagnostics, special_char, validate,
+    AREA_ROWS, AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Fit, Group,
+    ICON_NAMES, InputMode, Justify, Length, Loc, Look, MAX_AREA_LEN, MAX_BORDER_WIDTH,
+    MAX_INPUT_LEN, MAX_LABEL_BYTES, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS,
+    MAX_SELECT_OPTIONS, MAX_TEMPLATE_BYTES, Module, Name, Node, NodeKind, SELECT_ROWS, Screen,
+    ScrollAxes, Space, Surface, Template, TextAlign, TextRole, TextStyle, Token, Tone, Weight,
+    has_errors, sort_diagnostics, special_char, validate,
 };
 use screen_compiler_tsx::SourceModule;
 use screen_compiler_tsx::syntax::{
@@ -1577,6 +1577,7 @@ impl Lower<'_, '_, '_> {
         if matches!(
             component,
             KitComponent::TextInput
+                | KitComponent::TextArea
                 | KitComponent::Checkbox
                 | KitComponent::RadioGroup
                 | KitComponent::Select
@@ -1876,6 +1877,27 @@ impl Lower<'_, '_, '_> {
                     placeholder: props.placeholder,
                     max_len: props.max_len,
                     mode: props.mode,
+                }
+            }
+            // Several lines a person types (contract v19).
+            KitComponent::TextArea => {
+                self.no_children(component, element);
+                if !props.max_len_given {
+                    self.cx.error_help(
+                        Code::MissingProp,
+                        element.loc,
+                        "<TextArea> needs maxLength",
+                        "write maxLength={1000}: the most bytes it takes, which come out of the screen's text store",
+                    );
+                }
+                props.id.as_ref()?;
+                if props.rows_invalid {
+                    return None;
+                }
+                NodeKind::TextArea {
+                    placeholder: props.placeholder,
+                    rows: props.rows,
+                    max_len: props.max_len?,
                 }
             }
             KitComponent::Checkbox => {
@@ -3397,11 +3419,12 @@ impl Lower<'_, '_, '_> {
                 "size" => props.size = self.length(name, value, loc),
                 "placeholder" => props.placeholder = self.string(name, value, loc),
                 "maxLength" => {
-                    // A text input's most, or a long text's (contract v16).
-                    let most = if component == KitComponent::Text {
-                        MAX_LONG_TEXT
-                    } else {
-                        MAX_INPUT_LEN
+                    // A text input's most, a long text's (contract v16) or a
+                    // text area's (contract v19).
+                    let most = match component {
+                        KitComponent::Text => MAX_LONG_TEXT,
+                        KitComponent::TextArea => MAX_AREA_LEN,
+                        _ => MAX_INPUT_LEN,
                     };
                     props.max_len = self.max_len(value, loc, most);
                     props.max_len_given = true;
@@ -3418,7 +3441,7 @@ impl Lower<'_, '_, '_> {
                     props.options = self.options(component, value, loc);
                 }
                 "rows" => {
-                    props.rows = self.select_rows(value, loc);
+                    props.rows = self.rows(component, value, loc);
                     props.rows_invalid = props.rows.is_none();
                 }
                 "onPress" | "onClick" => {
@@ -3792,12 +3815,16 @@ impl Lower<'_, '_, '_> {
     }
 
     /// `options={["…", …]}`: 1 to [`MAX_RADIO_OPTIONS`] string literals.
-    /// `rows={N}` on a `<Select>`: a whole number within
-    /// [`SELECT_ROWS`].
-    fn select_rows(&mut self, value: &AttrValue, loc: Loc) -> Option<u8> {
-        let (least, most) = (*SELECT_ROWS.start(), *SELECT_ROWS.end());
-        let help =
-            format!("write rows={{5}}: how many options show at once, from {least} to {most}");
+    /// `rows={N}`: a whole number within [`SELECT_ROWS`] on a `<Select>`,
+    /// within [`AREA_ROWS`] on a `<TextArea>`.
+    fn rows(&mut self, component: KitComponent, value: &AttrValue, loc: Loc) -> Option<u8> {
+        let (range, help) = if component == KitComponent::TextArea {
+            (AREA_ROWS, "write rows={4}: how many lines show")
+        } else {
+            (SELECT_ROWS, "write rows={5}: how many options show at once")
+        };
+        let (least, most) = (*range.start(), *range.end());
+        let help = format!("{help}, from {least} to {most}");
         match value {
             AttrValue::Expr(Expr::Num { value, raw, loc }) => {
                 let whole = value.is_finite()
@@ -3805,7 +3832,7 @@ impl Lower<'_, '_, '_> {
                     && (f64::from(least)..=f64::from(most)).contains(value)
                     && !raw.starts_with('0');
                 if whole {
-                    // Exact: a whole number from 3 to 8.
+                    // Exact: a whole number within the range, at most 32.
                     Some(*value as u8)
                 } else {
                     self.cx.error_help(
