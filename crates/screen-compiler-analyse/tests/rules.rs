@@ -1715,9 +1715,10 @@ fn everything_a_style_may_not_name_is_refused_where_written() {
     // literal, a property given twice, and values out of their range.
     for (body, code, marker) in [
         (
+            // A gradient's property (contract v22): a colour value refused.
             "<Column style={{ background: \"#fff\" }}><Text>x</Text></Column>",
-            Code::UnknownProp,
-            "background",
+            Code::InvalidValue,
+            "\"#fff",
         ),
         (
             "<Text style={{ fontSize: 20 }}>x</Text>",
@@ -1995,6 +1996,36 @@ fn a_text_area_s_bounds_are_refused_where_written() {
         assert_eq!(
             (e.code, e.loc),
             (code, at(3, column_of(body, marker))),
+            "{body}: {e:?}"
+        );
+    }
+}
+
+#[test]
+fn shadows_gradients_and_opacity_reach_the_ir() {
+    assert_eq!(
+        ok_outline(&format!(
+            "{KIT}export function S(props: P) {{ return <Screen><Card style={{{{ boxShadow: \"medium\", background: \"linear-gradient(45deg, var(--input), focus)\", opacity: 0.5 }}}}><Text>A</Text></Card></Screen>; }}\n"
+        )),
+        "column gap=0 padding=0 surface=card shadow=medium gradient=45-input-focus opacity=128\n  text \"A\"\n"
+    );
+}
+
+#[test]
+fn an_effect_s_bounds_are_refused_where_written() {
+    for (style, marker) in [
+        ("boxShadow: \"0 2px 4px black\"", "\"0 2px"),
+        ("background: \"linear-gradient(red, blue)\"", "\"linear"),
+        ("background: \"input\"", "\"input"),
+        ("opacity: 2", "2 }"),
+    ] {
+        let body = format!("<Card style={{{{ {style} }}}}><Text>A</Text></Card>");
+        let source =
+            format!("{KIT}export function S(props: P) {{ return <Screen>{body}</Screen>; }}\n");
+        let e = error(&source);
+        assert_eq!(
+            (e.code, e.loc),
+            (Code::InvalidValue, at(2, column_of(&body, marker))),
             "{body}: {e:?}"
         );
     }

@@ -7,9 +7,9 @@
 use std::fmt;
 
 use screen_compiler_ir::{
-    AREA_ROWS, AlignItems, ButtonVariant, Fit, ICON_NAMES, InputMode, Justify, MAX_AREA_LEN,
-    MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS,
-    MAX_SELECT_OPTIONS, SELECT_ROWS, ScrollAxes, TextAlign, TextRole, Tone, Weight,
+    AREA_ROWS, AlignItems, ButtonVariant, Elevation, Fit, ICON_NAMES, InputMode, Justify,
+    MAX_AREA_LEN, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS,
+    MAX_RADIUS, MAX_SELECT_OPTIONS, SELECT_ROWS, ScrollAxes, TextAlign, TextRole, Tone, Weight,
 };
 
 /// The elements a text may hold around its words, making it a rich text
@@ -100,6 +100,10 @@ pub enum Value {
     },
     /// `style={{ … }}`, naming the component's style properties.
     Style,
+    /// A number from 0 to 1: an opacity (contract v22).
+    Fraction,
+    /// A CSS gradient of two of the theme's colours (contract v22).
+    Gradient,
 }
 
 /// A prop a component takes.
@@ -195,6 +199,10 @@ const CONTAINER_STYLE: &[StyleProperty] = &[
             token: false,
         },
     ),
+    // A theme's shadow, a gradient and an opacity (contract v22).
+    styled("boxShadow", Value::Choice(&Elevation::NAMES)),
+    styled("background", Value::Gradient),
+    styled("opacity", Value::Fraction),
     // A container that scrolls (contract v17).
     styled("overflow", Value::Choice(&ScrollAxes::NAMES)),
     styled("overflowX", Value::Choice(&ScrollAxes::NAMES)),

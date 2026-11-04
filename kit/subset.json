@@ -29,6 +29,9 @@
         { "name": "borderColor", "value": { "kind": "colour" } },
         { "name": "borderWidth", "value": { "kind": "whole", "least": 0, "most": 16, "token": false } },
         { "name": "borderRadius", "value": { "kind": "whole", "least": 0, "most": 64, "token": false } },
+        { "name": "boxShadow", "value": { "kind": "choice", "values": ["low", "medium", "high"] } },
+        { "name": "background", "value": { "kind": "gradient" } },
+        { "name": "opacity", "value": { "kind": "fraction" } },
         { "name": "overflow", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowX", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } }
@@ -56,6 +59,9 @@
         { "name": "borderColor", "value": { "kind": "colour" } },
         { "name": "borderWidth", "value": { "kind": "whole", "least": 0, "most": 16, "token": false } },
         { "name": "borderRadius", "value": { "kind": "whole", "least": 0, "most": 64, "token": false } },
+        { "name": "boxShadow", "value": { "kind": "choice", "values": ["low", "medium", "high"] } },
+        { "name": "background", "value": { "kind": "gradient" } },
+        { "name": "opacity", "value": { "kind": "fraction" } },
         { "name": "overflow", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowX", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } }
@@ -164,6 +170,9 @@
         { "name": "borderColor", "value": { "kind": "colour" } },
         { "name": "borderWidth", "value": { "kind": "whole", "least": 0, "most": 16, "token": false } },
         { "name": "borderRadius", "value": { "kind": "whole", "least": 0, "most": 64, "token": false } },
+        { "name": "boxShadow", "value": { "kind": "choice", "values": ["low", "medium", "high"] } },
+        { "name": "background", "value": { "kind": "gradient" } },
+        { "name": "opacity", "value": { "kind": "fraction" } },
         { "name": "overflow", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowX", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } }
@@ -192,6 +201,9 @@
         { "name": "borderColor", "value": { "kind": "colour" } },
         { "name": "borderWidth", "value": { "kind": "whole", "least": 0, "most": 16, "token": false } },
         { "name": "borderRadius", "value": { "kind": "whole", "least": 0, "most": 64, "token": false } },
+        { "name": "boxShadow", "value": { "kind": "choice", "values": ["low", "medium", "high"] } },
+        { "name": "background", "value": { "kind": "gradient" } },
+        { "name": "opacity", "value": { "kind": "fraction" } },
         { "name": "overflow", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowX", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } }
@@ -219,6 +231,9 @@
         { "name": "borderColor", "value": { "kind": "colour" } },
         { "name": "borderWidth", "value": { "kind": "whole", "least": 0, "most": 16, "token": false } },
         { "name": "borderRadius", "value": { "kind": "whole", "least": 0, "most": 64, "token": false } },
+        { "name": "boxShadow", "value": { "kind": "choice", "values": ["low", "medium", "high"] } },
+        { "name": "background", "value": { "kind": "gradient" } },
+        { "name": "opacity", "value": { "kind": "fraction" } },
         { "name": "overflow", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowX", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } }

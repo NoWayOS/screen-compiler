@@ -74,6 +74,11 @@ declare module "nowayos:kit" {
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
     borderRadius?: number;
+    boxShadow?: "low" | "medium" | "high";
+    /** `linear-gradient(90deg, input, focus)` - an angle or `to right`, then two of the theme's colours - or `radial-gradient(input, focus)`. */
+    background?: `linear-gradient(${string})` | `radial-gradient(${string})`;
+    /** A number from 0 to 1. */
+    opacity?: number;
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
@@ -117,6 +122,11 @@ declare module "nowayos:kit" {
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
     borderRadius?: number;
+    boxShadow?: "low" | "medium" | "high";
+    /** `linear-gradient(90deg, input, focus)` - an angle or `to right`, then two of the theme's colours - or `radial-gradient(input, focus)`. */
+    background?: `linear-gradient(${string})` | `radial-gradient(${string})`;
+    /** A number from 0 to 1. */
+    opacity?: number;
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
@@ -279,6 +289,11 @@ declare module "nowayos:kit" {
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
     borderRadius?: number;
+    boxShadow?: "low" | "medium" | "high";
+    /** `linear-gradient(90deg, input, focus)` - an angle or `to right`, then two of the theme's colours - or `radial-gradient(input, focus)`. */
+    background?: `linear-gradient(${string})` | `radial-gradient(${string})`;
+    /** A number from 0 to 1. */
+    opacity?: number;
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
@@ -322,6 +337,11 @@ declare module "nowayos:kit" {
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
     borderRadius?: number;
+    boxShadow?: "low" | "medium" | "high";
+    /** `linear-gradient(90deg, input, focus)` - an angle or `to right`, then two of the theme's colours - or `radial-gradient(input, focus)`. */
+    background?: `linear-gradient(${string})` | `radial-gradient(${string})`;
+    /** A number from 0 to 1. */
+    opacity?: number;
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
@@ -366,6 +386,11 @@ declare module "nowayos:kit" {
     borderWidth?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     /** A whole number from 0 to 64. */
     borderRadius?: number;
+    boxShadow?: "low" | "medium" | "high";
+    /** `linear-gradient(90deg, input, focus)` - an angle or `to right`, then two of the theme's colours - or `radial-gradient(input, focus)`. */
+    background?: `linear-gradient(${string})` | `radial-gradient(${string})`;
+    /** A number from 0 to 1. */
+    opacity?: number;
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";

@@ -121,6 +121,11 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v22 adds to `Look` a theme's shadow ([`builder::Elevation`]), a
+//! [`builder::Gradient`] between the theme's colours and an opacity:
+//! `style={{ boxShadow: "medium", background: "linear-gradient(90deg,
+//! input, focus)", opacity: 0.5 }}` on a container.
+//!
 //! Contract v21 adds `rich_text`: one paragraph of runs ([`builder::Run`]),
 //! each in its own weight, italics, theme colour, as code or as a link
 //! reporting an action (`<Text>Press <strong>Save</strong>, or read <a
@@ -176,7 +181,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 21;
+pub const VERSION: u32 = 22;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -1014,6 +1019,58 @@ pub mod builder {
         pub radius: Option<u32>,
         /// A button's label colour.
         pub text: Option<Colour>,
+        /// A theme's shadow beneath it (contract v22).
+        pub shadow: Option<Elevation>,
+        /// A gradient in place of its fill (contract v22).
+        pub gradient: Option<Gradient>,
+        /// How opaque it and its children are, out of 255 (contract v22).
+        pub opacity: Option<u8>,
+    }
+
+    /// One of the theme's shadows (contract v22).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub enum Elevation {
+        /// A card resting on the screen.
+        #[default]
+        Low,
+        /// A menu or popover.
+        Medium,
+        /// A dialog.
+        High,
+    }
+
+    /// A gradient between two of the theme's colours (contract v22): along
+    /// a line at an angle in degrees (180, top to bottom), or radial.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct Gradient {
+        /// Its angle; `None` for a radial gradient.
+        pub angle: Option<u16>,
+        /// Its first colour.
+        pub from: Colour,
+        /// Its last colour.
+        pub to: Colour,
+    }
+
+    impl Gradient {
+        /// Along a line at `angle` degrees.
+        #[must_use]
+        pub const fn linear(angle: u16, from: Colour, to: Colour) -> Self {
+            Self {
+                angle: Some(angle),
+                from,
+                to,
+            }
+        }
+
+        /// Out from the centre.
+        #[must_use]
+        pub const fn radial(from: Colour, to: Colour) -> Self {
+            Self {
+                angle: None,
+                from,
+                to,
+            }
+        }
     }
 
     impl Look {
@@ -1024,7 +1081,37 @@ pub mod builder {
             border_width: None,
             radius: None,
             text: None,
+            shadow: None,
+            gradient: None,
+            opacity: None,
         };
+
+        /// With the theme's shadow for `elevation` beneath it.
+        #[must_use]
+        pub const fn shadow(self, elevation: Elevation) -> Self {
+            Self {
+                shadow: Some(elevation),
+                ..self
+            }
+        }
+
+        /// Filled with `gradient`.
+        #[must_use]
+        pub const fn gradient(self, gradient: Gradient) -> Self {
+            Self {
+                gradient: Some(gradient),
+                ..self
+            }
+        }
+
+        /// It and its children `opacity` out of 255 opaque.
+        #[must_use]
+        pub const fn opacity(self, opacity: u8) -> Self {
+            Self {
+                opacity: Some(opacity),
+                ..self
+            }
+        }
 
         /// With `colour` as its fill.
         #[must_use]

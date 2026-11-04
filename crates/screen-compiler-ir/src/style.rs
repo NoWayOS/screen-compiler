@@ -519,6 +519,71 @@ pub struct Look {
     pub radius: Option<u16>,
     /// A button's `color`: its label's.
     pub text: Option<Colour>,
+    /// `boxShadow`: one of the theme's shadows (contract v22).
+    pub shadow: Option<Elevation>,
+    /// `background`: a gradient of the theme's colours (contract v22).
+    pub gradient: Option<Gradient>,
+    /// `opacity`, out of 255 (contract v22).
+    pub opacity: Option<u8>,
+}
+
+/// One of the theme's shadows, by name: `boxShadow: "medium"`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Elevation {
+    /// `low`: a card resting on the screen.
+    Low,
+    /// `medium`: a menu or popover.
+    Medium,
+    /// `high`: a dialog.
+    High,
+}
+
+impl Elevation {
+    /// Each one's name, in order.
+    pub const NAMES: [&'static str; 3] = ["low", "medium", "high"];
+
+    /// The one named `name`.
+    #[must_use]
+    pub fn parse(name: &str) -> Option<Self> {
+        match name {
+            "low" => Some(Self::Low),
+            "medium" => Some(Self::Medium),
+            "high" => Some(Self::High),
+            _ => None,
+        }
+    }
+
+    /// Its name.
+    #[must_use]
+    pub const fn tsx(self) -> &'static str {
+        match self {
+            Self::Low => "low",
+            Self::Medium => "medium",
+            Self::High => "high",
+        }
+    }
+
+    /// Its name in the target API (`ui::Elevation::…`).
+    #[must_use]
+    pub const fn rust(self) -> &'static str {
+        match self {
+            Self::Low => "Low",
+            Self::Medium => "Medium",
+            Self::High => "High",
+        }
+    }
+}
+
+/// A gradient between two of the theme's colours (contract v22): along a
+/// line at `angle` degrees, or radial when `None`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Gradient {
+    /// Its angle in degrees (180, top to bottom); `None` for radial.
+    pub angle: Option<u16>,
+    /// Its first colour.
+    pub from: Colour,
+    /// Its last colour.
+    pub to: Colour,
 }
 
 impl Look {
@@ -530,6 +595,9 @@ impl Look {
             && self.border_width.is_none()
             && self.radius.is_none()
             && self.text.is_none()
+            && self.shadow.is_none()
+            && self.gradient.is_none()
+            && self.opacity.is_none()
     }
 }
 

@@ -185,6 +185,22 @@ fn looked(look: Look) -> String {
     if let Some(text) = look.text {
         out.push_str(&format!(" label={}", text.tsx()));
     }
+    if let Some(shadow) = look.shadow {
+        out.push_str(&format!(" shadow={}", shadow.tsx()));
+    }
+    if let Some(gradient) = look.gradient {
+        let angle = gradient
+            .angle
+            .map_or_else(|| "radial".to_owned(), |a| a.to_string());
+        out.push_str(&format!(
+            " gradient={angle}-{}-{}",
+            gradient.from.tsx(),
+            gradient.to.tsx()
+        ));
+    }
+    if let Some(opacity) = look.opacity {
+        out.push_str(&format!(" opacity={opacity}"));
+    }
     out
 }
 

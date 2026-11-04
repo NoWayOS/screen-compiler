@@ -12,9 +12,9 @@
 )]
 
 use screen_compiler_codegen_rust::contract::builder::{
-    ActionId, Align, ButtonVariant, Colour, FieldId, Fit, GroupId, Input, InputMode, Justify,
-    LayerId, Layout, ListId, Look, Picker, Picture, Run, ScrollAxes, SlotId, Space, Surface,
-    SwitchId, Template, TextAlign, TextStyle, Tone, UiBuilder, Weight, icons,
+    ActionId, Align, ButtonVariant, Colour, Elevation, FieldId, Fit, GroupId, Input, InputMode,
+    Justify, LayerId, Layout, ListId, Look, Picker, Picture, Run, ScrollAxes, SlotId, Space,
+    Surface, SwitchId, Template, TextAlign, TextStyle, Tone, UiBuilder, Weight, icons,
 };
 
 /// A theme colour's TSX name, as `screen_compiler_ir::outline` writes it.
@@ -50,6 +50,27 @@ fn looked(look: Look) -> String {
     }
     if let Some(text) = look.text {
         out.push_str(&format!(" label={}", colour(text)));
+    }
+    if let Some(shadow) = look.shadow {
+        let name = match shadow {
+            Elevation::Low => "low",
+            Elevation::Medium => "medium",
+            Elevation::High => "high",
+        };
+        out.push_str(&format!(" shadow={name}"));
+    }
+    if let Some(gradient) = look.gradient {
+        let angle = gradient
+            .angle
+            .map_or_else(|| "radial".to_owned(), |a| a.to_string());
+        out.push_str(&format!(
+            " gradient={angle}-{}-{}",
+            colour(gradient.from),
+            colour(gradient.to)
+        ));
+    }
+    if let Some(opacity) = look.opacity {
+        out.push_str(&format!(" opacity={opacity}"));
     }
     out
 }
