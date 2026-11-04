@@ -1384,6 +1384,10 @@ struct Props {
     alt_given: bool,
     /// `<Image fit="…">`.
     fit: Option<Fit>,
+    /// `<VirtualList rowHeight={…}>`.
+    row_height: Option<Length>,
+    /// Whether `rowHeight` was given, valid or not.
+    row_height_given: bool,
     /// Whether `for` was given, valid or not.
     for_given: bool,
 }
@@ -1731,6 +1735,70 @@ impl Lower<'_, '_, '_> {
                     );
                 }
                 NodeKind::Icon { name: props.icon? }
+            }
+            // A pool of rows from one list of a prop (contract v18): the
+            // groups its expansion made, unwrapped.
+            KitComponent::VirtualList => {
+                let help = "write <VirtualList rowHeight={48}>{props.items.slice(0, 12).map((item) => <Row>…</Row>)}</VirtualList>: the pool of rows, one list from a prop";
+                if !props.row_height_given {
+                    self.cx.error_help(
+                        Code::MissingProp,
+                        element.loc,
+                        "<VirtualList> needs rowHeight",
+                        help,
+                    );
+                }
+                let made = self.container_children(component, &element.children, depth);
+                let mut list: Option<Name> = None;
+                let mut rows = Vec::new();
+                for child in made {
+                    let NodeKind::Group(group) = child.kind else {
+                        self.cx.error_help(
+                            Code::InvalidChildren,
+                            child.loc.unwrap_or(element.loc),
+                            "a <VirtualList> holds one list from a prop, and nothing else",
+                            help,
+                        );
+                        return None;
+                    };
+                    // The group a list row is in is named `{list}_{row}`.
+                    let key = group
+                        .name
+                        .source()
+                        .rsplit_once('_')
+                        .filter(|(_, row)| row.parse::<u16>().is_ok())
+                        .and_then(|(key, _)| Name::parse(key).ok());
+                    match (key, &list) {
+                        (Some(key), None) => list = Some(key),
+                        (Some(key), Some(first)) if key.same_words(first) => {}
+                        _ => {
+                            self.cx.error_help(
+                                Code::InvalidChildren,
+                                child.loc.unwrap_or(element.loc),
+                                "a <VirtualList> holds one list from a prop, and nothing else",
+                                help,
+                            );
+                            return None;
+                        }
+                    }
+                    rows.extend(group.children);
+                }
+                let Some(list) = list else {
+                    self.cx.error_help(
+                        Code::InvalidChildren,
+                        element.loc,
+                        "a <VirtualList> holds one list from a prop",
+                        help,
+                    );
+                    return None;
+                };
+                NodeKind::VirtualList {
+                    list,
+                    row_height: props.row_height?,
+                    rows,
+                    width: props.style.width,
+                    height: props.style.height,
+                }
             }
             KitComponent::Image => {
                 self.no_children(component, element);
@@ -3311,6 +3379,7 @@ impl Lower<'_, '_, '_> {
                 props.tone_given |= name == "tone";
                 props.for_given |= name == "for";
                 props.picture_given |= name == "src";
+                props.row_height_given |= name == "rowHeight";
                 props.alt_given |= name == "alt";
                 continue;
             }
@@ -3400,6 +3469,25 @@ impl Lower<'_, '_, '_> {
                 "name" => {
                     props.icon_given = true;
                     props.icon = self.icon_name(value, loc);
+                }
+                "rowHeight" => {
+                    props.row_height_given = true;
+                    props.row_height = self.style_size(name, value, loc).filter(|height| {
+                        let px = match height {
+                            Length::Px(px) => Some(*px),
+                            _ => None,
+                        };
+                        let fits = px.is_none_or(|px| (8..=512).contains(&px));
+                        if !fits {
+                            self.cx.error_help(
+                                Code::InvalidValue,
+                                loc,
+                                "`rowHeight` must be from 8 to 512 layout units",
+                                "write rowHeight={48}: each row's height",
+                            );
+                        }
+                        fits
+                    });
                 }
                 "src" => {
                     props.picture_given = true;

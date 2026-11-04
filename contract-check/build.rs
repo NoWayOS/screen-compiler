@@ -397,6 +397,22 @@ mod run {
         if let Some((switch, when)) = case {
             tree.set_case(SwitchId::new(switch), Some(when)).unwrap();
         }
+        // A virtual list (contract v18) holds a thousand items, its rows
+        // filled as slots are.
+        if !slots.is_empty() {
+            let lists: std::vec::Vec<nowayos_ui::ListId> = tree
+                .scroll_views()
+                .filter_map(|id| match tree.get(id).map(|node| node.kind()) {
+                    Some(nowayos_ui::NodeKind::Scroll {
+                        rows: Some(rows), ..
+                    }) => Some(rows.list),
+                    _ => None,
+                })
+                .collect();
+            for list in lists {
+                tree.set_list_count(list, 1_000).unwrap();
+            }
+        }
         for &slot in slots {
             // A long text (contract v16) shows a 10 KB article.
             let long = tree

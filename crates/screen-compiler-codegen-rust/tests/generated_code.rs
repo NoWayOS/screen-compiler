@@ -221,6 +221,15 @@ mod fixture_panels {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_inbox {
+    use crate::nowayos_ui;
+    include!("snapshots/inbox.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_order_ready {
     use crate::nowayos_ui;
     include!("snapshots/order-ready.rs");
@@ -263,7 +272,7 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 25] = [
+const COMPILED: [&str; 26] = [
     "article",
     "bike-hire",
     "check-in",
@@ -273,6 +282,7 @@ const COMPILED: [&str; 25] = [
     "edge-names",
     "form-controls",
     "fuelling",
+    "inbox",
     "lost-property-1-item",
     "lost-property-2-contact",
     "lost-property-3-review",
@@ -309,6 +319,22 @@ fn welcome_builds_exactly_its_ir() {
     assert_eq!(screen::actions::START.get(), 1);
     assert_eq!(screen::actions::HELP.get(), 2);
     assert_eq!((tokens::SPACE_SM, tokens::SPACE_LG), (8, 24));
+}
+
+/// A virtual list's pool of rows, its slots numbered as a list's rows
+/// are, builds exactly as the IR says (contract v18).
+#[test]
+fn inbox_builds_exactly_its_ir() {
+    let mut recorder = Recorder::with_capacity(96);
+    let nodes = fixture_inbox::inbox::build(&mut recorder).unwrap();
+    let outline = recorder.outline(nodes.root);
+    assert_eq!(outline, ir_outline("inbox.tsx"));
+    assert!(
+        outline.contains("virtual-list list 1 row-height=48 height=380"),
+        "{outline}"
+    );
+    assert_eq!(fixture_inbox::inbox::lists::MESSAGES.get(), 1);
+    assert_eq!(fixture_inbox::inbox::slots::MESSAGES_12_SUBJECT.get(), 24);
 }
 
 /// Containers that scroll - down, across and both ways - build a scroll

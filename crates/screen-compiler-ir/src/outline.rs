@@ -26,6 +26,7 @@ pub fn outline(module: &Module, screen: &Screen) -> String {
         actions: screen.actions(),
         fields: screen.fields(),
         groups: screen.groups(),
+        lists: screen.lists(),
         slots: screen.slots(),
         switches: screen.switches(),
     };
@@ -67,6 +68,7 @@ struct Numbers<'s> {
     actions: Vec<&'s Name>,
     fields: Vec<&'s Name>,
     groups: Vec<&'s Name>,
+    lists: Vec<&'s Name>,
     slots: Vec<&'s Name>,
     switches: Vec<(&'s Name, Vec<&'s Name>)>,
 }
@@ -252,6 +254,25 @@ fn describe(module: &Module, numbers: &Numbers<'_>, node: &Node) -> String {
         ),
         NodeKind::Progress { slot } => format!("progress slot {}", number(&numbers.slots, slot)),
         NodeKind::Icon { name } => format!("icon {name}"),
+        NodeKind::VirtualList {
+            list,
+            row_height,
+            width,
+            height,
+            ..
+        } => {
+            let mut out = format!(
+                "virtual-list list {} row-height={}",
+                number(&numbers.lists, list),
+                px(Some(row_height))
+            );
+            for (side, length) in [("width", width), ("height", height)] {
+                if let Some(length) = length {
+                    out.push_str(&format!(" {side}={}", px(Some(length))));
+                }
+            }
+            out
+        }
         NodeKind::Image {
             picture,
             alt,

@@ -13,7 +13,7 @@
 
 use screen_compiler_codegen_rust::contract::builder::{
     ActionId, Align, ButtonVariant, Colour, FieldId, Fit, GroupId, Input, InputMode, Justify,
-    Layout, Look, Picker, Picture, ScrollAxes, SlotId, Space, Surface, SwitchId, Template,
+    Layout, ListId, Look, Picker, Picture, ScrollAxes, SlotId, Space, Surface, SwitchId, Template,
     TextAlign, TextStyle, Tone, UiBuilder, Weight, icons,
 };
 
@@ -307,6 +307,23 @@ impl UiBuilder for Recorder {
 
     fn scroll_view(&mut self, _layout: Layout, child: NodeRef) -> Result<NodeRef, RecordError> {
         self.add("scroll".to_owned(), &[child])
+    }
+
+    fn virtual_list(
+        &mut self,
+        layout: Layout,
+        list: ListId,
+        row_height: u16,
+        rows: &[NodeRef],
+    ) -> Result<NodeRef, RecordError> {
+        let mut line = format!("virtual-list list {} row-height={row_height}", list.get());
+        if let Some(width) = layout.width_px() {
+            line.push_str(&format!(" width={width}"));
+        }
+        if let Some(height) = layout.height_px() {
+            line.push_str(&format!(" height={height}"));
+        }
+        self.add(line, rows)
     }
 
     fn scroll_view_axes(
