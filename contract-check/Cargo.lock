@@ -159,6 +159,7 @@ dependencies = [
  "embedded-graphics",
  "nowayos-display",
  "nowayos-glyphs",
+ "nowayos-raster",
  "nowayos-ui",
 ]
 
@@ -167,6 +168,7 @@ name = "nowayos-testkit"
 version = "0.1.0"
 dependencies = [
  "embedded-graphics",
+ "nowayos-raster",
  "png",
 ]
 

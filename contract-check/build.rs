@@ -432,7 +432,8 @@ mod run {
             tree.set_focus(input).unwrap();
         }
         let mut frame = Framebuffer::new(WIDTH, HEIGHT).unwrap();
-        render(&tree, &mut frame, &theme).unwrap();
+        nowayos_testkit::glyph_store!(glyphs);
+        render(&tree, &mut frame, &theme, &mut glyphs).unwrap();
         frame
     }
 "#;
