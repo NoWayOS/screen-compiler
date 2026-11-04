@@ -129,6 +129,9 @@ dependencies = [
 [[package]]
 name = "nowayos-glyphs"
 version = "0.1.0"
+dependencies = [
+ "nowayos-raster",
+]
 
 [[package]]
 name = "nowayos-icons"
@@ -143,6 +146,10 @@ dependencies = [
 
 [[package]]
 name = "nowayos-ipc"
+version = "0.1.0"
+
+[[package]]
+name = "nowayos-raster"
 version = "0.1.0"
 
 [[package]]
