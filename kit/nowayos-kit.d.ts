@@ -108,6 +108,7 @@ declare module "nowayos:kit" {
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
+    cursor?: "default" | "pointer" | "text" | "not-allowed";
   }
 
   /** The props of `<Column>`. */
@@ -182,6 +183,7 @@ declare module "nowayos:kit" {
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
+    cursor?: "default" | "pointer" | "text" | "not-allowed";
   }
 
   /** The props of `<Row>`. */
@@ -204,6 +206,7 @@ declare module "nowayos:kit" {
     color?: Colour | `var(--${Colour})`;
     textAlign?: "left" | "start" | "center" | "right" | "end";
     userSelect?: "none" | "text";
+    cursor?: "default" | "pointer" | "text" | "not-allowed";
   }
 
   /** The props of `<Text>`. */
@@ -230,6 +233,7 @@ declare module "nowayos:kit" {
     backgroundColor?: Colour | `var(--${Colour})`;
     /** One of the theme's colours, by name or as `var(--name)`. */
     color?: Colour | `var(--${Colour})`;
+    cursor?: "default" | "pointer" | "text" | "not-allowed";
   }
 
   /** The props of `<Button>`. */
@@ -237,6 +241,8 @@ declare module "nowayos:kit" {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */
     id?: string;
     variant?: "primary" | "secondary" | "quiet";
+    /** A callback prop of the screen, which becomes an action; or a function that only calls one: `() => props.onSave()`. */
+    onContextMenu?: () => void;
     style?: ButtonStyle;
     /** Its label: literal text. */
     children: string;
@@ -376,6 +382,7 @@ declare module "nowayos:kit" {
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
+    cursor?: "default" | "pointer" | "text" | "not-allowed";
   }
 
   /** The props of `<Card>`. */
@@ -450,6 +457,7 @@ declare module "nowayos:kit" {
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
+    cursor?: "default" | "pointer" | "text" | "not-allowed";
   }
 
   /** The props of `<Notice>`. */
@@ -525,6 +533,7 @@ declare module "nowayos:kit" {
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
+    cursor?: "default" | "pointer" | "text" | "not-allowed";
   }
 
   /** The props of `<HeaderBar>`. */

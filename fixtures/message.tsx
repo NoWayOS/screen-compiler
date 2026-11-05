@@ -1,6 +1,7 @@
 // Synthetic Screen Compiler fixture: a generic message screen with layers over it
 // (contract v20) - a menu beside More, a tooltip on Delete, a popover beside Help
-// and a dialog confirming a delete.
+// and a dialog confirming a delete. A right click on More opens its menu too, and
+// the message shows an I-beam (contract v25).
 // Written for Screen Compiler's tests; not taken from any product.
 import { Button, Column, Dialog, HeaderBar, Menu, Popover, Row, Screen, Spacer, Text, Tooltip } from "nowayos:kit";
 
@@ -27,7 +28,7 @@ export default function Message(props: MessageProps) {
         <HeaderBar gap={GAP} padding={GAP}>
           <Text role="heading">A message</Text>
           <Spacer />
-          <Button id="more" variant="secondary" onPress={props.onMore}>
+          <Button id="more" variant="secondary" onPress={props.onMore} onContextMenu={props.onMore}>
             More
           </Button>
           <Menu for="more" open={props.menuOpen}>
@@ -42,7 +43,9 @@ export default function Message(props: MessageProps) {
           </Menu>
         </HeaderBar>
         <Column gap={GAP} padding={EDGE}>
-          <Text lines={3}>A message of a few lines, which the person may delete, rename or keep.</Text>
+          <Text lines={3} style={{ cursor: "text" }}>
+            A message of a few lines, which the person may delete, rename or keep.
+          </Text>
           <Row gap={GAP}>
             <Button id="delete" variant="secondary" onPress={props.onDelete}>
               Delete

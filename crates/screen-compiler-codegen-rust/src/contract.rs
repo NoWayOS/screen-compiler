@@ -121,6 +121,11 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v25 adds `context_action`, an action a right click or a long
+//! press on a node reports (`<Button onContextMenu={props.onMore}>`), and
+//! `cursor`, the pointer's shape over a node and what it holds
+//! (`style={{ cursor: "pointer" }}`), each a call after the node is built.
+//!
 //! Contract v24 adds `TextStyle::selectable`: text a press selects, for
 //! Ctrl+C to copy (`<Text style={{ userSelect: "text" }}>`).
 //!
@@ -189,7 +194,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 24;
+pub const VERSION: u32 = 25;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -341,6 +346,11 @@ pub const MAPPINGS: &[Mapping] = &[
         tsx: "<Text style={{ userSelect: \"text\" }}>literal</Text>",
         ir: "Text { style: TextStyle { selectable: true, .. } }",
         rust: "ui::TextStyle::new(ui::TextRole::Body).selectable()",
+    },
+    Mapping {
+        tsx: "<Button onPress={onOpen} onContextMenu={onMore} style={{ cursor: \"pointer\" }}>Open</Button>",
+        ir: "Node { context: Some(onMore), cursor: Some(Pointer), .. }",
+        rust: "b.context_action(n3, actions::MORE)?; b.cursor(n3, ui::Cursor::Hand)?;",
     },
     Mapping {
         tsx: "<Button style={{ backgroundColor: \"text\", color: \"background\" }} onPress={onDone}>Done</Button>",
@@ -526,6 +536,19 @@ pub mod builder {
         Horizontal,
         /// Both ways.
         Both,
+    }
+
+    /// The pointer's shape over a node (contract v25): CSS's `cursor`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub enum Cursor {
+        /// An arrow (`default`).
+        Arrow,
+        /// A hand (`pointer`).
+        Hand,
+        /// An I-beam (`text`).
+        Text,
+        /// Not allowed (`not-allowed`).
+        NotAllowed,
     }
 
     /// How a picture fills a box of another shape (contract v15): CSS's
@@ -1889,6 +1912,23 @@ pub mod builder {
             anchor: Self::Node,
             text: &'static str,
         ) -> Result<Self::Node, Self::Error>;
+
+        /// Gives `node` a context action (contract v25): reported on a
+        /// right click on it, or a long press.
+        ///
+        /// # Errors
+        ///
+        /// The builder's error: for example when too many nodes have one.
+        fn context_action(&mut self, node: Self::Node, action: ActionId)
+        -> Result<(), Self::Error>;
+
+        /// Gives `node` the pointer's shape over it and what it holds
+        /// (contract v25).
+        ///
+        /// # Errors
+        ///
+        /// The builder's error: for example when too many nodes have one.
+        fn cursor(&mut self, node: Self::Node, cursor: Cursor) -> Result<(), Self::Error>;
 
         /// A text area (contract v19): several lines a person types into,
         /// bound to `field`, `rows` lines high, up to `max_len` bytes kept

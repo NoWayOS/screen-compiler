@@ -246,7 +246,20 @@ fn number(names: &[&Name], name: &Name) -> usize {
         .unwrap_or(0)
 }
 
+/// A node's line: what it is, then its context action and pointer shape
+/// (contract v25).
 fn describe(module: &Module, numbers: &Numbers<'_>, node: &Node) -> String {
+    let mut line = describe_kind(module, numbers, node);
+    if let Some(action) = &node.context {
+        line.push_str(&format!(" context={}", number(&numbers.actions, action)));
+    }
+    if let Some(cursor) = node.cursor {
+        line.push_str(&format!(" cursor={}", cursor.tsx()));
+    }
+    line
+}
+
+fn describe_kind(module: &Module, numbers: &Numbers<'_>, node: &Node) -> String {
     // A theme's spacing token by name; any other length in pixels.
     let px = |length: Option<&Length>| match length {
         Some(Length::Space(space)) => format!("space.{}", space.tsx()),
@@ -493,6 +506,8 @@ mod tests {
             kind,
             id: None,
             loc: None,
+            context: None,
+            cursor: None,
         };
         let group = |n: &str, children| {
             node(NodeKind::Group(crate::Group {
@@ -551,6 +566,8 @@ mod tests {
             kind,
             id: None,
             loc: None,
+            context: None,
+            cursor: None,
         };
         let root = node(NodeKind::Column(Container {
             gap: Some(Length::Token(name("GAP"))),

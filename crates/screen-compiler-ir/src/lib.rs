@@ -28,10 +28,10 @@ pub use diag::{Code, Diagnostic, Loc, Severity, has_errors, sort_diagnostics};
 pub use name::{Name, NameError};
 pub use outline::outline;
 pub use style::{
-    AlignItems, AnimationName, ButtonVariant, Colour, Easing, Elevation, Fit, Gradient, ICON_NAMES,
-    Justify, Look, MAX_BORDER_WIDTH, MAX_LINES, MAX_RADIUS, MotionProperty, NamedAnimation,
-    ScrollAxes, Space, Surface, TextAlign, TextRole, TextStyle, Tone, Transition, USER_SELECT,
-    Weight, is_display, is_printable,
+    AlignItems, AnimationName, ButtonVariant, Colour, Cursor, Easing, Elevation, Fit, Gradient,
+    ICON_NAMES, Justify, Look, MAX_BORDER_WIDTH, MAX_LINES, MAX_RADIUS, MotionProperty,
+    NamedAnimation, ScrollAxes, Space, Surface, TextAlign, TextRole, TextStyle, Tone, Transition,
+    USER_SELECT, Weight, is_display, is_printable,
 };
 pub use validate::{MAX_DEPTH, validate};
 
@@ -183,7 +183,8 @@ impl Screen {
                 }
                 _ => Vec::new(),
             };
-            for action in named {
+            // Its context action after its own (contract v25).
+            for action in named.into_iter().chain(&node.context) {
                 if !actions.iter().any(|a| a.same_words(action)) {
                     actions.push(action);
                 }
@@ -310,6 +311,11 @@ pub struct Node {
     pub id: Option<Name>,
     /// Where the element starts.
     pub loc: Option<Loc>,
+    /// Its context action, named after the callback prop that handles it:
+    /// `onContextMenu` (contract v25).
+    pub context: Option<Name>,
+    /// The pointer's shape over it: its style's `cursor` (contract v25).
+    pub cursor: Option<Cursor>,
 }
 
 impl Node {

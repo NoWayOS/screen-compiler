@@ -4,8 +4,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use screen_compiler_ir::{
-    AREA_ROWS, AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Elevation,
-    Fit, Gradient, Group, ICON_NAMES, InputMode, Justify, LayerKind, Length, Loc, Look,
+    AREA_ROWS, AlignItems, ButtonVariant, Case, Code, Colour, Container, Cursor, Diagnostic,
+    Elevation, Fit, Gradient, Group, ICON_NAMES, InputMode, Justify, LayerKind, Length, Loc, Look,
     MAX_AREA_LEN, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LABEL_BYTES, MAX_LINES, MAX_LONG_TEXT,
     MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, MAX_TEMPLATE_BYTES, Module, Name, Node,
     NodeKind, SELECT_ROWS, Screen, ScrollAxes, Space, Surface, Template, TextAlign, TextRole,
@@ -1314,6 +1314,8 @@ struct StyleProps {
     colour: Option<Colour>,
     /// `<Text>`'s `userSelect: "text"` (contract v24).
     selectable: bool,
+    /// The pointer's shape over it (contract v25).
+    cursor: Option<Cursor>,
     /// `<Image>`'s `objectFit`.
     fit: Option<Fit>,
     /// A container's `overflow` (both ways), `overflowX` and `overflowY`
@@ -1334,6 +1336,8 @@ struct Props {
     size: Option<Length>,
     placeholder: Option<String>,
     on_press: Option<Name>,
+    /// `onContextMenu` (contract v25).
+    on_context: Option<Name>,
     /// `onPress` or `onClick`, whichever is given first.
     on_press_given: Option<&'static str>,
     max_len: Option<Length>,
@@ -2075,6 +2079,8 @@ impl Lower<'_, '_, '_> {
             kind,
             id: props.id,
             loc: Some(element.loc),
+            context: props.on_context,
+            cursor: props.style.cursor,
         })
     }
 
@@ -2230,6 +2236,8 @@ impl Lower<'_, '_, '_> {
             kind,
             id: None,
             loc: Some(loc),
+            context: None,
+            cursor: None,
         })
     }
 
@@ -3378,6 +3386,9 @@ impl Lower<'_, '_, '_> {
                         TextAlign::parse_style,
                     );
                 }
+                "cursor" => {
+                    style.cursor = self.keyword(key, &prop.value, &Cursor::NAMES, Cursor::parse);
+                }
                 "userSelect" => {
                     style.selectable = self
                         .keyword(key, &prop.value, &USER_SELECT, |text| {
@@ -3896,6 +3907,7 @@ impl Lower<'_, '_, '_> {
                     props.on_press_given = Some(prop);
                     props.on_press = self.action(prop, value, loc);
                 }
+                "onContextMenu" => props.on_context = self.action("onContextMenu", value, loc),
                 "variant" => props.variant = self.variant(value, loc),
                 "tone" => {
                     props.tone_given = true;

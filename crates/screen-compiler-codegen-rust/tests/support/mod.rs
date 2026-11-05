@@ -12,10 +12,10 @@
 )]
 
 use screen_compiler_codegen_rust::contract::builder::{
-    ActionId, Align, ButtonVariant, Colour, Easing, Elevation, FieldId, Fit, GroupId, Input,
-    InputMode, Justify, LayerId, Layout, ListId, Look, Picker, Picture, Property, Repeat, Run,
-    ScrollAxes, SlotId, Space, Surface, SwitchId, Template, TextAlign, TextStyle, Tone, UiBuilder,
-    Weight, icons,
+    ActionId, Align, ButtonVariant, Colour, Cursor, Easing, Elevation, FieldId, Fit, GroupId,
+    Input, InputMode, Justify, LayerId, Layout, ListId, Look, Picker, Picture, Property, Repeat,
+    Run, ScrollAxes, SlotId, Space, Surface, SwitchId, Template, TextAlign, TextStyle, Tone,
+    UiBuilder, Weight, icons,
 };
 
 /// A theme colour's TSX name, as `screen_compiler_ir::outline` writes it.
@@ -716,6 +716,26 @@ impl UiBuilder for Recorder {
     fn tooltip(&mut self, anchor: NodeRef, text: &'static str) -> Result<NodeRef, RecordError> {
         let line = format!("tooltip {text:?} for ({})", self.line_of(anchor)?);
         self.add(line, &[])
+    }
+
+    fn context_action(&mut self, node: NodeRef, action: ActionId) -> Result<(), RecordError> {
+        let recorded = self.nodes.get_mut(node.0).ok_or(RecordError::UnknownNode)?;
+        recorded
+            .line
+            .push_str(&format!(" context={}", action.get()));
+        Ok(())
+    }
+
+    fn cursor(&mut self, node: NodeRef, cursor: Cursor) -> Result<(), RecordError> {
+        let name = match cursor {
+            Cursor::Arrow => "default",
+            Cursor::Hand => "pointer",
+            Cursor::Text => "text",
+            Cursor::NotAllowed => "not-allowed",
+        };
+        let recorded = self.nodes.get_mut(node.0).ok_or(RecordError::UnknownNode)?;
+        recorded.line.push_str(&format!(" cursor={name}"));
+        Ok(())
     }
 
     fn text_area(

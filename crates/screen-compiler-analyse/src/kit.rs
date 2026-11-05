@@ -7,7 +7,7 @@
 use std::fmt;
 
 use screen_compiler_ir::{
-    AREA_ROWS, AlignItems, ButtonVariant, Elevation, Fit, ICON_NAMES, InputMode, Justify,
+    AREA_ROWS, AlignItems, ButtonVariant, Cursor, Elevation, Fit, ICON_NAMES, InputMode, Justify,
     MAX_AREA_LEN, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS,
     MAX_RADIUS, MAX_SELECT_OPTIONS, SELECT_ROWS, ScrollAxes, TextAlign, TextRole, Tone,
     USER_SELECT, Weight,
@@ -226,6 +226,8 @@ const CONTAINER_STYLE: &[StyleProperty] = &[
     styled("overflow", Value::Choice(&ScrollAxes::NAMES)),
     styled("overflowX", Value::Choice(&ScrollAxes::NAMES)),
     styled("overflowY", Value::Choice(&ScrollAxes::NAMES)),
+    // The pointer's shape over it (contract v25).
+    styled("cursor", Value::Choice(&Cursor::NAMES)),
 ];
 
 /// A component of the kit screens import from the kit module.
@@ -508,6 +510,8 @@ impl KitComponent {
                         // React DOM's name for it.
                         Prop::required_or("onClick", "onPress", Value::Action),
                         Prop::optional("variant", Value::Choice(&ButtonVariant::NAMES)),
+                        // A right click or a long press (contract v25).
+                        Prop::optional("onContextMenu", Value::Action),
                         STYLE,
                     ]
                 }
@@ -657,6 +661,7 @@ impl KitComponent {
                         styled("color", Value::Colour),
                         styled("textAlign", Value::Choice(&TextAlign::STYLE_NAMES)),
                         styled("userSelect", Value::Choice(&USER_SELECT)),
+                        styled("cursor", Value::Choice(&Cursor::NAMES)),
                     ]
                 }
             }
@@ -665,6 +670,7 @@ impl KitComponent {
                     &[
                         styled("backgroundColor", Value::Colour),
                         styled("color", Value::Colour),
+                        styled("cursor", Value::Choice(&Cursor::NAMES)),
                     ]
                 }
             }

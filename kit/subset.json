@@ -47,7 +47,8 @@
         { "name": "animationFillMode", "value": { "kind": "motion", "part": "fill" } },
         { "name": "overflow", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowX", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
-        { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } }
+        { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
+        { "name": "cursor", "value": { "kind": "choice", "values": ["default", "pointer", "text", "not-allowed"] } }
       ]
     },
     {
@@ -90,7 +91,8 @@
         { "name": "animationFillMode", "value": { "kind": "motion", "part": "fill" } },
         { "name": "overflow", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowX", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
-        { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } }
+        { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
+        { "name": "cursor", "value": { "kind": "choice", "values": ["default", "pointer", "text", "not-allowed"] } }
       ]
     },
     {
@@ -108,7 +110,8 @@
       "style": [
         { "name": "color", "value": { "kind": "colour" } },
         { "name": "textAlign", "value": { "kind": "choice", "values": ["left", "start", "center", "right", "end"] } },
-        { "name": "userSelect", "value": { "kind": "choice", "values": ["none", "text"] } }
+        { "name": "userSelect", "value": { "kind": "choice", "values": ["none", "text"] } },
+        { "name": "cursor", "value": { "kind": "choice", "values": ["default", "pointer", "text", "not-allowed"] } }
       ]
     },
     {
@@ -119,11 +122,13 @@
         { "name": "onPress", "required": true, "or": "onClick", "value": { "kind": "action" } },
         { "name": "onClick", "required": true, "or": "onPress", "value": { "kind": "action" } },
         { "name": "variant", "required": false, "value": { "kind": "choice", "values": ["primary", "secondary", "quiet"] } },
+        { "name": "onContextMenu", "required": false, "value": { "kind": "action" } },
         { "name": "style", "required": false, "value": { "kind": "style" } }
       ],
       "style": [
         { "name": "backgroundColor", "value": { "kind": "colour" } },
-        { "name": "color", "value": { "kind": "colour" } }
+        { "name": "color", "value": { "kind": "colour" } },
+        { "name": "cursor", "value": { "kind": "choice", "values": ["default", "pointer", "text", "not-allowed"] } }
       ]
     },
     {
@@ -215,7 +220,8 @@
         { "name": "animationFillMode", "value": { "kind": "motion", "part": "fill" } },
         { "name": "overflow", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowX", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
-        { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } }
+        { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
+        { "name": "cursor", "value": { "kind": "choice", "values": ["default", "pointer", "text", "not-allowed"] } }
       ]
     },
     {
@@ -259,7 +265,8 @@
         { "name": "animationFillMode", "value": { "kind": "motion", "part": "fill" } },
         { "name": "overflow", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowX", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
-        { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } }
+        { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
+        { "name": "cursor", "value": { "kind": "choice", "values": ["default", "pointer", "text", "not-allowed"] } }
       ]
     },
     {
@@ -302,7 +309,8 @@
         { "name": "animationFillMode", "value": { "kind": "motion", "part": "fill" } },
         { "name": "overflow", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
         { "name": "overflowX", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
-        { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } }
+        { "name": "overflowY", "value": { "kind": "choice", "values": ["auto", "scroll"] } },
+        { "name": "cursor", "value": { "kind": "choice", "values": ["default", "pointer", "text", "not-allowed"] } }
       ]
     },
     {
