@@ -2000,6 +2000,67 @@ fn a_text_area_s_bounds_are_refused_where_written() {
     }
 }
 
+/// `KIT` with the layers, plus a component taking `props`, returning
+/// `<Screen>{body}</Screen>` on line 2.
+fn layered_screen(body: &str) -> String {
+    let kit = KIT.replace(" } from", ", Dialog, Menu, Popover, Tooltip } from");
+    format!("{kit}export function S(props: P) {{ return <Screen>{body}</Screen>; }}\n")
+}
+
+#[test]
+fn layers_reach_the_ir_beside_their_controls() {
+    assert_eq!(
+        ok_outline(&layered_screen(
+            "<Column><Button id=\"more\" onPress={props.onMore}>More</Button><Menu for=\"more\" open={props.menuOpen}><Column><Button onPress={props.onCopy}>Copy</Button></Column></Menu><Tooltip for=\"more\">More choices</Tooltip><Dialog open={props.asking}><Text>Sure?</Text></Dialog></Column>"
+        )),
+        "column gap=0 padding=0\n  button \"More\" action=1\n  menu layer 1 for (button \"More\" action=1)\n    column gap=0 padding=0\n      button \"Copy\" action=2\n  tooltip \"More choices\" for (button \"More\" action=1)\n  dialog layer 2\n    text \"Sure?\"\n"
+    );
+}
+
+#[test]
+fn a_layer_s_bounds_are_refused_where_written() {
+    // `for` naming nothing, an element after it or around it; no `open`
+    // or `for`; two children; one prop opening two layers.
+    let button = "<Button id=\"more\" onPress={props.onMore}>More</Button>";
+    let after = format!(
+        "<Column><Menu for=\"more\" open={{props.m}}><Text>A</Text></Menu>{button}</Column>"
+    );
+    let around =
+        "<Column id=\"box\"><Popover for=\"box\" open={props.p}><Text>A</Text></Popover></Column>"
+            .to_owned();
+    let none = "<Column><Tooltip for=\"nothing\">Hi</Tooltip></Column>".to_owned();
+    let no_open = format!("<Column>{button}<Menu for=\"more\"><Text>A</Text></Menu></Column>");
+    let no_for = "<Column><Popover open={props.p}><Text>A</Text></Popover></Column>".to_owned();
+    let two =
+        "<Column><Dialog open={props.d}><Text>A</Text><Text>B</Text></Dialog></Column>".to_owned();
+    let twice = "<Column><Dialog open={props.d}><Text>A</Text></Dialog><Dialog open={props.d}><Text>B</Text></Dialog></Column>".to_owned();
+    for (body, code, marker) in [
+        (after.as_str(), Code::UnknownName, "<Menu"),
+        (around.as_str(), Code::UnknownName, "<Popover"),
+        (none.as_str(), Code::UnknownName, "<Tooltip"),
+        (no_open.as_str(), Code::MissingProp, "<Menu"),
+        (no_for.as_str(), Code::MissingProp, "<Popover"),
+        (two.as_str(), Code::InvalidChildren, "<Dialog"),
+    ] {
+        let e = error(&layered_screen(body));
+        assert_eq!(
+            (e.code, e.loc),
+            (code, at(2, column_of(body, marker))),
+            "{body}: {e:?}"
+        );
+    }
+    // The second dialog opened by the prop.
+    let e = error(&layered_screen(&twice));
+    assert_eq!(
+        (e.code, e.loc),
+        (
+            Code::DuplicateName,
+            at(2, column_of(&twice, "<Dialog open={props.d}><Text>B"))
+        ),
+        "{e:?}"
+    );
+}
+
 /// `KIT` with `Keyboard`, plus a component taking `props`,
 /// returning `<Screen>{body}</Screen>` on line 2.
 fn typing_screen(body: &str) -> String {

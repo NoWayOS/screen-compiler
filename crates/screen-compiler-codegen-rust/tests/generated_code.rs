@@ -239,6 +239,15 @@ mod fixture_feedback {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_message {
+    use crate::nowayos_ui;
+    include!("snapshots/message.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_order_ready {
     use crate::nowayos_ui;
     include!("snapshots/order-ready.rs");
@@ -281,7 +290,7 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 27] = [
+const COMPILED: [&str; 28] = [
     "article",
     "bike-hire",
     "check-in",
@@ -296,6 +305,7 @@ const COMPILED: [&str; 27] = [
     "lost-property-1-item",
     "lost-property-2-contact",
     "lost-property-3-review",
+    "message",
     "notice-board",
     "order-ready",
     "order-summary",
@@ -329,6 +339,23 @@ fn welcome_builds_exactly_its_ir() {
     assert_eq!(screen::actions::START.get(), 1);
     assert_eq!(screen::actions::HELP.get(), 2);
     assert_eq!((tokens::SPACE_SM, tokens::SPACE_LG), (8, 24));
+}
+
+/// Layers over the screen - a menu, a tooltip and a popover beside the
+/// controls their `for` names, and a dialog - build exactly as the IR says
+/// (contract v20).
+#[test]
+fn message_builds_exactly_its_ir() {
+    let mut recorder = Recorder::with_capacity(32);
+    let nodes = fixture_message::message::build(&mut recorder).unwrap();
+    let outline = recorder.outline(nodes.root);
+    assert_eq!(outline, ir_outline("message.tsx"));
+    assert!(
+        outline.contains("menu layer 1 for (button \"More\" action=1 variant=secondary)"),
+        "{outline}"
+    );
+    assert!(outline.contains("dialog layer 3"), "{outline}");
+    assert_eq!(fixture_message::message::layers::CONFIRMING.get(), 3);
 }
 
 /// A text area, numbered with the fields, builds exactly as the IR says

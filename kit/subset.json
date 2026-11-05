@@ -291,6 +291,44 @@
       "style": []
     },
     {
+      "name": "Dialog",
+      "children": "one-element",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "open", "required": true, "value": { "kind": "prop" } }
+      ],
+      "style": []
+    },
+    {
+      "name": "Menu",
+      "children": "one-element",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "for", "required": true, "value": { "kind": "id" } },
+        { "name": "open", "required": true, "value": { "kind": "prop" } }
+      ],
+      "style": []
+    },
+    {
+      "name": "Popover",
+      "children": "one-element",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "for", "required": true, "value": { "kind": "id" } },
+        { "name": "open", "required": true, "value": { "kind": "prop" } }
+      ],
+      "style": []
+    },
+    {
+      "name": "Tooltip",
+      "children": "text",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "for", "required": true, "value": { "kind": "id" } }
+      ],
+      "style": []
+    },
+    {
       "name": "Keyboard",
       "children": "none",
       "props": [

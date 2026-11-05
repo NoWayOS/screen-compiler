@@ -121,6 +121,12 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v20 adds layers over the screen ([`builder::LayerId`], in a
+//! screen's `layers` module, one per prop that opens one): `dialog`
+//! (`<Dialog open={props.confirming}>`), `menu` and `popover` beside the
+//! control their `for` names (`<Menu for="more" open={props.menu}>`), and
+//! `tooltip` (`<Tooltip for="delete">Deletes it</Tooltip>`).
+//!
 //! Contract v19 adds `text_area`: several lines a person types,
 //! `<TextArea id="note" rows={4} maxLength={1000} placeholder="…" />`,
 //! bound to a field as a text input is, its bytes in the text store of the
@@ -164,7 +170,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 19;
+pub const VERSION: u32 = 20;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -261,6 +267,21 @@ pub const MAPPINGS: &[Mapping] = &[
         tsx: "<TextArea id=\"note\" rows={4} maxLength={1000} placeholder=\"…\" />",
         ir: "NodeKind::TextArea { placeholder, rows, max_len }",
         rust: "b.text_area(fields::NOTE, 4, 1000, \"…\")? (contract v19), numbered with the fields",
+    },
+    Mapping {
+        tsx: "<Dialog open={props.confirming}><Column>…</Column></Dialog>",
+        ir: "NodeKind::Layer { kind: Dialog, open: confirming, anchor: None, children }",
+        rust: "b.dialog(layers::CONFIRMING, column)? (contract v20), with pub const CONFIRMING: ui::LayerId = ui::LayerId::new(N)",
+    },
+    Mapping {
+        tsx: "<Button id=\"more\" …/><Menu for=\"more\" open={props.menuOpen}><Column>…</Column></Menu>, or <Popover …>",
+        ir: "NodeKind::Layer { kind: Menu, open: menuOpen, anchor: Some(more), children }",
+        rust: "b.menu(layers::MENU_OPEN, more, column)?, or b.popover(…)? (contract v20): the anchor is the variable of the element `for` names",
+    },
+    Mapping {
+        tsx: "<Tooltip for=\"delete\">Deletes it for good</Tooltip>",
+        ir: "NodeKind::Tooltip { anchor: delete, text }",
+        rust: "b.tooltip(delete, \"Deletes it for good\")? (contract v20)",
     },
     Mapping {
         tsx: "<Checkbox id=\"remind\" label=\"…\" />",
@@ -649,6 +670,27 @@ pub mod builder {
         }
 
         /// The list's number.
+        #[must_use]
+        pub const fn get(self) -> u16 {
+            self.0
+        }
+    }
+
+    /// A layer over the screen, a number the application opens and closes
+    /// it by (contract v20). Generated screens number their layers from 1
+    /// in document order and export each as a named constant in their
+    /// `layers` module.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct LayerId(u16);
+
+    impl LayerId {
+        /// The layer with number `value`.
+        #[must_use]
+        pub const fn new(value: u16) -> Self {
+            Self(value)
+        }
+
+        /// The layer's number.
         #[must_use]
         pub const fn get(self) -> u16 {
             self.0
@@ -1379,6 +1421,53 @@ pub mod builder {
             list: ListId,
             row_height: u16,
             rows: &[Self::Node],
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// A modal dialog holding `child` (contract v20), opened and closed
+        /// by the application as `layer`, in the middle of the screen,
+        /// which it veils.
+        ///
+        /// # Errors
+        ///
+        /// The builder's error: for example when it is full or `layer` is
+        /// already used.
+        fn dialog(&mut self, layer: LayerId, child: Self::Node) -> Result<Self::Node, Self::Error>;
+
+        /// A menu holding `child` beside `anchor` (contract v20), opened by
+        /// the application as `layer`.
+        ///
+        /// # Errors
+        ///
+        /// As [`dialog`](Self::dialog).
+        fn menu(
+            &mut self,
+            layer: LayerId,
+            anchor: Self::Node,
+            child: Self::Node,
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// A popover holding `child` beside `anchor` (contract v20), opened
+        /// by the application as `layer`.
+        ///
+        /// # Errors
+        ///
+        /// As [`dialog`](Self::dialog).
+        fn popover(
+            &mut self,
+            layer: LayerId,
+            anchor: Self::Node,
+            child: Self::Node,
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// A tooltip, `text` beside `anchor` (contract v20).
+        ///
+        /// # Errors
+        ///
+        /// The builder's error: for example when it is full.
+        fn tooltip(
+            &mut self,
+            anchor: Self::Node,
+            text: &'static str,
         ) -> Result<Self::Node, Self::Error>;
 
         /// A text area (contract v19): several lines a person types into,

@@ -27,8 +27,10 @@ pub fn outline(module: &Module, screen: &Screen) -> String {
         fields: screen.fields(),
         groups: screen.groups(),
         lists: screen.lists(),
+        layers: screen.layers(),
         slots: screen.slots(),
         switches: screen.switches(),
+        nodes: screen.nodes(),
     };
     let mut out = String::new();
     let mut stack: Vec<(&Node, usize)> = vec![(&screen.root, 0)];
@@ -69,8 +71,20 @@ struct Numbers<'s> {
     fields: Vec<&'s Name>,
     groups: Vec<&'s Name>,
     lists: Vec<&'s Name>,
+    layers: Vec<&'s Name>,
     slots: Vec<&'s Name>,
     switches: Vec<(&'s Name, Vec<&'s Name>)>,
+    /// Every node, to describe the control a layer shows beside.
+    nodes: Vec<&'s Node>,
+}
+
+/// The control with id `anchor`, described: what a layer shows beside.
+fn anchor_line(module: &Module, numbers: &Numbers<'_>, anchor: &Name) -> String {
+    numbers
+        .nodes
+        .iter()
+        .find(|node| node.id.as_ref().is_some_and(|id| id.same_words(anchor)))
+        .map_or_else(String::new, |node| describe(module, numbers, node))
 }
 
 /// A container's surface in the outline: nothing for none;
@@ -254,6 +268,19 @@ fn describe(module: &Module, numbers: &Numbers<'_>, node: &Node) -> String {
         ),
         NodeKind::Progress { slot } => format!("progress slot {}", number(&numbers.slots, slot)),
         NodeKind::Icon { name } => format!("icon {name}"),
+        NodeKind::Layer {
+            kind, open, anchor, ..
+        } => {
+            let mut out = format!("{} layer {}", kind.call(), number(&numbers.layers, open));
+            if let Some(anchor) = anchor {
+                out.push_str(&format!(" for ({})", anchor_line(module, numbers, anchor)));
+            }
+            out
+        }
+        NodeKind::Tooltip { anchor, text } => format!(
+            "tooltip {text:?} for ({})",
+            anchor_line(module, numbers, anchor)
+        ),
         NodeKind::VirtualList {
             list,
             row_height,

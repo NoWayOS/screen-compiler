@@ -207,6 +207,31 @@ fn main() -> Result<(), Box<dyn Error>> {
                     images.push(image);
                 }
             }
+            // Each layer, open (contract v20).
+            for (number, name) in layers(&file.source, &screen) {
+                writeln!(tests, "    #[test]")?;
+                writeln!(
+                    tests,
+                    "    fn {module}_{screen}_layer_{}() {{",
+                    name.replace('-', "_")
+                )?;
+                let build = format!("super::build_{module}_{screen}");
+                match &file.fixture {
+                    Some(fixture) => {
+                        let image = format!("{fixture}/{screen}.layer-{name}.png");
+                        writeln!(
+                            tests,
+                            "        matches_approved_layer({build}, &{groups:?}, &{slots:?}, {number}, {image:?});"
+                        )?;
+                        images.push(image);
+                    }
+                    None => writeln!(
+                        tests,
+                        "        frame_in(false, {build}, &{groups:?}, &{slots:?}, None, false, None, true, Some({number}));"
+                    )?,
+                }
+                writeln!(tests, "    }}")?;
+            }
             // Each case of each switch.
             for Switch {
                 number: switch,
@@ -308,13 +333,13 @@ mod run {
     /// Builds a screen on a real tree, makes it the root, lays it out in the
     /// viewport with the light theme's font and draws it with that theme.
     fn frame(build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>) -> Framebuffer {
-        frame_in(false, build, &[], &[], None, false, None, false)
+        frame_in(false, build, &[], &[], None, false, None, false, None)
     }
 
     /// As `frame`, in the large-text, high-contrast theme, whose spacing
     /// tokens measure half again.
     fn frame_large(build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>) -> Framebuffer {
-        frame_in(true, build, &[], &[], None, false, None, false)
+        frame_in(true, build, &[], &[], None, false, None, false, None)
     }
 
     /// As `frame`, with `groups` made visible and each of `slots` given the
@@ -328,7 +353,7 @@ mod run {
         groups: &[u16],
         slots: &[u16],
     ) -> Framebuffer {
-        frame_in(false, build, groups, slots, None, false, None, true)
+        frame_in(false, build, groups, slots, None, false, None, true, None)
     }
 
     /// As `frame_shown`, with `case`'s switch set to its case.
@@ -338,7 +363,7 @@ mod run {
         slots: &[u16],
         case: (u16, u8),
     ) -> Framebuffer {
-        frame_in(false, build, groups, slots, Some(case), false, None, true)
+        frame_in(false, build, groups, slots, Some(case), false, None, true, None)
     }
 
     /// Every text a screen draws - in the colours its style names, or its
@@ -383,6 +408,7 @@ mod run {
         scrolled: bool,
         typing: Option<nowayos_ui::InputMode>,
         errors: bool,
+        layer: Option<u16>,
     ) -> Framebuffer {
         let theme = if large {
             Theme::high_contrast()
@@ -476,6 +502,10 @@ mod run {
         if scrolled {
             tree.scroll_to(u32::MAX).unwrap();
         }
+        // One layer open over the screen (contract v20).
+        if let Some(layer) = layer {
+            tree.open(nowayos_ui::LayerId::new(layer)).unwrap();
+        }
         if let Some(typing) = typing {
             let input = tree
                 .paint_order()
@@ -528,7 +558,7 @@ const RUN_IMAGES: &str = r#"
         slots: &[u16],
         image: &str,
     ) {
-        let frame = frame_in(false, build, groups, slots, None, true, None, true);
+        let frame = frame_in(false, build, groups, slots, None, true, None, true, None);
         if let Err(err) = check_snapshot(&frame, &golden().join(image)) {
             panic!("{err}\nIn screen-compiler, `make bless-images` redraws the approved images.");
         }
@@ -541,7 +571,7 @@ const RUN_IMAGES: &str = r#"
         typing: nowayos_ui::InputMode,
         image: &str,
     ) {
-        let frame = frame_in(false, build, &[], &[], None, false, Some(typing), false);
+        let frame = frame_in(false, build, &[], &[], None, false, Some(typing), false, None);
         if let Err(err) = check_snapshot(&frame, &golden().join(image)) {
             panic!("{err}\nIn screen-compiler, `make bless-images` redraws the approved images.");
         }
@@ -574,6 +604,21 @@ const RUN_IMAGES: &str = r#"
 
     /// As `matches_approved_shown`, with `case`'s switch set to its case
     /// (`frame_case`).
+    /// As `matches_approved_shown`, with layer `layer` open over the
+    /// screen (contract v20).
+    fn matches_approved_layer(
+        build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
+        groups: &[u16],
+        slots: &[u16],
+        layer: u16,
+        image: &str,
+    ) {
+        let frame = frame_in(false, build, groups, slots, None, false, None, true, Some(layer));
+        if let Err(err) = check_snapshot(&frame, &golden().join(image)) {
+            panic!("{err}\nIn screen-compiler, `make bless-images` redraws the approved images.");
+        }
+    }
+
     fn matches_approved_case(
         build: impl FnOnce(&mut Tree<CAPACITY, TEXT>) -> Result<NodeId, UiError>,
         groups: &[u16],
@@ -706,6 +751,29 @@ fn numbers(source: &str, screen: &str, ty: &str) -> Vec<u16> {
             && let Ok(number) = number.parse()
         {
             found.push(number);
+        }
+    }
+    found
+}
+
+/// The layers of `screen` in a file of generated Rust (contract v20):
+/// each one's number and name, lowercase with dashes.
+fn layers(source: &str, screen: &str) -> Vec<(u16, String)> {
+    let open = format!("pub mod {screen} {{");
+    let mut inside = false;
+    let mut found = Vec::new();
+    for line in source.lines() {
+        if line == open || line == "}" {
+            inside = line == open;
+            continue;
+        }
+        if inside
+            && let Some((head, rest)) = line.trim().split_once(": ui::LayerId = ui::LayerId::new(")
+            && let Some(name) = head.strip_prefix("pub const ")
+            && let Some((number, _)) = rest.split_once(')')
+            && let Ok(number) = number.parse()
+        {
+            found.push((number, name.to_lowercase().replace('_', "-")));
         }
     }
     found

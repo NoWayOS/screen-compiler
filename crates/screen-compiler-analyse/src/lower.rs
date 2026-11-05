@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use screen_compiler_ir::{
     AREA_ROWS, AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Fit, Group,
-    ICON_NAMES, InputMode, Justify, Length, Loc, Look, MAX_AREA_LEN, MAX_BORDER_WIDTH,
+    ICON_NAMES, InputMode, Justify, LayerKind, Length, Loc, Look, MAX_AREA_LEN, MAX_BORDER_WIDTH,
     MAX_INPUT_LEN, MAX_LABEL_BYTES, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS,
     MAX_SELECT_OPTIONS, MAX_TEMPLATE_BYTES, Module, Name, Node, NodeKind, SELECT_ROWS, Screen,
     ScrollAxes, Space, Surface, Template, TextAlign, TextRole, TextStyle, Token, Tone, Weight,
@@ -1390,6 +1390,10 @@ struct Props {
     row_height_given: bool,
     /// Whether `for` was given, valid or not.
     for_given: bool,
+    /// `open={props.…}` on a layer: the prop that opens it (contract v20).
+    open: Option<Name>,
+    /// Whether `open` was given, valid or not.
+    open_given: bool,
 }
 
 /// What a condition tests.
@@ -1724,6 +1728,68 @@ impl Lower<'_, '_, '_> {
                     return None;
                 }
                 NodeKind::ScrollView { children }
+            }
+            // A layer over the screen (contract v20).
+            KitComponent::Dialog | KitComponent::Menu | KitComponent::Popover => {
+                let kind = match component {
+                    KitComponent::Dialog => LayerKind::Dialog,
+                    KitComponent::Menu => LayerKind::Menu,
+                    _ => LayerKind::Popover,
+                };
+                if !props.open_given {
+                    self.cx.error_help(
+                        Code::MissingProp,
+                        element.loc,
+                        format!("<{component}> needs open"),
+                        "write open={props.confirming}: the application opens it as that prop's layer",
+                    );
+                }
+                if kind != LayerKind::Dialog && !props.for_given {
+                    self.cx.error_help(
+                        Code::MissingProp,
+                        element.loc,
+                        format!("<{component}> needs for"),
+                        "write for=\"more\": the id of the control it shows beside, written before it",
+                    );
+                }
+                let children = self.container_children(component, &element.children, depth);
+                if children.len() != 1 {
+                    self.cx.error_help(
+                        Code::InvalidChildren,
+                        element.loc,
+                        format!(
+                            "<{component}> holds exactly one child element, not {}",
+                            children.len()
+                        ),
+                        format!("put what it shows in one <Column>: <{component} …><Column>…</Column></{component}>"),
+                    );
+                    return None;
+                }
+                let anchor = match kind {
+                    LayerKind::Dialog => None,
+                    _ => Some(props.field_for?),
+                };
+                NodeKind::Layer {
+                    kind,
+                    open: props.open?,
+                    anchor,
+                    children,
+                }
+            }
+            KitComponent::Tooltip => {
+                let text = self.literal_text(component, element, TextRole::Body);
+                if !props.for_given {
+                    self.cx.error_help(
+                        Code::MissingProp,
+                        element.loc,
+                        "<Tooltip> needs for",
+                        "write for=\"delete\": the id of the control it explains, written before it",
+                    );
+                }
+                NodeKind::Tooltip {
+                    anchor: props.field_for?,
+                    text: text?,
+                }
             }
             KitComponent::Icon => {
                 self.no_children(component, element);
@@ -2853,6 +2919,39 @@ impl Lower<'_, '_, '_> {
 
     /// `value={…}` on a `<ProgressBar>`: a prop of the component,
     /// which names the bar's slot.
+    /// `open={props.confirming}` on a layer (contract v20): the prop whose
+    /// layer the application opens and closes.
+    fn open_prop(&mut self, value: &AttrValue, loc: Loc) -> Option<Name> {
+        let help = "write open={props.confirming}: the application opens it as that prop's layer";
+        match value {
+            AttrValue::Expr(expr) => match self.prop_of(expr, "a layer's open") {
+                PropRef::Prop(key, at) => self.prop_name(&key, at, "name a layer"),
+                PropRef::Reported => None,
+                PropRef::NotAProp => {
+                    self.cx.error_help(
+                        Code::InvalidValue,
+                        expr.loc(),
+                        "`open` must be a prop of the component",
+                        help,
+                    );
+                    None
+                }
+            },
+            AttrValue::Str { loc, .. } | AttrValue::Empty { loc } => {
+                self.cx
+                    .error_help(Code::InvalidValue, *loc, "`open` must be a prop", help);
+                None
+            }
+            AttrValue::Absent => {
+                self.cx
+                    .error_help(Code::InvalidValue, loc, "`open` needs a value", help);
+                None
+            }
+            // Already reported by the parser front end.
+            AttrValue::InvalidStr { .. } => None,
+        }
+    }
+
     fn progress_value(&mut self, value: &AttrValue, loc: Loc) -> Option<Name> {
         let help = "write value={props.fuelled}: how far the bar shows comes from the application";
         match value {
@@ -3403,6 +3502,7 @@ impl Lower<'_, '_, '_> {
                 props.picture_given |= name == "src";
                 props.row_height_given |= name == "rowHeight";
                 props.alt_given |= name == "alt";
+                props.open_given |= name == "open";
                 continue;
             }
             match name {
@@ -3413,6 +3513,10 @@ impl Lower<'_, '_, '_> {
                 "for" => {
                     props.for_given = true;
                     props.field_for = self.id_named("for", value, loc);
+                }
+                "open" => {
+                    props.open_given = true;
+                    props.open = self.open_prop(value, loc);
                 }
                 "gap" => props.gap = self.length(name, value, loc),
                 "padding" => props.padding = self.length(name, value, loc),

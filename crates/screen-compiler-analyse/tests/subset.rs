@@ -278,11 +278,22 @@ fn options(n: usize) -> String {
 fn screen(component: KitComponent, change: &Change) -> String {
     let mut kit: BTreeSet<&str> = ["Screen", "Column", "Text", "TextInput", "space"].into();
     kit.insert(component.name());
+    // A layer's `for` given an id names an element written before it
+    // (contract v20).
+    let named = matches!(change, Change::Prop("for", _))
+        && component
+            .prop("for")
+            .is_some_and(|prop| prop.value == Value::Id);
+    let before = if named {
+        "<Text id=\"subject\">SAMPLE</Text>\n        "
+    } else {
+        ""
+    };
     let root = if component == KitComponent::Screen {
         element(component, change)
     } else {
         format!(
-            "<Screen>\n      <Column>\n        <TextInput id=\"field\" />\n        {}\n      </Column>\n    </Screen>",
+            "<Screen>\n      <Column>\n        <TextInput id=\"field\" />\n        {before}{}\n      </Column>\n    </Screen>",
             element(component, change)
         )
     };
@@ -308,6 +319,11 @@ fn element(component: KitComponent, change: &Change) -> String {
             Change::Without(name) if *name == prop.name || prop.or == Some(name) => None,
             Change::Prop(name, value) if *name == prop.name => Some(value.clone()),
             Change::Prop(name, _) if prop.or == Some(name) => None,
+            // A layer's `for` names the text input written before it
+            // (contract v20).
+            _ if prop.required && prop.name == "for" && prop.value == Value::Id => {
+                Some("\"field\"".to_owned())
+            }
             _ if prop.required && first_of_pair => Some(attribute(&valid(prop.value)[0])),
             _ => None,
         };

@@ -230,6 +230,15 @@ pub enum KitComponent {
     ScrollView,
     /// One choice of up to 64 options in a list that scrolls inside itself.
     Select,
+    /// A modal dialog over the screen, opened by a prop (contract v20).
+    Dialog,
+    /// A menu beside a control, opened by a prop (contract v20).
+    Menu,
+    /// A popover beside a control, opened by a prop (contract v20).
+    Popover,
+    /// A line of text beside a control, shown while the pointer rests on
+    /// it or it has focus (contract v20).
+    Tooltip,
     /// The on-screen keyboard: at most one in a screen, and only in
     /// one with a text input.
     Keyboard,
@@ -239,7 +248,7 @@ pub enum KitComponent {
 
 impl KitComponent {
     /// Every component, in documentation order.
-    pub const ALL: [Self; 21] = [
+    pub const ALL: [Self; 25] = [
         Self::Screen,
         Self::Column,
         Self::Row,
@@ -259,6 +268,10 @@ impl KitComponent {
         Self::VirtualList,
         Self::ScrollView,
         Self::Select,
+        Self::Dialog,
+        Self::Menu,
+        Self::Popover,
+        Self::Tooltip,
         Self::Keyboard,
         Self::FieldError,
     ];
@@ -303,6 +316,10 @@ impl KitComponent {
             Self::VirtualList => "VirtualList",
             Self::ScrollView => "ScrollView",
             Self::Select => "Select",
+            Self::Dialog => "Dialog",
+            Self::Menu => "Menu",
+            Self::Popover => "Popover",
+            Self::Tooltip => "Tooltip",
             Self::Keyboard => "Keyboard",
             Self::FieldError => "FieldError",
         }
@@ -339,6 +356,18 @@ impl KitComponent {
                 "One child shown through a view that scrolls: at most one in a screen, never nested."
             }
             Self::Select => "One choice of up to 64 options in a list that scrolls inside itself.",
+            Self::Dialog => {
+                "A modal dialog over the screen, opened while a prop is true: the screen beneath veiled and out of reach."
+            }
+            Self::Menu => {
+                "Choices beside the control `for` names, opened while a prop is true; closed by Escape, a press outside or a choice."
+            }
+            Self::Popover => {
+                "Content beside the control `for` names, opened while a prop is true; closed by Escape or a press outside."
+            }
+            Self::Tooltip => {
+                "A line of text beside the control `for` names, shown while the pointer rests on it or it has focus."
+            }
             Self::Keyboard => {
                 "The on-screen keyboard: at most one in a screen, and only in one with a text input."
             }
@@ -360,7 +389,9 @@ impl KitComponent {
     #[must_use]
     pub const fn children(self) -> Children {
         match self {
-            Self::Screen | Self::ScrollView => Children::One,
+            Self::Screen | Self::ScrollView | Self::Dialog | Self::Menu | Self::Popover => {
+                Children::One
+            }
             Self::Column
             | Self::Row
             | Self::Card
@@ -368,7 +399,7 @@ impl KitComponent {
             | Self::HeaderBar
             | Self::VirtualList => Children::Elements,
             Self::Text => Children::TextOrProp,
-            Self::Button => Children::Text,
+            Self::Button | Self::Tooltip => Children::Text,
             Self::TextInput
             | Self::TextArea
             | Self::Spacer
@@ -529,6 +560,17 @@ impl KitComponent {
             }
             Self::ScrollView | Self::Keyboard => &[ID],
             Self::FieldError => const { &[ID, Prop::required("for", Value::FieldId)] },
+            Self::Dialog => const { &[ID, Prop::required("open", Value::Prop)] },
+            Self::Menu | Self::Popover => {
+                const {
+                    &[
+                        ID,
+                        Prop::required("for", Value::Id),
+                        Prop::required("open", Value::Prop),
+                    ]
+                }
+            }
+            Self::Tooltip => const { &[ID, Prop::required("for", Value::Id)] },
             Self::Select => {
                 const {
                     &[
