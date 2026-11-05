@@ -220,6 +220,9 @@ pub enum KitComponent {
     Icon,
     /// One of the product's pictures, by name (contract v15).
     Image,
+    /// A list of as many items as the application counts, through a pool
+    /// of rows (contract v18).
+    VirtualList,
     /// One child shown through a view that scrolls: at most one
     /// in a screen, never nested.
     ScrollView,
@@ -234,7 +237,7 @@ pub enum KitComponent {
 
 impl KitComponent {
     /// Every component, in documentation order.
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 20] = [
         Self::Screen,
         Self::Column,
         Self::Row,
@@ -250,6 +253,7 @@ impl KitComponent {
         Self::ProgressBar,
         Self::Icon,
         Self::Image,
+        Self::VirtualList,
         Self::ScrollView,
         Self::Select,
         Self::Keyboard,
@@ -292,6 +296,7 @@ impl KitComponent {
             Self::ProgressBar => "ProgressBar",
             Self::Icon => "Icon",
             Self::Image => "Image",
+            Self::VirtualList => "VirtualList",
             Self::ScrollView => "ScrollView",
             Self::Select => "Select",
             Self::Keyboard => "Keyboard",
@@ -320,6 +325,9 @@ impl KitComponent {
             Self::Image => {
                 "One of the product's pictures, converted at build time, by name: with words saying what it shows."
             }
+            Self::VirtualList => {
+                "As many items as the application counts, shown through a pool of rows from one list of a prop, rebound as it scrolls."
+            }
             Self::ScrollView => {
                 "One child shown through a view that scrolls: at most one in a screen, never nested."
             }
@@ -346,9 +354,12 @@ impl KitComponent {
     pub const fn children(self) -> Children {
         match self {
             Self::Screen | Self::ScrollView => Children::One,
-            Self::Column | Self::Row | Self::Card | Self::Notice | Self::HeaderBar => {
-                Children::Elements
-            }
+            Self::Column
+            | Self::Row
+            | Self::Card
+            | Self::Notice
+            | Self::HeaderBar
+            | Self::VirtualList => Children::Elements,
             Self::Text => Children::TextOrProp,
             Self::Button => Children::Text,
             Self::TextInput
@@ -455,6 +466,22 @@ impl KitComponent {
             }
             Self::ProgressBar => const { &[ID, Prop::required("value", Value::Prop)] },
             Self::Icon => const { &[ID, Prop::required("name", Value::Choice(&ICON_NAMES))] },
+            Self::VirtualList => {
+                const {
+                    &[
+                        ID,
+                        Prop::required(
+                            "rowHeight",
+                            Value::Whole {
+                                least: 8,
+                                most: 512,
+                                token: true,
+                            },
+                        ),
+                        STYLE,
+                    ]
+                }
+            }
             Self::Image => {
                 const {
                     &[
@@ -533,6 +560,9 @@ impl KitComponent {
                         styled("objectFit", Value::Choice(&Fit::NAMES)),
                     ]
                 }
+            }
+            Self::VirtualList => {
+                const { &[styled("width", Value::Size), styled("height", Value::Size)] }
             }
             _ => &[],
         }

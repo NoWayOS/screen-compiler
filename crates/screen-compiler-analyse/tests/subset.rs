@@ -333,6 +333,10 @@ fn element(component: KitComponent, change: &Change) -> String {
     match component.children() {
         Children::None => format!("<{open} />"),
         Children::One => format!("<{open}><Column><Text>SAMPLE</Text></Column></{name}>"),
+        // A virtual list's pool: one list from a prop (contract v18).
+        Children::Elements if component == KitComponent::VirtualList => format!(
+            "<{open}>{{props.items.slice(0, 4).map((item) => <Column><Text>{{item.name}}</Text></Column>)}}</{name}>"
+        ),
         Children::Elements => format!("<{open}><Text>SAMPLE</Text></{name}>"),
         Children::TextOrProp if long => format!("<{open}>{{props.article}}</{name}>"),
         Children::TextOrProp | Children::Text => format!("<{open}>SAMPLE</{name}>"),

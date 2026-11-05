@@ -407,6 +407,26 @@ declare module "nowayos:kit" {
   /** One of the product's pictures, converted at build time, by name: with words saying what it shows. */
   export function Image(props: ImageProps): JSX.Element;
 
+  /** What `style` on `<VirtualList>` may name. */
+  export interface VirtualListStyle {
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    width?: number | `${number}px`;
+    /** A whole number of layout units (`16`, or `"16px"`) or a design token. */
+    height?: number | `${number}px`;
+  }
+
+  /** The props of `<VirtualList>`. */
+  export interface VirtualListProps {
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    id?: string;
+    /** A whole number from 8 to 512, or a design token. */
+    rowHeight: number;
+    style?: VirtualListStyle;
+    children?: Child | readonly Child[];
+  }
+  /** As many items as the application counts, shown through a pool of rows from one list of a prop, rebound as it scrolls. */
+  export function VirtualList(props: VirtualListProps): JSX.Element;
+
   /** The props of `<ScrollView>`. */
   export interface ScrollViewProps {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */

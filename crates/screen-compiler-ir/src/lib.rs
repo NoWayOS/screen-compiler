@@ -172,6 +172,16 @@ impl Screen {
             .collect()
     }
 
+    /// The virtual lists on this screen, in document order, one per prop
+    /// (contract v18). Generated code numbers lists from 1 in this order.
+    #[must_use]
+    pub fn lists(&self) -> Vec<&Name> {
+        self.distinct(|kind| match kind {
+            NodeKind::VirtualList { list, .. } => Some(list),
+            _ => None,
+        })
+    }
+
     /// The slots of application text on this screen, in document order, one
     /// per distinct name. Generated code numbers slots from 1 in this order.
     #[must_use]
@@ -232,6 +242,7 @@ impl Node {
             NodeKind::Group(group) => &group.children,
             NodeKind::Case(case) => &case.children,
             NodeKind::ScrollView { children } => children,
+            NodeKind::VirtualList { rows, .. } => rows,
             _ => &[],
         }
     }
@@ -263,6 +274,7 @@ impl Node {
             NodeKind::Progress { .. } => "ProgressBar",
             NodeKind::Icon { .. } => "Icon",
             NodeKind::Image { .. } => "Image",
+            NodeKind::VirtualList { .. } => "VirtualList",
             NodeKind::Group(group) if group.children.len() > 1 => "cond ? ... : ...",
             NodeKind::Group(group) if group.unless => "!cond && ...",
             NodeKind::Group(_) => "cond && ...",
@@ -383,6 +395,23 @@ pub enum NodeKind {
         /// may hold, 1 to [`MAX_LONG_TEXT`]; wrapped onto as many lines as
         /// it needs. Never with a template.
         capacity: Option<Length>,
+    },
+    /// A virtual list (contract v18): `<VirtualList rowHeight={56}>`
+    /// around one list from a prop, `{props.items.slice(0, 12).map(…)}` -
+    /// its rows, built once, the pool through which NoWayOS shows as many
+    /// items as the application counts, binding each row to an item as the
+    /// list scrolls.
+    VirtualList {
+        /// The prop the rows come from, which names the list.
+        list: Name,
+        /// Each row's height.
+        row_height: Length,
+        /// The pool of rows: one for each place the list was sliced to.
+        rows: Vec<Node>,
+        /// Its fixed width, from its style.
+        width: Option<Length>,
+        /// Its fixed height, from its style.
+        height: Option<Length>,
     },
     /// One of the icons: `<Icon name="fuel" />`, a name from
     /// [`ICON_NAMES`].

@@ -248,6 +248,19 @@
       ]
     },
     {
+      "name": "VirtualList",
+      "children": "elements",
+      "props": [
+        { "name": "id", "required": false, "value": { "kind": "id" } },
+        { "name": "rowHeight", "required": true, "value": { "kind": "whole", "least": 8, "most": 512, "token": true } },
+        { "name": "style", "required": false, "value": { "kind": "style" } }
+      ],
+      "style": [
+        { "name": "width", "value": { "kind": "size" } },
+        { "name": "height", "value": { "kind": "size" } }
+      ]
+    },
+    {
       "name": "ScrollView",
       "children": "one-element",
       "props": [

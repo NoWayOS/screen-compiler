@@ -121,6 +121,13 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v18 adds `virtual_list`: `<VirtualList rowHeight={56}>`
+//! around one list from a prop sliced to its pool,
+//! `{props.items.slice(0, 12).map(…)}`. Its rows, built once, show as many
+//! items as the application counts ([`builder::ListId`], in a screen's
+//! `lists` module), rebound as the list scrolls; their slots are numbered
+//! as any list's rows are.
+//!
 //! Contract v17 adds `scroll_view_axes`: a container whose style names
 //! `overflow`, `overflowX` or `overflowY` of `auto` or `scroll` is a scroll
 //! view of its size, down, across or both ways ([`builder::ScrollAxes`]),
@@ -152,7 +159,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 17;
+pub const VERSION: u32 = 18;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -299,6 +306,11 @@ pub const MAPPINGS: &[Mapping] = &[
         tsx: "<Column style={{ overflowY: \"auto\", height: 200 }}>…</Column> (overflowX across; overflow, or both, both ways)",
         ir: "NodeKind::Column(Container { overflow: Some(ScrollAxes::Vertical), height, … })",
         rust: "{ let inner = b.column(layout, &[…])?; b.scroll_view_axes(ui::Layout::new().height(200), ui::ScrollAxes::Vertical, inner) }? (contract v17)",
+    },
+    Mapping {
+        tsx: "<VirtualList rowHeight={56}>{props.items.slice(0, 12).map((item) => <Row>…</Row>)}</VirtualList>",
+        ir: "NodeKind::VirtualList { list: items, row_height: 56, rows: [the 12 rows] }",
+        rust: "b.virtual_list(ui::Layout::new(), lists::ITEMS, 56, &[row1, …, row12])?, with pub const ITEMS: ui::ListId = ui::ListId::new(N) (contract v18)",
     },
     Mapping {
         tsx: "<ScrollView><Column>…</Column></ScrollView>",
@@ -607,6 +619,26 @@ pub mod builder {
         }
 
         /// The group's number.
+        #[must_use]
+        pub const fn get(self) -> u16 {
+            self.0
+        }
+    }
+
+    /// Which virtual list the application counts (contract v18).
+    /// Generated screens number their lists from 1 in document order and
+    /// export each as a named constant in their `lists` module.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct ListId(u16);
+
+    impl ListId {
+        /// The list with number `value`.
+        #[must_use]
+        pub const fn new(value: u16) -> Self {
+            Self(value)
+        }
+
+        /// The list's number.
         #[must_use]
         pub const fn get(self) -> u16 {
             self.0
@@ -1323,6 +1355,20 @@ pub mod builder {
             layout: Layout,
             axes: ScrollAxes,
             child: Self::Node,
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// A virtual list (contract v18): list `list`, its items
+        /// `row_height` high, shown through `rows`, a pool built once.
+        ///
+        /// # Errors
+        ///
+        /// The builder's error: for example when it is full.
+        fn virtual_list(
+            &mut self,
+            layout: Layout,
+            list: ListId,
+            row_height: u16,
+            rows: &[Self::Node],
         ) -> Result<Self::Node, Self::Error>;
 
         /// One choice of `options` bound to `field`, in a list `picker`
