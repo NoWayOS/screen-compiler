@@ -208,6 +208,46 @@ impl TextAlign {
     }
 }
 
+/// Which ways a container whose style names `overflow` scrolls (contract
+/// v17): `overflowY` down, `overflowX` across, `overflow` - or both of
+/// them - both ways.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum ScrollAxes {
+    /// Down.
+    #[default]
+    Vertical,
+    /// Across.
+    Horizontal,
+    /// Both ways.
+    Both,
+}
+
+impl ScrollAxes {
+    /// Every value `overflow`, `overflowX` or `overflowY` takes: each
+    /// scrolls.
+    pub const NAMES: [&'static str; 2] = ["auto", "scroll"];
+
+    /// Its name in the target API (`ui::ScrollAxes::…`).
+    #[must_use]
+    pub const fn rust(self) -> &'static str {
+        match self {
+            Self::Vertical => "Vertical",
+            Self::Horizontal => "Horizontal",
+            Self::Both => "Both",
+        }
+    }
+
+    /// Its name in the outline.
+    #[must_use]
+    pub const fn outline(self) -> &'static str {
+        match self {
+            Self::Vertical => "vertical",
+            Self::Horizontal => "horizontal",
+            Self::Both => "both",
+        }
+    }
+}
+
 /// How a picture fills a box of another shape: `<Image fit="…">`, or
 /// CSS's `objectFit` in its style (contract v15).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]

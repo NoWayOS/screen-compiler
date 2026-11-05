@@ -1827,20 +1827,22 @@ fn a_scroll_view_reaches_the_ir_with_its_one_child() {
 }
 
 #[test]
-fn a_second_or_nested_scroll_view_and_any_other_child_count_are_refused() {
-    // At most one in a screen, never inside another, exactly one
-    // child element.
+fn a_scroll_view_holds_exactly_one_child_and_may_hold_another() {
+    // Any number in a screen, one inside another (contract v17); exactly
+    // one child element.
+    for body in [
+        "<Column><ScrollView><Column><Text>A</Text></Column></ScrollView><ScrollView><Column><Text>B</Text></Column></ScrollView></Column>",
+        "<ScrollView><Column><ScrollView><Column><Text>A</Text></Column></ScrollView></Column></ScrollView>",
+    ] {
+        let source = scrolling_screen(body);
+        let analysis = run(&source);
+        assert!(
+            analysis.module.is_some(),
+            "{body}: {:?}",
+            analysis.diagnostics
+        );
+    }
     for (body, code, marker) in [
-        (
-            "<Column><ScrollView><Column><Text>A</Text></Column></ScrollView><ScrollView><Column><Text>B</Text></Column></ScrollView></Column>",
-            Code::Limit,
-            "<ScrollView><Column><Text>B",
-        ),
-        (
-            "<ScrollView><Column><ScrollView><Column><Text>A</Text></Column></ScrollView></Column></ScrollView>",
-            Code::InvalidChildren,
-            "<ScrollView><Column><Text>A",
-        ),
         (
             "<Column><ScrollView></ScrollView></Column>",
             Code::InvalidChildren,
@@ -1855,6 +1857,11 @@ fn a_second_or_nested_scroll_view_and_any_other_child_count_are_refused() {
             "<Column><ScrollView gap={4}><Column><Text>A</Text></Column></ScrollView></Column>",
             Code::UnknownProp,
             "gap",
+        ),
+        (
+            "<Column style={{ overflow: \"hidden\" }}><Text>A</Text></Column>",
+            Code::InvalidValue,
+            "\"hidden\"",
         ),
     ] {
         let e = error(&scrolling_screen(body));
