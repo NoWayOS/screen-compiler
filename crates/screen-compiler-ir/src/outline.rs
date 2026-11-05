@@ -201,6 +201,28 @@ fn looked(look: Look) -> String {
     if let Some(opacity) = look.opacity {
         out.push_str(&format!(" opacity={opacity}"));
     }
+    if let Some(t) = look.transition {
+        out.push_str(&format!(
+            " transition={}-{}-{}-{}",
+            t.property.css(),
+            t.duration,
+            t.delay,
+            t.easing.outline()
+        ));
+    }
+    if let Some(a) = look.animation {
+        out.push_str(&format!(
+            " animation={}-{}-{}-{}-{}{}{}",
+            a.name.css(),
+            a.duration,
+            a.delay,
+            a.easing.outline(),
+            a.repeat
+                .map_or_else(|| "infinite".to_owned(), |n| n.to_string()),
+            if a.alternate { "-alternate" } else { "" },
+            if a.keep { "-forwards" } else { "" }
+        ));
+    }
     out
 }
 

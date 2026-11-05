@@ -236,6 +236,23 @@ fn valid(value: Value) -> Vec<String> {
         Value::Options { most } => vec![options(1), options(most)],
         Value::Style => vec!["{}".into()],
         Value::Fraction => vec!["0".into(), "0.5".into(), "1".into()],
+        Value::Motion(part) => match part {
+            "transition" => vec![
+                "\"opacity 200ms ease-out 50ms\"".into(),
+                "\"transform 0.3s cubic-bezier(0.2, 0, 0, 1)\"".into(),
+            ],
+            "property" => vec!["\"opacity\"".into(), "\"scale\"".into()],
+            "time" => vec!["\"200ms\"".into(), "\"1.5s\"".into()],
+            "easing" => vec!["\"ease-in-out\"".into(), "\"steps(4, jump-start)\"".into()],
+            "animation" => vec![
+                "\"spin 1s linear infinite\"".into(),
+                "\"pulse 1200ms ease-in-out 3 alternate forwards\"".into(),
+            ],
+            "name" => vec!["\"shimmer\"".into()],
+            "count" => vec!["\"infinite\"".into(), "2".into()],
+            "direction" => vec!["\"alternate\"".into()],
+            _ => vec!["\"forwards\"".into()],
+        },
         Value::Gradient => vec![
             "\"linear-gradient(90deg, input, focus)\"".into(),
             "\"linear-gradient(to bottom, var(--input), var(--focus))\"".into(),
@@ -271,6 +288,7 @@ fn invalid(value: Value) -> Vec<String> {
         Value::Options { most } => vec![options(most + 1), "[]".into(), "props.done".into()],
         Value::Style => vec!["\"gap: 8\"".into()],
         Value::Fraction => vec!["2".into(), "\"0.5\"".into(), "props.done".into()],
+        Value::Motion(_) => vec!["\"color 2s\"".into(), "props.done".into()],
         Value::Gradient => vec![
             "\"linear-gradient(red, blue)\"".into(),
             "\"url(picture.png)\"".into(),

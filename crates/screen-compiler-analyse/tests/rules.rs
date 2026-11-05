@@ -2002,6 +2002,37 @@ fn a_text_area_s_bounds_are_refused_where_written() {
 }
 
 #[test]
+fn transitions_and_animations_reach_the_ir() {
+    assert_eq!(
+        ok_outline(&format!(
+            "{KIT}export function S(props: P) {{ return <Screen><Card style={{{{ transition: \"opacity 0.2s ease-out\", animation: \"spin 800ms steps(8) infinite\" }}}}><Text>A</Text></Card></Screen>; }}\n"
+        )),
+        "column gap=0 padding=0 surface=card transition=opacity-200-0-ease-out animation=spin-800-0-steps-8-end-infinite\n  text \"A\"\n"
+    );
+}
+
+#[test]
+fn motion_the_runtime_cannot_run_is_refused_where_written() {
+    for (style, marker) in [
+        ("transition: \"color 2s\"", "\"color"),
+        ("transition: \"opacity\"", "\"opacity"),
+        ("animation: \"wobble 1s\"", "\"wobble"),
+        ("animationIterationCount: \"0\"", "\"0"),
+        ("transitionTimingFunction: \"bounce\"", "\"bounce"),
+    ] {
+        let body = format!("<Card style={{{{ {style} }}}}><Text>A</Text></Card>");
+        let source =
+            format!("{KIT}export function S(props: P) {{ return <Screen>{body}</Screen>; }}\n");
+        let e = error(&source);
+        assert_eq!(
+            (e.code, e.loc),
+            (Code::InvalidValue, at(2, column_of(&body, marker))),
+            "{body}: {e:?}"
+        );
+    }
+}
+
+#[test]
 fn shadows_gradients_and_opacity_reach_the_ir() {
     assert_eq!(
         ok_outline(&format!(

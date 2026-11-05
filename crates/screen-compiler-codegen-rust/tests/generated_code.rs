@@ -266,6 +266,15 @@ mod fixture_promo {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_loading {
+    use crate::nowayos_ui;
+    include!("snapshots/loading.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_order_ready {
     use crate::nowayos_ui;
     include!("snapshots/order-ready.rs");
@@ -308,7 +317,7 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 30] = [
+const COMPILED: [&str; 31] = [
     "article",
     "bike-hire",
     "check-in",
@@ -321,6 +330,7 @@ const COMPILED: [&str; 30] = [
     "fuelling",
     "help",
     "inbox",
+    "loading",
     "lost-property-1-item",
     "lost-property-2-contact",
     "lost-property-3-review",

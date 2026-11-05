@@ -104,6 +104,10 @@ pub enum Value {
     Fraction,
     /// A CSS gradient of two of the theme's colours (contract v22).
     Gradient,
+    /// CSS motion text, a transition's or an animation's (contract v23):
+    /// which part, `transition`, `property`, `time`, `easing`,
+    /// `animation`, `name`, `count`, `direction` or `fill`.
+    Motion(&'static str),
 }
 
 /// A prop a component takes.
@@ -203,6 +207,20 @@ const CONTAINER_STYLE: &[StyleProperty] = &[
     styled("boxShadow", Value::Choice(&Elevation::NAMES)),
     styled("background", Value::Gradient),
     styled("opacity", Value::Fraction),
+    // How it comes into view, and an animation of its own (contract v23).
+    styled("transition", Value::Motion("transition")),
+    styled("transitionProperty", Value::Motion("property")),
+    styled("transitionDuration", Value::Motion("time")),
+    styled("transitionTimingFunction", Value::Motion("easing")),
+    styled("transitionDelay", Value::Motion("time")),
+    styled("animation", Value::Motion("animation")),
+    styled("animationName", Value::Motion("name")),
+    styled("animationDuration", Value::Motion("time")),
+    styled("animationTimingFunction", Value::Motion("easing")),
+    styled("animationDelay", Value::Motion("time")),
+    styled("animationIterationCount", Value::Motion("count")),
+    styled("animationDirection", Value::Motion("direction")),
+    styled("animationFillMode", Value::Motion("fill")),
     // A container that scrolls (contract v17).
     styled("overflow", Value::Choice(&ScrollAxes::NAMES)),
     styled("overflowX", Value::Choice(&ScrollAxes::NAMES)),

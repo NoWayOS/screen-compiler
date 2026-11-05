@@ -154,6 +154,7 @@ fn value_json(value: Value) -> String {
         Value::Style => kind("style"),
         Value::Fraction => kind("fraction"),
         Value::Gradient => kind("gradient"),
+        Value::Motion(part) => format!("{{ \"kind\": \"motion\", \"part\": {} }}", string(part)),
     }
 }
 
@@ -357,6 +358,8 @@ fn ts_type(value: Value, component: &str) -> String {
         Value::Style => format!("{component}Style"),
         Value::Fraction => "number".to_owned(),
         Value::Gradient => "`linear-gradient(${string})` | `radial-gradient(${string})`".to_owned(),
+        Value::Motion("count") => "number | \"infinite\"".to_owned(),
+        Value::Motion(_) => "string".to_owned(),
     }
 }
 
@@ -385,6 +388,7 @@ fn doc(value: Value) -> Option<String> {
         }
         Value::Fraction => "A number from 0 to 1.".to_owned(),
         Value::Gradient => "`linear-gradient(90deg, input, focus)` - an angle or `to right`, then two of the theme's colours - or `radial-gradient(input, focus)`.".to_owned(),
+        Value::Motion(_) => "CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode.".to_owned(),
         Value::Choice(_) | Value::Style => return None,
     })
 }

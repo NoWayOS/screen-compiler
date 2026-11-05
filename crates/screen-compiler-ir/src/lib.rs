@@ -28,9 +28,10 @@ pub use diag::{Code, Diagnostic, Loc, Severity, has_errors, sort_diagnostics};
 pub use name::{Name, NameError};
 pub use outline::outline;
 pub use style::{
-    AlignItems, ButtonVariant, Colour, Elevation, Fit, Gradient, ICON_NAMES, Justify, Look,
-    MAX_BORDER_WIDTH, MAX_LINES, MAX_RADIUS, ScrollAxes, Space, Surface, TextAlign, TextRole,
-    TextStyle, Tone, Weight, is_display, is_printable,
+    AlignItems, AnimationName, ButtonVariant, Colour, Easing, Elevation, Fit, Gradient, ICON_NAMES,
+    Justify, Look, MAX_BORDER_WIDTH, MAX_LINES, MAX_RADIUS, MotionProperty, NamedAnimation,
+    ScrollAxes, Space, Surface, TextAlign, TextRole, TextStyle, Tone, Transition, Weight,
+    is_display, is_printable,
 };
 pub use validate::{MAX_DEPTH, validate};
 

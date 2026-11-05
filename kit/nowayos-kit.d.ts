@@ -79,6 +79,32 @@ declare module "nowayos:kit" {
     background?: `linear-gradient(${string})` | `radial-gradient(${string})`;
     /** A number from 0 to 1. */
     opacity?: number;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transition?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionProperty?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionDuration?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionTimingFunction?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionDelay?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animation?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationName?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDuration?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationTimingFunction?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDelay?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationIterationCount?: number | "infinite";
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDirection?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationFillMode?: string;
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
@@ -127,6 +153,32 @@ declare module "nowayos:kit" {
     background?: `linear-gradient(${string})` | `radial-gradient(${string})`;
     /** A number from 0 to 1. */
     opacity?: number;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transition?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionProperty?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionDuration?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionTimingFunction?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionDelay?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animation?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationName?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDuration?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationTimingFunction?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDelay?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationIterationCount?: number | "infinite";
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDirection?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationFillMode?: string;
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
@@ -294,6 +346,32 @@ declare module "nowayos:kit" {
     background?: `linear-gradient(${string})` | `radial-gradient(${string})`;
     /** A number from 0 to 1. */
     opacity?: number;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transition?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionProperty?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionDuration?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionTimingFunction?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionDelay?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animation?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationName?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDuration?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationTimingFunction?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDelay?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationIterationCount?: number | "infinite";
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDirection?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationFillMode?: string;
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
@@ -342,6 +420,32 @@ declare module "nowayos:kit" {
     background?: `linear-gradient(${string})` | `radial-gradient(${string})`;
     /** A number from 0 to 1. */
     opacity?: number;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transition?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionProperty?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionDuration?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionTimingFunction?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionDelay?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animation?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationName?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDuration?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationTimingFunction?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDelay?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationIterationCount?: number | "infinite";
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDirection?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationFillMode?: string;
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
@@ -391,6 +495,32 @@ declare module "nowayos:kit" {
     background?: `linear-gradient(${string})` | `radial-gradient(${string})`;
     /** A number from 0 to 1. */
     opacity?: number;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transition?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionProperty?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionDuration?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionTimingFunction?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    transitionDelay?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animation?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationName?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDuration?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationTimingFunction?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDelay?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationIterationCount?: number | "infinite";
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationDirection?: string;
+    /** CSS motion: a transition of `opacity`, `transform` or `scale`, or one of the runtime's animations (`spin`, `pulse`, `fade`, `indeterminate`, `shimmer`), with times in `ms` or `s`, CSS's timing functions, an iteration count or `infinite`, `alternate` and a fill mode. */
+    animationFillMode?: string;
     overflow?: "auto" | "scroll";
     overflowX?: "auto" | "scroll";
     overflowY?: "auto" | "scroll";
