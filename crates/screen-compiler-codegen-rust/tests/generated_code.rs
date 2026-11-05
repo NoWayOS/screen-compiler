@@ -203,6 +203,15 @@ mod fixture_photo_card {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_article {
+    use crate::nowayos_ui;
+    include!("snapshots/article.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_order_ready {
     use crate::nowayos_ui;
     include!("snapshots/order-ready.rs");
@@ -245,7 +254,8 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 23] = [
+const COMPILED: [&str; 24] = [
+    "article",
     "bike-hire",
     "check-in",
     "check-in-files",
@@ -289,6 +299,21 @@ fn welcome_builds_exactly_its_ir() {
     assert_eq!(screen::actions::START.get(), 1);
     assert_eq!(screen::actions::HELP.get(), 2);
     assert_eq!((tokens::SPACE_SM, tokens::SPACE_LG), (8, 24));
+}
+
+/// A long text, numbered with the slots, with its capacity a design
+/// token, builds exactly as the IR says (contract v16).
+#[test]
+fn article_builds_exactly_its_ir() {
+    let mut recorder = Recorder::with_capacity(64);
+    let nodes = fixture_article::article::build(&mut recorder).unwrap();
+    let outline = recorder.outline(nodes.root);
+    assert_eq!(outline, ir_outline("article.tsx"));
+    assert!(
+        outline.contains("long-text slot 1 capacity=12288"),
+        "{outline}"
+    );
+    assert_eq!(fixture_article::article::slots::ARTICLE.get(), 1);
 }
 
 /// Pictures, by the product's statics, fitted and sized as their styles

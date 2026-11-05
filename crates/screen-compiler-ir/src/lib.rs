@@ -34,6 +34,10 @@ pub use style::{
 };
 pub use validate::{MAX_DEPTH, validate};
 
+/// The most bytes a long text may hold (contract v16): NoWayOS's
+/// `long_text::MAX_LONG_TEXT`.
+pub const MAX_LONG_TEXT: u16 = u16::MAX;
+
 /// One converted source file: its design tokens and screens, in source order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Module {
@@ -374,6 +378,11 @@ pub enum NodeKind {
         style: TextStyle,
         /// The literal text around the prop's, if any.
         template: Option<Template>,
+        /// For paragraphs of any length (contract v16):
+        /// `<Text maxLength={10240}>{props.article}</Text>`, the bytes it
+        /// may hold, 1 to [`MAX_LONG_TEXT`]; wrapped onto as many lines as
+        /// it needs. Never with a template.
+        capacity: Option<Length>,
     },
     /// One of the icons: `<Icon name="fuel" />`, a name from
     /// [`ICON_NAMES`].

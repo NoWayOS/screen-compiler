@@ -155,3 +155,56 @@ fn other_mixes_are_refused_where_written() {
     let e = error(&file("", "<Text>Hello, {name}!</Text>"));
     assert_eq!(e.code, Code::UnknownName);
 }
+
+/// A long text (contract v16): one prop alone, its most bytes a number or a
+/// design token up to 65,535, numbered with the slots; refused with
+/// literal text, `lines`, the display role or too many bytes.
+#[test]
+fn a_text_with_a_most_length_is_a_long_text_of_one_prop() {
+    let outline = ok_outline(&file(
+        "const BYTES = 4096;",
+        "<Text>{props.title}</Text><Text maxLength={BYTES}>{props.article}</Text>",
+    ));
+    assert!(outline.contains("slot 1"), "{outline}");
+    assert!(
+        outline.contains("long-text slot 2 capacity=4096"),
+        "{outline}"
+    );
+    assert!(
+        ok_outline(&file("", "<Text maxLength={65535}>{props.article}</Text>"))
+            .contains("capacity=65535")
+    );
+    for (body, says) in [
+        (
+            "<Text maxLength={100}>Fixed words</Text>",
+            "shows one prop the application sets, alone",
+        ),
+        (
+            "<Text maxLength={100}>Hello, {props.name}!</Text>",
+            "shows one prop the application sets, alone",
+        ),
+        (
+            "<Text maxLength={100} lines={3}>{props.article}</Text>",
+            "not `lines`",
+        ),
+        (
+            "<Text maxLength={100} role=\"display\">{props.article}</Text>",
+            "display role",
+        ),
+        (
+            "<Text maxLength={65536}>{props.article}</Text>",
+            "from 1 to 65535",
+        ),
+        (
+            "<Text maxLength={0}>{props.article}</Text>",
+            "from 1 to 65535",
+        ),
+    ] {
+        let diagnostic = error(&file("", body));
+        assert!(
+            diagnostic.message.contains(says),
+            "{body}: {}",
+            diagnostic.message
+        );
+    }
+}

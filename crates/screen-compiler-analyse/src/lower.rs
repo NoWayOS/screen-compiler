@@ -6,9 +6,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use screen_compiler_ir::{
     AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Fit, Group, ICON_NAMES,
     InputMode, Justify, Length, Loc, Look, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LABEL_BYTES,
-    MAX_LINES, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, MAX_TEMPLATE_BYTES, Module, Name,
-    Node, NodeKind, SELECT_ROWS, Screen, Space, Surface, Template, TextAlign, TextRole, TextStyle,
-    Token, Tone, Weight, has_errors, sort_diagnostics, special_char, validate,
+    MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS,
+    MAX_TEMPLATE_BYTES, Module, Name, Node, NodeKind, SELECT_ROWS, Screen, Space, Surface,
+    Template, TextAlign, TextRole, TextStyle, Token, Tone, Weight, has_errors, sort_diagnostics,
+    special_char, validate,
 };
 use screen_compiler_tsx::SourceModule;
 use screen_compiler_tsx::syntax::{
@@ -1326,6 +1327,8 @@ struct Props {
     /// `onPress` or `onClick`, whichever is given first.
     on_press_given: Option<&'static str>,
     max_len: Option<Length>,
+    /// Whether `maxLength` was given, valid or not.
+    max_len_given: bool,
     mode: InputMode,
     label: Option<String>,
     label_given: bool,
@@ -1619,6 +1622,49 @@ impl Lower<'_, '_, '_> {
                     NodeKind::Column(container)
                 }
             }
+            KitComponent::Text if props.max_len_given => {
+                // Paragraphs of any length (contract v16): one prop alone,
+                // wrapped onto as many lines as it needs.
+                let help = "write <Text maxLength={10240}>{props.article}</Text>: one prop alone, wrapped onto as many lines as it needs";
+                if props.lines.is_some() {
+                    self.cx.error_help(
+                        Code::InvalidValue,
+                        element.loc,
+                        "a <Text> with maxLength takes as many lines as it needs, not `lines`",
+                        help,
+                    );
+                    return None;
+                }
+                let style = self.text_style(&props);
+                let role = style.map_or(TextRole::Body, |style| style.role);
+                if role == TextRole::Display {
+                    self.cx.error_help(
+                        Code::InvalidValue,
+                        element.loc,
+                        "a <Text> with maxLength cannot be in the display role",
+                        help,
+                    );
+                    return None;
+                }
+                match self.prop_text(element, role) {
+                    PropText::Slot(slot) => NodeKind::Slot {
+                        slot,
+                        style: style?,
+                        template: None,
+                        capacity: Some(props.max_len?),
+                    },
+                    PropText::Invalid => return None,
+                    PropText::Template(..) | PropText::Literal => {
+                        self.cx.error_help(
+                            Code::InvalidValue,
+                            element.loc,
+                            "a <Text> with maxLength shows one prop the application sets, alone",
+                            help,
+                        );
+                        return None;
+                    }
+                }
+            }
             KitComponent::Text => {
                 let style = self.text_style(&props);
                 let role = style.map_or(TextRole::Body, |style| style.role);
@@ -1627,11 +1673,13 @@ impl Lower<'_, '_, '_> {
                         slot,
                         style: style?,
                         template: None,
+                        capacity: None,
                     },
                     PropText::Template(slot, template) => NodeKind::Slot {
                         slot,
                         style: style?,
                         template: Some(template),
+                        capacity: None,
                     },
                     PropText::Invalid => return None,
                     PropText::Literal => {
@@ -3260,7 +3308,16 @@ impl Lower<'_, '_, '_> {
                 "padding" => props.padding = self.length(name, value, loc),
                 "size" => props.size = self.length(name, value, loc),
                 "placeholder" => props.placeholder = self.string(name, value, loc),
-                "maxLength" => props.max_len = self.max_len(value, loc),
+                "maxLength" => {
+                    // A text input's most, or a long text's (contract v16).
+                    let most = if component == KitComponent::Text {
+                        MAX_LONG_TEXT
+                    } else {
+                        MAX_INPUT_LEN
+                    };
+                    props.max_len = self.max_len(value, loc, most);
+                    props.max_len_given = true;
+                }
                 "inputMode" => props.mode = self.input_mode(value, loc).unwrap_or_default(),
                 "label" => {
                     props.label_given = true;
@@ -3523,26 +3580,26 @@ impl Lower<'_, '_, '_> {
 
     /// `maxLength={N}`: a whole number, or a design token, from 1 to
     /// [`MAX_INPUT_LEN`] bytes.
-    fn max_len(&mut self, value: &AttrValue, loc: Loc) -> Option<Length> {
+    fn max_len(&mut self, value: &AttrValue, loc: Loc, most: u16) -> Option<Length> {
         let help = format!(
-            "write maxLength={{32}}: a whole number of bytes from 1 to {MAX_INPUT_LEN}, or a design token"
+            "write maxLength={{32}}: a whole number of bytes from 1 to {most}, or a design token"
         );
         let (length, bytes, at) = match value {
             AttrValue::Expr(Expr::Num { value, raw, loc }) => {
                 let whole = value.is_finite()
                     && value.fract() == 0.0
-                    && (1.0..=f64::from(MAX_INPUT_LEN)).contains(value)
+                    && (1.0..=f64::from(most)).contains(value)
                     && !raw.starts_with('0');
                 if !whole {
                     self.cx.error_help(
                         Code::InvalidValue,
                         *loc,
-                        format!("`maxLength` must be from 1 to {MAX_INPUT_LEN} bytes, not {raw}"),
+                        format!("`maxLength` must be from 1 to {most} bytes, not {raw}"),
                         help,
                     );
                     return None;
                 }
-                // Exact: a whole number from 1 to 64.
+                // Exact: a whole number from 1 to `most`.
                 let bytes = *value as u16;
                 (Length::Px(bytes), bytes, *loc)
             }
@@ -3590,13 +3647,13 @@ impl Lower<'_, '_, '_> {
             // Already reported by the parser front end.
             AttrValue::InvalidStr { .. } => return None,
         };
-        if (1..=MAX_INPUT_LEN).contains(&bytes) {
+        if (1..=most).contains(&bytes) {
             Some(length)
         } else {
             self.cx.error_help(
                 Code::InvalidValue,
                 at,
-                format!("`maxLength` must be from 1 to {MAX_INPUT_LEN} bytes, not {bytes}"),
+                format!("`maxLength` must be from 1 to {most} bytes, not {bytes}"),
                 help,
             );
             None

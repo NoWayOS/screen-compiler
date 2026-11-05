@@ -138,6 +138,8 @@ declare module "nowayos:kit" {
     /** A whole number from 1 to 8. */
     lines?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
     align?: "start" | "center" | "end";
+    /** A whole number from 1 to 65535, or a design token. */
+    maxLength?: number;
     style?: TextStyle;
     /** Literal text, or one prop the application sets. */
     children: string;

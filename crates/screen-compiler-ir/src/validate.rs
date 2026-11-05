@@ -643,6 +643,7 @@ mod tests {
                 slot: name("ticket"),
                 style: regular_title,
                 template: None,
+                capacity: None,
             },
             None,
         );
@@ -722,6 +723,7 @@ mod tests {
                     slot: name(n),
                     style: TextStyle::BODY,
                     template: None,
+                    capacity: None,
                 },
                 None,
             )

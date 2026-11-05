@@ -197,7 +197,19 @@ fn describe(module: &Module, numbers: &Numbers<'_>, node: &Node) -> String {
         NodeKind::Slot {
             slot,
             style,
+            capacity: Some(capacity),
+            ..
+        } => format!(
+            "long-text slot {} capacity={}{}",
+            number(&numbers.slots, slot),
+            px(Some(capacity)),
+            styled(*style)
+        ),
+        NodeKind::Slot {
+            slot,
+            style,
             template,
+            capacity: None,
         } => format!(
             "slot {}{}{}",
             number(&numbers.slots, slot),
@@ -333,6 +345,7 @@ mod tests {
                         slot: name("note"),
                         style: TextStyle::new(TextRole::Display),
                         template: None,
+                        capacity: None,
                     })],
                 ),
                 group(
@@ -342,6 +355,7 @@ mod tests {
                             slot: name("when"),
                             style: TextStyle::BODY,
                             template: None,
+                            capacity: None,
                         }),
                         node(NodeKind::Spacer { size: None }),
                     ],

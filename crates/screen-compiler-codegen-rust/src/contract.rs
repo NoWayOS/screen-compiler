@@ -121,6 +121,12 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v16 adds `long_text`: paragraphs of any length the
+//! application sets at run time, bound to a slot and numbered with the
+//! slots, up to the bytes the screen gives
+//! (`<Text maxLength={10240}>{props.article}</Text>`), kept in the text
+//! store of the tree the screen is built into.
+//!
 //! Contract v15 adds `image`: one of the product's pictures, converted at
 //! build time, by its static in the `pictures` module at the root of the
 //! crate the screens are compiled in (`crate::pictures::HARBOUR`, which the
@@ -140,7 +146,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 15;
+pub const VERSION: u32 = 16;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -312,6 +318,11 @@ pub const MAPPINGS: &[Mapping] = &[
         tsx: "<Text>Hello, {props.name}!</Text>, or {`Hello, ${props.name}!`} (one prop between literal text)",
         ir: "NodeKind::Slot { slot: name, template: Some(Template { before: \"Hello, \", after: \"!\" }) }",
         rust: "b.slot_template(slots::NAME, &ui::Template { before: \"Hello, \", after: \"!\" })?, or b.slot_template_styled(..., style)? (contract v14)",
+    },
+    Mapping {
+        tsx: "<Text maxLength={10240}>{props.article}</Text> (one prop alone)",
+        ir: "NodeKind::Slot { slot: article, capacity: Some(10240), template: None, style }",
+        rust: "b.long_text(slots::ARTICLE, 10240, ui::TextStyle::new(ui::TextRole::Body))? (contract v16)",
     },
     Mapping {
         tsx: "<Text role=\"display\">{props.ticket}</Text>",
@@ -1364,6 +1375,21 @@ pub mod builder {
         fn slot_styled(
             &mut self,
             slot: SlotId,
+            style: TextStyle,
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// Paragraphs the application sets at run time, bound to `slot`
+        /// and numbered with the slots, up to `capacity` bytes, set in
+        /// `style` (contract v16).
+        ///
+        /// # Errors
+        ///
+        /// The builder's error, for example when it is full, `slot` is
+        /// already used or its text store has too few bytes left.
+        fn long_text(
+            &mut self,
+            slot: SlotId,
+            capacity: u16,
             style: TextStyle,
         ) -> Result<Self::Node, Self::Error>;
 

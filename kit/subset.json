@@ -64,6 +64,7 @@
         { "name": "weight", "required": false, "value": { "kind": "choice", "values": ["regular", "bold"] } },
         { "name": "lines", "required": false, "value": { "kind": "whole", "least": 1, "most": 8, "token": false } },
         { "name": "align", "required": false, "value": { "kind": "choice", "values": ["start", "center", "end"] } },
+        { "name": "maxLength", "required": false, "value": { "kind": "whole", "least": 1, "most": 65535, "token": true } },
         { "name": "style", "required": false, "value": { "kind": "style" } }
       ],
       "style": [
