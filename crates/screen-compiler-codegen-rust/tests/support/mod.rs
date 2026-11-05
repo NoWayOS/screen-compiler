@@ -12,9 +12,10 @@
 )]
 
 use screen_compiler_codegen_rust::contract::builder::{
-    ActionId, Align, ButtonVariant, Colour, Elevation, FieldId, Fit, GroupId, Input, InputMode,
-    Justify, LayerId, Layout, ListId, Look, Picker, Picture, Run, ScrollAxes, SlotId, Space,
-    Surface, SwitchId, Template, TextAlign, TextStyle, Tone, UiBuilder, Weight, icons,
+    ActionId, Align, ButtonVariant, Colour, Easing, Elevation, FieldId, Fit, GroupId, Input,
+    InputMode, Justify, LayerId, Layout, ListId, Look, Picker, Picture, Property, Repeat, Run,
+    ScrollAxes, SlotId, Space, Surface, SwitchId, Template, TextAlign, TextStyle, Tone, UiBuilder,
+    Weight, icons,
 };
 
 /// A theme colour's TSX name, as `screen_compiler_ir::outline` writes it.
@@ -34,6 +35,20 @@ fn colour(colour: Colour) -> &'static str {
 }
 
 /// A look as `screen_compiler_ir::outline` writes it.
+fn easing(easing: Easing) -> String {
+    match easing {
+        Easing::Linear => "linear".to_owned(),
+        Easing::Ease => "ease".to_owned(),
+        Easing::EaseIn => "ease-in".to_owned(),
+        Easing::EaseOut => "ease-out".to_owned(),
+        Easing::EaseInOut => "ease-in-out".to_owned(),
+        Easing::Bezier([a, b, c, d]) => format!("bezier-{a}-{b}-{c}-{d}"),
+        Easing::Steps { count, start } => {
+            format!("steps-{count}-{}", if start { "start" } else { "end" })
+        }
+    }
+}
+
 fn looked(look: Look) -> String {
     let mut out = String::new();
     if let Some(fill) = look.fill {
@@ -71,6 +86,42 @@ fn looked(look: Look) -> String {
     }
     if let Some(opacity) = look.opacity {
         out.push_str(&format!(" opacity={opacity}"));
+    }
+    if let Some(t) = look.transition {
+        let property = match t.property {
+            Property::Opacity => "opacity",
+            Property::TranslateY => "transform",
+            Property::Scale => "scale",
+            _ => "other",
+        };
+        out.push_str(&format!(
+            " transition={property}-{}-{}-{}",
+            t.duration,
+            t.delay,
+            easing(t.easing)
+        ));
+    }
+    if let Some(a) = look.animation {
+        let name = match (a.property, a.keys) {
+            (Property::Turn, _) => "spin",
+            (Property::Scale, _) => "pulse",
+            (Property::Opacity, _) => "fade",
+            (Property::Sweep, _) => "indeterminate",
+            (Property::Shimmer, _) => "shimmer",
+            (Property::TranslateY, _) => "other",
+        };
+        let repeat = match a.repeat {
+            Repeat::Times(n) => n.to_string(),
+            Repeat::Forever => "infinite".to_owned(),
+        };
+        out.push_str(&format!(
+            " animation={name}-{}-{}-{}-{repeat}{}{}",
+            a.duration,
+            a.delay,
+            easing(a.easing),
+            if a.alternate { "-alternate" } else { "" },
+            if a.keep { "-forwards" } else { "" }
+        ));
     }
     out
 }

@@ -3,7 +3,6 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use screen_compiler_ir::RichRun;
 use screen_compiler_ir::{
     AREA_ROWS, AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Elevation,
     Fit, Gradient, Group, ICON_NAMES, InputMode, Justify, LayerKind, Length, Loc, Look,
@@ -11,6 +10,9 @@ use screen_compiler_ir::{
     MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, MAX_TEMPLATE_BYTES, Module, Name, Node,
     NodeKind, SELECT_ROWS, Screen, ScrollAxes, Space, Surface, Template, TextAlign, TextRole,
     TextStyle, Token, Tone, Weight, has_errors, sort_diagnostics, special_char, validate,
+};
+use screen_compiler_ir::{
+    AnimationName, Easing, MotionProperty, NamedAnimation, RichRun, Transition,
 };
 use screen_compiler_tsx::SourceModule;
 use screen_compiler_tsx::syntax::{
@@ -3393,6 +3395,11 @@ impl Lower<'_, '_, '_> {
                 }
                 "background" => style.look.gradient = self.gradient(&prop.value),
                 "opacity" => style.look.opacity = self.fraction(key, &prop.value),
+                // How it comes into view, and an animation of its own
+                // (contract v23).
+                key if key.starts_with("transition") || key.starts_with("animation") => {
+                    self.motion(key, &prop.value, &mut style.look);
+                }
                 "objectFit" => {
                     style.fit = self.keyword(key, &prop.value, &Fit::NAMES, Fit::parse);
                 }
@@ -3485,6 +3492,103 @@ impl Lower<'_, '_, '_> {
 
     /// One of the theme's colours, by its name, in a style: never
     /// a colour value.
+    /// A `transition` or `animation`, shorthand or longhand, into `look`
+    /// (contract v23): refused where written unless the runtime can run it.
+    fn motion(&mut self, key: &str, value: &Expr, look: &mut Look) {
+        let text = match value {
+            Expr::Str { value, .. } => value.clone(),
+            Expr::Num { raw, .. } => raw.clone(),
+            other => {
+                self.cx.error_help(
+                    Code::InvalidValue,
+                    other.loc(),
+                    format!("`{key}` must be written out, not {}", other.describe()),
+                    "write transition: \"opacity 200ms ease-out\" or animation: \"spin 1s linear infinite\"",
+                );
+                return;
+            }
+        };
+        let parsed = if key.starts_with("transition") {
+            let mut transition = look.transition.unwrap_or(Transition {
+                property: MotionProperty::Opacity,
+                duration: 0,
+                delay: 0,
+                easing: Easing::Ease,
+            });
+            let ok = match key {
+                "transition" => parse_transition(&text).map(|t| transition = t).is_some(),
+                "transitionProperty" => parse_motion_property(text.trim())
+                    .map(|p| transition.property = p)
+                    .is_some(),
+                "transitionDuration" => parse_time(text.trim())
+                    .map(|t| transition.duration = t)
+                    .is_some(),
+                "transitionDelay" => parse_time(text.trim())
+                    .map(|t| transition.delay = t)
+                    .is_some(),
+                "transitionTimingFunction" => parse_easing(text.trim())
+                    .map(|e| transition.easing = e)
+                    .is_some(),
+                _ => false,
+            };
+            ok.then(|| look.transition = Some(transition))
+        } else {
+            let mut animation = look.animation.unwrap_or(NamedAnimation {
+                name: AnimationName::Fade,
+                duration: 0,
+                delay: 0,
+                easing: Easing::Ease,
+                repeat: Some(1),
+                alternate: false,
+                keep: false,
+            });
+            let ok = match key {
+                "animation" => parse_animation(&text).map(|a| animation = a).is_some(),
+                "animationName" => AnimationName::parse(text.trim())
+                    .map(|n| animation.name = n)
+                    .is_some(),
+                "animationDuration" => parse_time(text.trim())
+                    .map(|t| animation.duration = t)
+                    .is_some(),
+                "animationDelay" => parse_time(text.trim())
+                    .map(|t| animation.delay = t)
+                    .is_some(),
+                "animationTimingFunction" => parse_easing(text.trim())
+                    .map(|e| animation.easing = e)
+                    .is_some(),
+                "animationIterationCount" => parse_count(text.trim())
+                    .map(|c| animation.repeat = c)
+                    .is_some(),
+                "animationDirection" => {
+                    let direction = match text.trim() {
+                        "normal" => Some(false),
+                        "alternate" => Some(true),
+                        _ => None,
+                    };
+                    direction
+                        .map(|alternate| animation.alternate = alternate)
+                        .is_some()
+                }
+                "animationFillMode" => parse_fill(text.trim())
+                    .map(|k| animation.keep = k)
+                    .is_some(),
+                _ => false,
+            };
+            ok.then(|| look.animation = Some(animation))
+        };
+        if parsed.is_none() {
+            self.cx.error_help(
+                Code::InvalidValue,
+                value.loc(),
+                format!("`{key}` names what the runtime cannot run: {text:?}"),
+                format!(
+                    "a transition moves opacity, transform or scale - one at a time - in ms or s, with linear, ease, ease-in, ease-out, ease-in-out, cubic-bezier(…) or steps(…); an animation is one of {} with its duration, timing, delay, iteration count or infinite, normal or alternate, and a fill mode",
+                    AnimationName::NAMES.join(", ")
+                ),
+            );
+        }
+    }
+
     /// `opacity: 0.5`: a number from 0 to 1, as 0 to 255.
     fn fraction(&mut self, key: &str, value: &Expr) -> Option<u8> {
         match value {
@@ -4571,4 +4675,198 @@ fn parse_gradient(text: &str) -> Option<Gradient> {
         }),
         _ => None,
     }
+}
+
+/// `200ms` or `0.2s`, in milliseconds.
+fn parse_time(text: &str) -> Option<u32> {
+    if let Some(ms) = text.strip_suffix("ms") {
+        return ms.trim().parse::<u32>().ok();
+    }
+    let seconds = text.strip_suffix('s')?.trim();
+    let (whole, part) = seconds.split_once('.').unwrap_or((seconds, ""));
+    let whole: u32 = if whole.is_empty() {
+        0
+    } else {
+        whole.parse().ok()?
+    };
+    let mut thousandths = 0_u32;
+    for (index, digit) in part.chars().take(3).enumerate() {
+        let digit = digit.to_digit(10)?;
+        thousandths = thousandths
+            .checked_add(digit.checked_mul(
+                10_u32.checked_pow(2_u32.checked_sub(u32::try_from(index).ok()?)?)?,
+            )?)?;
+    }
+    whole.checked_mul(1000)?.checked_add(thousandths)
+}
+
+/// A CSS timing function.
+fn parse_easing(text: &str) -> Option<Easing> {
+    Some(match text {
+        "linear" => Easing::Linear,
+        "ease" => Easing::Ease,
+        "ease-in" => Easing::EaseIn,
+        "ease-out" => Easing::EaseOut,
+        "ease-in-out" => Easing::EaseInOut,
+        "step-start" => Easing::Steps {
+            count: 1,
+            start: true,
+        },
+        "step-end" => Easing::Steps {
+            count: 1,
+            start: false,
+        },
+        _ => {
+            if let Some(inside) = text
+                .strip_prefix("cubic-bezier(")
+                .and_then(|t| t.strip_suffix(')'))
+            {
+                let mut points = [0_i16; 4];
+                let parts: Vec<&str> = inside.split(',').map(str::trim).collect();
+                if parts.len() != 4 {
+                    return None;
+                }
+                for (slot, part) in points.iter_mut().zip(&parts) {
+                    let value: f64 = part.parse().ok()?;
+                    if !value.is_finite() || !(-4.0..=5.0).contains(&value) {
+                        return None;
+                    }
+                    // Exact enough: a few thousand at most.
+                    *slot = (value * 1000.0).round() as i16;
+                }
+                if !(0..=1000).contains(&points[0]) || !(0..=1000).contains(&points[2]) {
+                    return None;
+                }
+                return Some(Easing::Bezier(points));
+            }
+            let inside = text.strip_prefix("steps(")?.strip_suffix(')')?;
+            let mut parts = inside.split(',').map(str::trim);
+            let count: u8 = parts.next()?.parse().ok().filter(|c| *c > 0)?;
+            let start = match parts.next() {
+                None | Some("jump-end" | "end") => false,
+                Some("jump-start" | "start") => true,
+                _ => return None,
+            };
+            Easing::Steps { count, start }
+        }
+    })
+}
+
+/// `opacity`, `transform` or `translate`, or `scale`.
+fn parse_motion_property(text: &str) -> Option<MotionProperty> {
+    match text {
+        "opacity" => Some(MotionProperty::Opacity),
+        "transform" | "translate" => Some(MotionProperty::Translate),
+        "scale" => Some(MotionProperty::Scale),
+        _ => None,
+    }
+}
+
+/// An iteration count: a whole number, or `infinite` as `None`.
+fn parse_count(text: &str) -> Option<Option<u16>> {
+    if text == "infinite" {
+        return Some(None);
+    }
+    text.parse::<u16>().ok().filter(|c| *c > 0).map(Some)
+}
+
+/// A fill mode: whether the last value stays.
+fn parse_fill(text: &str) -> Option<bool> {
+    match text {
+        "none" | "backwards" => Some(false),
+        "forwards" | "both" => Some(true),
+        _ => None,
+    }
+}
+
+/// The words of a CSS shorthand, a function's parentheses kept whole.
+fn words(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut depth = 0_u32;
+    let mut start = None;
+    for (index, ch) in text.char_indices() {
+        match ch {
+            '(' => depth = depth.saturating_add(1),
+            ')' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+        if ch.is_whitespace() && depth == 0 {
+            if let Some(from) = start.take() {
+                out.push(&text[from..index]);
+            }
+        } else if start.is_none() {
+            start = Some(index);
+        }
+    }
+    if let Some(from) = start {
+        out.push(&text[from..]);
+    }
+    out
+}
+
+/// `transition: opacity 200ms ease-out 50ms`: one property, a duration, a
+/// timing function and a delay, in any order CSS allows.
+fn parse_transition(text: &str) -> Option<Transition> {
+    if text.contains(',') && !text.contains('(') {
+        return None;
+    }
+    let mut transition = Transition {
+        property: MotionProperty::Opacity,
+        duration: 0,
+        delay: 0,
+        easing: Easing::Ease,
+    };
+    let mut times = 0_u32;
+    for word in words(text) {
+        if let Some(time) = parse_time(word) {
+            if times == 0 {
+                transition.duration = time;
+            } else {
+                transition.delay = time;
+            }
+            times = times.saturating_add(1);
+        } else if let Some(easing) = parse_easing(word) {
+            transition.easing = easing;
+        } else {
+            transition.property = parse_motion_property(word)?;
+        }
+    }
+    (times > 0).then_some(transition)
+}
+
+/// `animation: spin 1s linear infinite alternate forwards`.
+fn parse_animation(text: &str) -> Option<NamedAnimation> {
+    let mut animation = NamedAnimation {
+        name: AnimationName::Fade,
+        duration: 0,
+        delay: 0,
+        easing: Easing::Ease,
+        repeat: Some(1),
+        alternate: false,
+        keep: false,
+    };
+    let (mut named, mut times) = (false, 0_u32);
+    for word in words(text) {
+        if let Some(time) = parse_time(word) {
+            if times == 0 {
+                animation.duration = time;
+            } else {
+                animation.delay = time;
+            }
+            times = times.saturating_add(1);
+        } else if let Some(easing) = parse_easing(word) {
+            animation.easing = easing;
+        } else if let Some(count) = parse_count(word) {
+            animation.repeat = count;
+        } else if word == "alternate" {
+            animation.alternate = true;
+        } else if word == "normal" {
+        } else if let Some(keep) = parse_fill(word) {
+            animation.keep = keep;
+        } else {
+            animation.name = AnimationName::parse(word)?;
+            named = true;
+        }
+    }
+    (named && times > 0).then_some(animation)
 }

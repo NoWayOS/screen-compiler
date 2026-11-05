@@ -525,6 +525,182 @@ pub struct Look {
     pub gradient: Option<Gradient>,
     /// `opacity`, out of 255 (contract v22).
     pub opacity: Option<u8>,
+    /// `transition`: how it comes into view when a condition shows it
+    /// (contract v23).
+    pub transition: Option<Transition>,
+    /// `animation`: one of the runtime's, running while motion is on
+    /// (contract v23).
+    pub animation: Option<NamedAnimation>,
+}
+
+/// A timing function: CSS's names, `cubic-bezier(…)` in thousandths, or
+/// `steps(n, jump-start | jump-end)` (contract v23).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Easing {
+    /// `linear`.
+    Linear,
+    /// `ease`.
+    Ease,
+    /// `ease-in`.
+    EaseIn,
+    /// `ease-out`.
+    EaseOut,
+    /// `ease-in-out`.
+    EaseInOut,
+    /// `cubic-bezier(x1, y1, x2, y2)`, in thousandths.
+    Bezier([i16; 4]),
+    /// `steps(count, jump-start)` when `start`, else `jump-end`.
+    Steps {
+        /// How many.
+        count: u8,
+        /// Whether the first jump is at the start.
+        start: bool,
+    },
+}
+
+impl Easing {
+    /// It in the target API (`ui::Easing::…`).
+    #[must_use]
+    pub fn rust(self) -> String {
+        match self {
+            Self::Linear => "ui::Easing::Linear".to_owned(),
+            Self::Ease => "ui::Easing::Ease".to_owned(),
+            Self::EaseIn => "ui::Easing::EaseIn".to_owned(),
+            Self::EaseOut => "ui::Easing::EaseOut".to_owned(),
+            Self::EaseInOut => "ui::Easing::EaseInOut".to_owned(),
+            Self::Bezier([a, b, c, d]) => format!("ui::Easing::Bezier([{a}, {b}, {c}, {d}])"),
+            Self::Steps { count, start } => {
+                format!("ui::Easing::Steps {{ count: {count}, start: {start} }}")
+            }
+        }
+    }
+
+    /// It in an outline.
+    #[must_use]
+    pub fn outline(self) -> String {
+        match self {
+            Self::Linear => "linear".to_owned(),
+            Self::Ease => "ease".to_owned(),
+            Self::EaseIn => "ease-in".to_owned(),
+            Self::EaseOut => "ease-out".to_owned(),
+            Self::EaseInOut => "ease-in-out".to_owned(),
+            Self::Bezier([a, b, c, d]) => format!("bezier-{a}-{b}-{c}-{d}"),
+            Self::Steps { count, start } => {
+                format!("steps-{count}-{}", if start { "start" } else { "end" })
+            }
+        }
+    }
+}
+
+/// What a transition moves as its node comes into view (contract v23).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum MotionProperty {
+    /// `opacity`: from unseen.
+    Opacity,
+    /// `transform` or `translate`: up from a little below.
+    Translate,
+    /// `scale`: from a little small.
+    Scale,
+}
+
+impl MotionProperty {
+    /// The property in the target API.
+    #[must_use]
+    pub const fn rust(self) -> &'static str {
+        match self {
+            Self::Opacity => "ui::Property::Opacity",
+            Self::Translate => "ui::Property::TranslateY",
+            Self::Scale => "ui::Property::Scale",
+        }
+    }
+
+    /// Its CSS name, as an outline shows it.
+    #[must_use]
+    pub const fn css(self) -> &'static str {
+        match self {
+            Self::Opacity => "opacity",
+            Self::Translate => "transform",
+            Self::Scale => "scale",
+        }
+    }
+}
+
+/// `transition: opacity 200ms ease-out 50ms` (contract v23).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Transition {
+    /// What moves.
+    pub property: MotionProperty,
+    /// How long, in milliseconds.
+    pub duration: u32,
+    /// After how long, in milliseconds.
+    pub delay: u32,
+    /// How it is paced.
+    pub easing: Easing,
+}
+
+/// One of the runtime's animations, by name (contract v23).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AnimationName {
+    /// `spin`: an icon turning.
+    Spin,
+    /// `pulse`: growing a little and back.
+    Pulse,
+    /// `fade`: fading in.
+    Fade,
+    /// `indeterminate`: a progress bar's segment sweeping.
+    Indeterminate,
+    /// `shimmer`: a light band crossing.
+    Shimmer,
+}
+
+impl AnimationName {
+    /// Each one's name.
+    pub const NAMES: [&'static str; 5] = ["spin", "pulse", "fade", "indeterminate", "shimmer"];
+
+    /// The one named `name`.
+    #[must_use]
+    pub fn parse(name: &str) -> Option<Self> {
+        match name {
+            "spin" => Some(Self::Spin),
+            "pulse" => Some(Self::Pulse),
+            "fade" => Some(Self::Fade),
+            "indeterminate" => Some(Self::Indeterminate),
+            "shimmer" => Some(Self::Shimmer),
+            _ => None,
+        }
+    }
+
+    /// Its name.
+    #[must_use]
+    pub const fn css(self) -> &'static str {
+        match self {
+            Self::Spin => "spin",
+            Self::Pulse => "pulse",
+            Self::Fade => "fade",
+            Self::Indeterminate => "indeterminate",
+            Self::Shimmer => "shimmer",
+        }
+    }
+}
+
+/// `animation: spin 1s linear infinite` (contract v23): one of the
+/// runtime's animations with its timing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct NamedAnimation {
+    /// Which.
+    pub name: AnimationName,
+    /// How long a run is, in milliseconds.
+    pub duration: u32,
+    /// After how long it starts, in milliseconds.
+    pub delay: u32,
+    /// How it is paced.
+    pub easing: Easing,
+    /// How many runs; `None` for `infinite`.
+    pub repeat: Option<u16>,
+    /// `alternate`: every second run backwards.
+    pub alternate: bool,
+    /// `forwards` or `both`: its last value kept.
+    pub keep: bool,
 }
 
 /// One of the theme's shadows, by name: `boxShadow: "medium"`.
@@ -598,6 +774,8 @@ impl Look {
             && self.shadow.is_none()
             && self.gradient.is_none()
             && self.opacity.is_none()
+            && self.transition.is_none()
+            && self.animation.is_none()
     }
 }
 

@@ -121,6 +121,11 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v23 adds to `Look` a [`builder::Transition`] - how a node comes
+//! into view when a condition shows it - and an [`builder::Animation`] of
+//! its own: `style={{ transition: "opacity 200ms ease-out", animation:
+//! "pulse 1.2s ease-in-out infinite" }}`.
+//!
 //! Contract v22 adds to `Look` a theme's shadow ([`builder::Elevation`]), a
 //! [`builder::Gradient`] between the theme's colours and an opacity:
 //! `style={{ boxShadow: "medium", background: "linear-gradient(90deg,
@@ -181,7 +186,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 22;
+pub const VERSION: u32 = 23;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -1025,6 +1030,181 @@ pub mod builder {
         pub gradient: Option<Gradient>,
         /// How opaque it and its children are, out of 255 (contract v22).
         pub opacity: Option<u8>,
+        /// How it comes into view (contract v23): a constant, by reference.
+        pub transition: Option<&'static Transition>,
+        /// An animation of its own (contract v23): a constant, by reference.
+        pub animation: Option<&'static Animation>,
+    }
+
+    /// A timing function (contract v23).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub enum Easing {
+        /// `linear`.
+        Linear,
+        /// `ease`.
+        Ease,
+        /// `ease-in`.
+        EaseIn,
+        /// `ease-out`.
+        EaseOut,
+        /// `ease-in-out`.
+        EaseInOut,
+        /// `cubic-bezier(…)`, in thousandths.
+        Bezier([i16; 4]),
+        /// `steps(…)`.
+        Steps {
+            /// How many.
+            count: u8,
+            /// Whether the first jump is at the start.
+            start: bool,
+        },
+    }
+
+    /// What an animation moves (contract v23).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub enum Property {
+        /// Opacity, 0 to 255.
+        Opacity,
+        /// Down, in layout units.
+        TranslateY,
+        /// Scale, in thousandths.
+        Scale,
+        /// An icon's turn, in tenths of a degree.
+        Turn,
+        /// A progress bar's sweep.
+        Sweep,
+        /// A shimmer's band.
+        Shimmer,
+    }
+
+    /// How often (contract v23).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub enum Repeat {
+        /// This many times.
+        Times(u16),
+        /// Until stopped.
+        Forever,
+    }
+
+    /// How a node comes into view (contract v23).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct Transition {
+        /// What moves.
+        pub property: Property,
+        /// How long, in milliseconds.
+        pub duration: u32,
+        /// After how long.
+        pub delay: u32,
+        /// How it is paced.
+        pub easing: Easing,
+    }
+
+    impl Transition {
+        /// `property` over `duration` milliseconds.
+        #[must_use]
+        pub const fn new(property: Property, duration: u32) -> Self {
+            Self {
+                property,
+                duration,
+                delay: 0,
+                easing: Easing::Ease,
+            }
+        }
+
+        /// After `delay` milliseconds.
+        #[must_use]
+        pub const fn delay(self, delay: u32) -> Self {
+            Self { delay, ..self }
+        }
+
+        /// Paced by `easing`.
+        #[must_use]
+        pub const fn easing(self, easing: Easing) -> Self {
+            Self { easing, ..self }
+        }
+    }
+
+    /// An animation (contract v23): its property, keys, timing and how
+    /// often.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct Animation {
+        /// What it moves.
+        pub property: Property,
+        /// Its first and last values.
+        pub keys: (i32, i32),
+        /// How long, in milliseconds.
+        pub duration: u32,
+        /// After how long.
+        pub delay: u32,
+        /// How it is paced.
+        pub easing: Easing,
+        /// How often.
+        pub repeat: Repeat,
+        /// Every second run backwards.
+        pub alternate: bool,
+        /// Its last value kept.
+        pub keep: bool,
+    }
+
+    impl Animation {
+        /// From `from` to `to` over `duration` milliseconds.
+        #[must_use]
+        pub const fn new(property: Property, from: i32, to: i32, duration: u32) -> Self {
+            Self {
+                property,
+                keys: (from, to),
+                duration,
+                delay: 0,
+                easing: Easing::Ease,
+                repeat: Repeat::Times(1),
+                alternate: false,
+                keep: true,
+            }
+        }
+
+        /// Through `keys` over `duration` milliseconds.
+        #[must_use]
+        pub fn keyframes(property: Property, keys: &[(u16, i32)], duration: u32) -> Self {
+            let first = keys.first().map_or(0, |key| key.1);
+            let last = keys.last().map_or(0, |key| key.1);
+            Self::new(property, first, last, duration)
+        }
+
+        /// After `delay` milliseconds.
+        #[must_use]
+        pub const fn delay(self, delay: u32) -> Self {
+            Self { delay, ..self }
+        }
+
+        /// Paced by `easing`.
+        #[must_use]
+        pub const fn easing(self, easing: Easing) -> Self {
+            Self { easing, ..self }
+        }
+
+        /// As often as `repeat`.
+        #[must_use]
+        pub const fn repeat(self, repeat: Repeat) -> Self {
+            Self { repeat, ..self }
+        }
+
+        /// Alternating.
+        #[must_use]
+        pub const fn alternate(self) -> Self {
+            Self {
+                alternate: true,
+                ..self
+            }
+        }
+
+        /// Back to rest at its end.
+        #[must_use]
+        pub const fn release(self) -> Self {
+            Self {
+                keep: false,
+                ..self
+            }
+        }
     }
 
     /// One of the theme's shadows (contract v22).
@@ -1084,7 +1264,27 @@ pub mod builder {
             shadow: None,
             gradient: None,
             opacity: None,
+            transition: None,
+            animation: None,
         };
+
+        /// Coming into view by `transition`.
+        #[must_use]
+        pub const fn transition(self, transition: &'static Transition) -> Self {
+            Self {
+                transition: Some(transition),
+                ..self
+            }
+        }
+
+        /// Running `animation`.
+        #[must_use]
+        pub const fn animation(self, animation: &'static Animation) -> Self {
+            Self {
+                animation: Some(animation),
+                ..self
+            }
+        }
 
         /// With the theme's shadow for `elevation` beneath it.
         #[must_use]

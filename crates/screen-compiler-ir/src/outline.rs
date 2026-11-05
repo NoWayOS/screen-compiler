@@ -201,6 +201,35 @@ fn looked(look: Look) -> String {
     if let Some(opacity) = look.opacity {
         out.push_str(&format!(" opacity={opacity}"));
     }
+    if let Some(t) = look.transition {
+        out.push_str(&format!(
+            " transition={}-{}-{}-{}",
+            t.property.css(),
+            t.duration,
+            t.delay,
+            t.easing.outline()
+        ));
+    }
+    if let Some(a) = look.animation {
+        // As the runtime runs it: a pulse's run is two of the runtime's,
+        // there and back, each half as long.
+        let pulse = a.name == crate::AnimationName::Pulse;
+        let (duration, repeat, alternate) = if pulse {
+            (a.duration / 2, a.repeat.map(|n| n.saturating_mul(2)), true)
+        } else {
+            (a.duration, a.repeat, a.alternate)
+        };
+        out.push_str(&format!(
+            " animation={}-{}-{}-{}-{}{}{}",
+            a.name.css(),
+            duration,
+            a.delay,
+            a.easing.outline(),
+            repeat.map_or_else(|| "infinite".to_owned(), |n| n.to_string()),
+            if alternate { "-alternate" } else { "" },
+            if a.keep { "-forwards" } else { "" }
+        ));
+    }
     out
 }
 
