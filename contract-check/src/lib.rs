@@ -16,4 +16,10 @@
 
 #![no_std]
 
+/// The product's pictures, which generated code names at the crate's root
+/// (contract v15): NoWayOS's samples, which `fixtures/pictures.names` lists.
+mod pictures {
+    pub use nowayos_ui::pictures::samples::*;
+}
+
 include!(concat!(env!("OUT_DIR"), "/screens.rs"));

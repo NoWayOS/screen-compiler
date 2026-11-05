@@ -52,7 +52,7 @@ define convert_fixtures
 	@rm -rf $(1) && mkdir -p $(1)
 	@for f in $(FIXTURES); do \
 		echo "==> screen-compiler convert $$f"; \
-		$(SCREEN_COMPILER) convert $$f > $(1)/$$(basename $$f .tsx).rs || exit 1; \
+		$(SCREEN_COMPILER) convert --pictures fixtures/pictures.names $$f > $(1)/$$(basename $$f .tsx).rs || exit 1; \
 	done
 endef
 

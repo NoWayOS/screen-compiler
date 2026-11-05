@@ -12,9 +12,9 @@
 )]
 
 use screen_compiler_codegen_rust::contract::builder::{
-    ActionId, Align, ButtonVariant, Colour, FieldId, GroupId, Input, InputMode, Justify, Layout,
-    Look, Picker, SlotId, Space, Surface, SwitchId, Template, TextAlign, TextStyle, Tone,
-    UiBuilder, Weight, icons,
+    ActionId, Align, ButtonVariant, Colour, FieldId, Fit, GroupId, Input, InputMode, Justify,
+    Layout, Look, Picker, Picture, SlotId, Space, Surface, SwitchId, Template, TextAlign,
+    TextStyle, Tone, UiBuilder, Weight, icons,
 };
 
 /// A theme colour's TSX name, as `screen_compiler_ir::outline` writes it.
@@ -342,6 +342,28 @@ impl UiBuilder for Recorder {
         self.add(format!("icon {}", icon.name()), &[])
     }
 
+    fn image(
+        &mut self,
+        picture: &'static Picture,
+        fit: Fit,
+        alt: &'static str,
+        layout: Layout,
+    ) -> Result<NodeRef, RecordError> {
+        let fit = match fit {
+            Fit::Fill => "fill",
+            Fit::Contain => "contain",
+            Fit::Cover => "cover",
+        };
+        let mut line = format!("image {} alt={alt:?} fit={fit}", picture.name());
+        if let Some(width) = layout.width_px() {
+            line.push_str(&format!(" width={width}"));
+        }
+        if let Some(height) = layout.height_px() {
+            line.push_str(&format!(" height={height}"));
+        }
+        self.add(line, &[])
+    }
+
     fn progress(&mut self, slot: SlotId) -> Result<NodeRef, RecordError> {
         if self.slots.contains(&slot.get()) {
             return Err(RecordError::Duplicate);
@@ -555,6 +577,19 @@ pub fn convert_source(name: &str, source: &str) -> (screen_compiler_ir::Module, 
     convert_in(name, source, &mut folder)
 }
 
+/// The names `fixtures/pictures.names` lists, one a line.
+pub fn picture_names() -> Vec<String> {
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/pictures.names");
+    std::fs::read_to_string(path)
+        .unwrap()
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(str::to_owned)
+        .collect()
+}
+
 /// Runs the whole pipeline on `source`, recorded as file `name`, reading the
 /// files it imports through `load`.
 fn convert_in(
@@ -573,11 +608,11 @@ fn convert_in(
         Ok(parsed) => parsed,
         Err(diagnostics) => panic!("{name} does not parse:\n{}", render(&diagnostics)),
     };
-    let analysis = screen_compiler_analyse::analyse_with(
-        &parsed,
-        &screen_compiler_analyse::Options::new(name),
-        load,
-    );
+    // The pictures fixtures may show: NoWayOS's samples, as
+    // `fixtures/pictures.names` lists them.
+    let mut options = screen_compiler_analyse::Options::new(name);
+    options.pictures = Some(picture_names());
+    let analysis = screen_compiler_analyse::analyse_with(&parsed, &options, load);
     let Some(module) = analysis.module else {
         panic!(
             "{name} is not supported:\n{}",

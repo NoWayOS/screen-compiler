@@ -339,7 +339,10 @@ fn element(component: KitComponent, change: &Change) -> String {
 fn converts(source: &str) -> Result<(), String> {
     let diagnostics = match screen_compiler_tsx::parse(source) {
         Ok(parsed) => {
-            let analysis = analyse(&parsed, &Options::new("sample.tsx"));
+            // An id's sample value, "subject", names a picture too.
+            let mut options = Options::new("sample.tsx");
+            options.pictures = Some(vec!["subject".to_owned()]);
+            let analysis = analyse(&parsed, &options);
             if analysis.module.is_some() && !analysis.diagnostics.iter().any(|d| d.is_error()) {
                 return Ok(());
             }

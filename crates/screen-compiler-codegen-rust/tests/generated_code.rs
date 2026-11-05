@@ -27,6 +27,16 @@ mod nowayos_ui {
     pub use screen_compiler_codegen_rust::contract::builder;
 }
 
+/// The product's pictures, which generated code names at the crate's root
+/// (contract v15): stand-ins for NoWayOS's samples, which
+/// `fixtures/pictures.names` lists.
+mod pictures {
+    use screen_compiler_codegen_rust::contract::builder::Picture;
+
+    pub static LANDSCAPE: Picture = Picture::new("landscape", 160, 100);
+    pub static BADGE: Picture = Picture::new("badge", 48, 48);
+}
+
 #[allow(
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
@@ -184,6 +194,15 @@ mod fixture_tiles {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_photo_card {
+    use crate::nowayos_ui;
+    include!("snapshots/photo-card.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_order_ready {
     use crate::nowayos_ui;
     include!("snapshots/order-ready.rs");
@@ -226,7 +245,7 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 22] = [
+const COMPILED: [&str; 23] = [
     "bike-hire",
     "check-in",
     "check-in-files",
@@ -244,6 +263,7 @@ const COMPILED: [&str; 22] = [
     "parking-paid",
     "parking-paid-css",
     "parcel-status",
+    "photo-card",
     "queue-ticket",
     "table-ready",
     "tiles",
@@ -269,6 +289,20 @@ fn welcome_builds_exactly_its_ir() {
     assert_eq!(screen::actions::START.get(), 1);
     assert_eq!(screen::actions::HELP.get(), 2);
     assert_eq!((tokens::SPACE_SM, tokens::SPACE_LG), (8, 24));
+}
+
+/// Pictures, by the product's statics, fitted and sized as their styles
+/// say, build exactly as the IR says (contract v15).
+#[test]
+fn photo_card_builds_exactly_its_ir() {
+    let mut recorder = Recorder::with_capacity(64);
+    let nodes = fixture_photo_card::photo_card::build(&mut recorder).unwrap();
+    let outline = recorder.outline(nodes.root);
+    assert_eq!(outline, ir_outline("photo-card.tsx"));
+    assert!(outline.contains(
+        "image landscape alt=\"A lake at sunset, hills behind it\" fit=cover width=320 height=120"
+    ));
+    assert!(outline.contains("image badge alt=\"\" fit=fill\n"));
 }
 
 /// Wrapped text, a progress bar numbered with the

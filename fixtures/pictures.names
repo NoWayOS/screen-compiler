@@ -1,0 +1,5 @@
+# The pictures fixtures may show: NoWayOS's samples
+# (crates/nowayos-pictures/src/samples/names in the nowayos clone), which
+# make contract-check draws them with. One name a line.
+landscape
+badge

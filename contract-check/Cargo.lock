@@ -149,6 +149,10 @@ name = "nowayos-ipc"
 version = "0.1.0"
 
 [[package]]
+name = "nowayos-pictures"
+version = "0.1.0"
+
+[[package]]
 name = "nowayos-raster"
 version = "0.1.0"
 
@@ -181,6 +185,7 @@ dependencies = [
  "nowayos-glyphs",
  "nowayos-icons",
  "nowayos-input",
+ "nowayos-pictures",
 ]
 
 [[package]]

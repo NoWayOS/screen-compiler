@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! Command-line arguments, parsed by hand: four subcommands and one option
-//! do not justify a parser dependency.
+//! Command-line arguments, parsed by hand: four subcommands and two
+//! options do not justify a parser dependency.
 
 use std::ffi::{OsStr, OsString};
 use std::fmt;
@@ -9,17 +9,21 @@ use std::path::PathBuf;
 /// What to do.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
-    /// `screen-compiler convert IN.tsx [-o OUT.rs]`
+    /// `screen-compiler convert IN.tsx [-o OUT.rs] [--pictures NAMES]`
     Convert {
         /// The TSX file to convert.
         input: PathBuf,
         /// Where to write the Rust; standard output when absent.
         output: Option<PathBuf>,
+        /// The names of the product's pictures, one a line.
+        pictures: Option<PathBuf>,
     },
-    /// `screen-compiler check IN.tsx`
+    /// `screen-compiler check IN.tsx [--pictures NAMES]`
     Check {
         /// The TSX file to check.
         input: PathBuf,
+        /// The names of the product's pictures, one a line.
+        pictures: Option<PathBuf>,
     },
     /// `screen-compiler audit DIR`
     Audit {
@@ -88,7 +92,11 @@ pub fn parse(args: &[OsString]) -> Result<Command, ArgError> {
         Some("convert") => {
             let mut input = None;
             let mut output = None;
+            let mut pictures = None;
             while let Some(arg) = args.next() {
+                if picture_option(arg, &mut args, &mut pictures)? {
+                    continue;
+                }
                 match arg.to_str() {
                     Some("-h" | "--help") => return Ok(Command::Help),
                     Some("-o" | "--output") => {
@@ -115,11 +123,16 @@ pub fn parse(args: &[OsString]) -> Result<Command, ArgError> {
             Ok(Command::Convert {
                 input: input.ok_or(ArgError::MissingInput)?,
                 output,
+                pictures,
             })
         }
         Some("check") => {
             let mut input = None;
-            for arg in args {
+            let mut pictures = None;
+            while let Some(arg) = args.next() {
+                if picture_option(arg, &mut args, &mut pictures)? {
+                    continue;
+                }
                 match arg.to_str() {
                     Some("-h" | "--help") => return Ok(Command::Help),
                     _ => positional(arg, &mut input)?,
@@ -127,6 +140,7 @@ pub fn parse(args: &[OsString]) -> Result<Command, ArgError> {
             }
             Ok(Command::Check {
                 input: input.ok_or(ArgError::MissingInput)?,
+                pictures,
             })
         }
         Some("audit") => {
@@ -160,6 +174,34 @@ pub fn parse(args: &[OsString]) -> Result<Command, ArgError> {
         }
         _ => Err(ArgError::UnknownCommand(lossy(first))),
     }
+}
+
+/// Takes `--pictures FILE` or `--pictures=FILE` into `pictures`: whether
+/// `arg` was that option.
+fn picture_option<'a>(
+    arg: &OsStr,
+    args: &mut impl Iterator<Item = &'a OsString>,
+    pictures: &mut Option<PathBuf>,
+) -> Result<bool, ArgError> {
+    let value = match arg.to_str() {
+        Some("--pictures") => args
+            .next()
+            .map(PathBuf::from)
+            .ok_or(ArgError::MissingValue("--pictures"))?,
+        Some(s) if s.starts_with("--pictures=") => {
+            let value = s.strip_prefix("--pictures=").unwrap_or_default();
+            if value.is_empty() {
+                return Err(ArgError::MissingValue("--pictures"));
+            }
+            PathBuf::from(value)
+        }
+        _ => return Ok(false),
+    };
+    if pictures.is_some() {
+        return Err(ArgError::Repeated("--pictures"));
+    }
+    *pictures = Some(value);
+    Ok(true)
 }
 
 /// Takes `arg` as the input file, or reports it.
@@ -197,12 +239,14 @@ mod tests {
             run(&["convert", "a.tsx"]),
             Ok(Command::Convert {
                 input: "a.tsx".into(),
-                output: None
+                output: None,
+                pictures: None,
             })
         );
         let expected = Ok(Command::Convert {
             input: "a.tsx".into(),
             output: Some("b.rs".into()),
+            pictures: None,
         });
         assert_eq!(run(&["convert", "a.tsx", "-o", "b.rs"]), expected);
         assert_eq!(run(&["convert", "-o", "b.rs", "a.tsx"]), expected);
@@ -217,7 +261,8 @@ mod tests {
             run(&["convert", "a.tsx", "--output=--output=x.rs"]),
             Ok(Command::Convert {
                 input: "a.tsx".into(),
-                output: Some("--output=x.rs".into())
+                output: Some("--output=x.rs".into()),
+                pictures: None,
             })
         );
     }
@@ -227,7 +272,8 @@ mod tests {
         assert_eq!(
             run(&["check", "a.tsx"]),
             Ok(Command::Check {
-                input: "a.tsx".into()
+                input: "a.tsx".into(),
+                pictures: None,
             })
         );
         assert_eq!(
@@ -293,7 +339,10 @@ mod tests {
     fn a_lone_dash_is_a_file_name() {
         assert_eq!(
             run(&["check", "-"]),
-            Ok(Command::Check { input: "-".into() })
+            Ok(Command::Check {
+                input: "-".into(),
+                pictures: None
+            })
         );
     }
 }

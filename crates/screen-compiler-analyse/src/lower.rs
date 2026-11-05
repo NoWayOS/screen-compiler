@@ -4,7 +4,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use screen_compiler_ir::{
-    AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Group, ICON_NAMES,
+    AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Fit, Group, ICON_NAMES,
     InputMode, Justify, Length, Loc, Look, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LABEL_BYTES,
     MAX_LINES, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, MAX_TEMPLATE_BYTES, Module, Name,
     Node, NodeKind, SELECT_ROWS, Screen, Space, Surface, Template, TextAlign, TextRole, TextStyle,
@@ -1307,6 +1307,8 @@ struct StyleProps {
     text_align: Option<TextAlign>,
     /// `<Text>`'s `color`.
     colour: Option<Colour>,
+    /// `<Image>`'s `objectFit`.
+    fit: Option<Fit>,
     /// Where `style` is written.
     at: Option<Loc>,
 }
@@ -1365,6 +1367,16 @@ struct Props {
     /// `<FieldError for="…">`: the `id` of the control whose errors
     /// it shows.
     field_for: Option<Name>,
+    /// `<Image src="…">`: one of the product's pictures.
+    picture: Option<String>,
+    /// Whether `src` was given, valid or not.
+    picture_given: bool,
+    /// `<Image alt="…">`.
+    alt: Option<String>,
+    /// Whether `alt` was given, valid or not.
+    alt_given: bool,
+    /// `<Image fit="…">`.
+    fit: Option<Fit>,
     /// Whether `for` was given, valid or not.
     for_given: bool,
 }
@@ -1661,6 +1673,46 @@ impl Lower<'_, '_, '_> {
                     );
                 }
                 NodeKind::Icon { name: props.icon? }
+            }
+            KitComponent::Image => {
+                self.no_children(component, element);
+                for (given, prop, help) in [
+                    (
+                        props.picture_given,
+                        "src",
+                        "write src=\"harbour\": the name of one of the product's pictures",
+                    ),
+                    (
+                        props.alt_given,
+                        "alt",
+                        "write alt=\"…\" saying what it shows, or alt=\"\" for a picture that is only decoration",
+                    ),
+                ] {
+                    if !given {
+                        self.cx.error_help(
+                            Code::MissingProp,
+                            element.loc,
+                            format!("<Image> needs {prop}"),
+                            help,
+                        );
+                    }
+                }
+                if props.fit.is_some() && props.style.fit.is_some() {
+                    self.cx.error_help(
+                        Code::DuplicateName,
+                        element.loc,
+                        "<Image> is given both fit and a style's objectFit",
+                        "give it one of them",
+                    );
+                    return None;
+                }
+                NodeKind::Image {
+                    picture: props.picture?,
+                    alt: props.alt?,
+                    fit: props.fit.or(props.style.fit).unwrap_or_default(),
+                    width: props.style.width,
+                    height: props.style.height,
+                }
             }
             KitComponent::ProgressBar => {
                 self.no_children(component, element);
@@ -2616,6 +2668,41 @@ impl Lower<'_, '_, '_> {
         }
     }
 
+    /// `src="…"` on an `<Image>`: a string literal, one of the product's
+    /// pictures that `--pictures` names.
+    fn picture_name(&mut self, value: &AttrValue, loc: Loc) -> Option<String> {
+        let Some((text, at)) = literal_string(value) else {
+            self.cx.error_help(
+                Code::InvalidValue,
+                loc,
+                "`src` must be a string literal",
+                "write src=\"harbour\": the name of one of the product's pictures",
+            );
+            return None;
+        };
+        let Some(names) = &self.cx.options.pictures else {
+            self.cx.error_help(
+                Code::InvalidValue,
+                at,
+                format!("there is no picture named \"{text}\": no pictures were given"),
+                "convert with --pictures FILE, the names file the product's picture tool writes beside its pictures",
+            );
+            return None;
+        };
+        if names.iter().any(|name| name == text) {
+            Some(text.to_owned())
+        } else {
+            let help = format!("the pictures are {}", names.join(", "));
+            self.cx.error_help(
+                Code::InvalidValue,
+                at,
+                format!("there is no picture named \"{text}\""),
+                help,
+            );
+            None
+        }
+    }
+
     /// `value={…}` on a `<ProgressBar>`: a prop of the component,
     /// which names the bar's slot.
     fn progress_value(&mut self, value: &AttrValue, loc: Loc) -> Option<Name> {
@@ -2898,6 +2985,9 @@ impl Lower<'_, '_, '_> {
                 "borderRadius" => {
                     style.look.radius = self.style_number(key, &prop.value, MAX_RADIUS);
                 }
+                "objectFit" => {
+                    style.fit = self.keyword(key, &prop.value, &Fit::NAMES, Fit::parse);
+                }
                 _ => {}
             }
         }
@@ -3153,6 +3243,8 @@ impl Lower<'_, '_, '_> {
                 props.icon_given |= name == "name";
                 props.tone_given |= name == "tone";
                 props.for_given |= name == "for";
+                props.picture_given |= name == "src";
+                props.alt_given |= name == "alt";
                 continue;
             }
             match name {
@@ -3232,6 +3324,27 @@ impl Lower<'_, '_, '_> {
                 "name" => {
                     props.icon_given = true;
                     props.icon = self.icon_name(value, loc);
+                }
+                "src" => {
+                    props.picture_given = true;
+                    props.picture = self.picture_name(value, loc);
+                }
+                "alt" => {
+                    props.alt_given = true;
+                    props.alt = self
+                        .string(name, value, loc)
+                        .filter(|alt| self.within_label_limit("alt", alt, loc));
+                }
+                "fit" => {
+                    props.fit = literal_string(value).and_then(|(text, _)| Fit::parse(text));
+                    if props.fit.is_none() {
+                        self.cx.error_help(
+                            Code::InvalidValue,
+                            loc,
+                            "`fit` must be \"fill\", \"contain\" or \"cover\"",
+                            "write fit=\"cover\": CSS's object-fit",
+                        );
+                    }
                 }
                 _ => {}
             }

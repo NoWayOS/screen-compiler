@@ -1,12 +1,12 @@
-screen-compiler audit: 25 files
-  convert                24  96.0%
-  do not convert          1
+screen-compiler audit: 26 files
+  convert                24  92.3%
+  do not convert          2
   cannot be read          0
 
-constructs            808
-  in the subset       797  98.6%
+constructs            844
+  in the subset       833  98.6%
   on the road           2  0.2%
-  out by design         5  0.6%
+  out by design         5  0.5%
   unknown               4  0.4%
 
 on the road
@@ -51,6 +51,7 @@ files
   parking-paid.tsx  converts
   parts/theme.tsx  converts
   parts/visitor.tsx  converts
+  photo-card.tsx  does not convert: 0 on the road, 0 out by design, 0 unknown
   queue-ticket.tsx  converts
   table-ready.tsx  converts
   tiles.tsx  converts

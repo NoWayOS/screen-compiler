@@ -91,6 +91,10 @@ pub struct Options {
     pub kit_module: String,
     /// Size bounds.
     pub limits: Limits,
+    /// The names of the product's pictures, which an `<Image src>` must be
+    /// one of (contract v15): the `names` file the picture tool writes,
+    /// given by `--pictures`. `None`: the screen may show no picture.
+    pub pictures: Option<Vec<String>>,
 }
 
 impl Options {
@@ -101,6 +105,7 @@ impl Options {
             source_name: source_name.into(),
             kit_module: KIT_MODULE.to_owned(),
             limits: Limits::default(),
+            pictures: None,
         }
     }
 }
