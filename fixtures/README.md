@@ -37,7 +37,8 @@ customer, and none may be added from one.
   longhands, and cards that fade and rise into view when a prop shows them; `promo.tsx` a gradient banner, cards casting each of the theme's
   shadows and a see-through notice (contract v22); `help.tsx` rich text (contract v21): Bold, italics, code, a
   colour and links in a paragraph; `message.tsx` layers (contract v20) - a menu, a tooltip, a
-  popover and a dialog - which `make contract-check` draws open one at a time; `feedback.tsx` a text area (contract v19), which
+  popover and a dialog - which `make contract-check` draws open one at a time, More's menu opening on a right
+  click too and the message's pointer an I-beam (contract v25); `feedback.tsx` a text area (contract v19), which
   `make contract-check` fills with two paragraphs in its shown frame; `inbox.tsx` a virtual list (contract v18) through a pool of twelve rows,
   which `make contract-check` gives a thousand items; `panels.tsx` containers that scroll (contract v17): a side panel down, a row of
   tiles across and a grid both ways; `article.tsx` a long text (contract v16), which `make contract-check`

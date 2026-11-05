@@ -1714,6 +1714,14 @@ fn a_declared_style_reaches_the_ir() {
         )),
         "column gap=0 padding=0\n  text \"Ref 4471\" selectable\n  text \"B\"\n"
     );
+    // The pointer's shape on a container, a text and a button, and a
+    // button's context action, numbered after its own (contract v25).
+    assert_eq!(
+        ok_outline(&spaced_screen(
+            "<Column style={{ cursor: \"not-allowed\" }}><Text style={{ cursor: \"text\" }}>A</Text><Button onPress={props.onGo} onContextMenu={props.onMore} style={{ cursor: \"pointer\" }}>Go</Button></Column>"
+        )),
+        "column gap=0 padding=0 cursor=not-allowed\n  text \"A\" cursor=text\n  button \"Go\" action=1 context=2 cursor=pointer\n"
+    );
 }
 
 #[test]
@@ -1787,6 +1795,11 @@ fn everything_a_style_may_not_name_is_refused_where_written() {
             "<Text style={{ userSelect: \"all\" }}>x</Text>",
             Code::InvalidValue,
             "\"all",
+        ),
+        (
+            "<Text style={{ cursor: \"grab\" }}>x</Text>",
+            Code::InvalidValue,
+            "\"grab",
         ),
         (
             "<Column style={{ userSelect: \"text\" }}><Text>x</Text></Column>",

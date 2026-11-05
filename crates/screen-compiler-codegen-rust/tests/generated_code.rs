@@ -389,7 +389,8 @@ fn help_builds_exactly_its_ir() {
 
 /// Layers over the screen - a menu, a tooltip and a popover beside the
 /// controls their `for` names, and a dialog - build exactly as the IR says
-/// (contract v20).
+/// (contract v20); More's context action, and the message's pointer
+/// (contract v25).
 #[test]
 fn message_builds_exactly_its_ir() {
     let mut recorder = Recorder::with_capacity(32);
@@ -397,9 +398,10 @@ fn message_builds_exactly_its_ir() {
     let outline = recorder.outline(nodes.root);
     assert_eq!(outline, ir_outline("message.tsx"));
     assert!(
-        outline.contains("menu layer 1 for (button \"More\" action=1 variant=secondary)"),
+        outline.contains("menu layer 1 for (button \"More\" action=1 variant=secondary context=1)"),
         "{outline}"
     );
+    assert!(outline.contains(" lines=3 cursor=text"), "{outline}");
     assert!(outline.contains("dialog layer 3"), "{outline}");
     assert_eq!(fixture_message::message::layers::CONFIRMING.get(), 3);
 }

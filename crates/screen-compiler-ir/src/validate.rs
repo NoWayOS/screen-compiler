@@ -601,6 +601,8 @@ mod tests {
             kind,
             id: id.map(name),
             loc: None,
+            context: None,
+            cursor: None,
         }
     }
 

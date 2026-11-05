@@ -287,6 +287,59 @@ impl Fit {
     }
 }
 
+/// The pointer's shape over a node: CSS's `cursor` in its style (contract
+/// v25). NoWayOS's `nowayos_ui::Cursor`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Cursor {
+    /// `"default"`: an arrow.
+    Default,
+    /// `"pointer"`: a hand, over what a press activates.
+    Pointer,
+    /// `"text"`: an I-beam, over text.
+    Text,
+    /// `"not-allowed"`: nothing here can be pressed.
+    NotAllowed,
+}
+
+impl Cursor {
+    /// Every value it takes, in order.
+    pub const NAMES: [&'static str; 4] = ["default", "pointer", "text", "not-allowed"];
+
+    /// The shape a value names.
+    #[must_use]
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "default" => Some(Self::Default),
+            "pointer" => Some(Self::Pointer),
+            "text" => Some(Self::Text),
+            "not-allowed" => Some(Self::NotAllowed),
+            _ => None,
+        }
+    }
+
+    /// Its CSS name.
+    #[must_use]
+    pub const fn tsx(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Pointer => "pointer",
+            Self::Text => "text",
+            Self::NotAllowed => "not-allowed",
+        }
+    }
+
+    /// Its name in the target API (`ui::Cursor::…`).
+    #[must_use]
+    pub const fn rust(self) -> &'static str {
+        match self {
+            Self::Default => "Arrow",
+            Self::Pointer => "Hand",
+            Self::Text => "Text",
+            Self::NotAllowed => "NotAllowed",
+        }
+    }
+}
+
 /// One of the theme's colours, named by a style: `color`,
 /// `backgroundColor` or `borderColor` take its TSX name - `"text-muted"` -
 /// never a colour value, so the large-text, high-contrast theme recolours
