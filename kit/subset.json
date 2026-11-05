@@ -107,7 +107,8 @@
       ],
       "style": [
         { "name": "color", "value": { "kind": "colour" } },
-        { "name": "textAlign", "value": { "kind": "choice", "values": ["left", "start", "center", "right", "end"] } }
+        { "name": "textAlign", "value": { "kind": "choice", "values": ["left", "start", "center", "right", "end"] } },
+        { "name": "userSelect", "value": { "kind": "choice", "values": ["none", "text"] } }
       ]
     },
     {

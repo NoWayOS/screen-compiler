@@ -9,7 +9,8 @@ use screen_compiler_ir::{
     MAX_AREA_LEN, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LABEL_BYTES, MAX_LINES, MAX_LONG_TEXT,
     MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, MAX_TEMPLATE_BYTES, Module, Name, Node,
     NodeKind, SELECT_ROWS, Screen, ScrollAxes, Space, Surface, Template, TextAlign, TextRole,
-    TextStyle, Token, Tone, Weight, has_errors, sort_diagnostics, special_char, validate,
+    TextStyle, Token, Tone, USER_SELECT, Weight, has_errors, sort_diagnostics, special_char,
+    validate,
 };
 use screen_compiler_ir::{
     AnimationName, Easing, MotionProperty, NamedAnimation, RichRun, Transition,
@@ -1311,6 +1312,8 @@ struct StyleProps {
     text_align: Option<TextAlign>,
     /// `<Text>`'s `color`.
     colour: Option<Colour>,
+    /// `<Text>`'s `userSelect: "text"` (contract v24).
+    selectable: bool,
     /// `<Image>`'s `objectFit`.
     fit: Option<Fit>,
     /// A container's `overflow` (both ways), `overflowX` and `overflowY`
@@ -2864,6 +2867,9 @@ impl Lower<'_, '_, '_> {
         if let Some(colour) = props.style.colour {
             style = style.colour(colour);
         }
+        if props.style.selectable {
+            style = style.selectable();
+        }
         match (props.weight, props.weight_at) {
             (Some(Weight::Regular), Some(at)) if role.bold_only() => {
                 self.cx.error_help(
@@ -3371,6 +3377,13 @@ impl Lower<'_, '_, '_> {
                         &TextAlign::STYLE_NAMES,
                         TextAlign::parse_style,
                     );
+                }
+                "userSelect" => {
+                    style.selectable = self
+                        .keyword(key, &prop.value, &USER_SELECT, |text| {
+                            USER_SELECT.iter().position(|&name| name == text)
+                        })
+                        .is_some_and(|at| at == 1);
                 }
                 "backgroundColor" => style.look.fill = self.theme_colour(key, &prop.value),
                 "borderColor" => style.look.border = self.theme_colour(key, &prop.value),

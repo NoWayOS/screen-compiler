@@ -30,8 +30,8 @@ pub use outline::outline;
 pub use style::{
     AlignItems, AnimationName, ButtonVariant, Colour, Easing, Elevation, Fit, Gradient, ICON_NAMES,
     Justify, Look, MAX_BORDER_WIDTH, MAX_LINES, MAX_RADIUS, MotionProperty, NamedAnimation,
-    ScrollAxes, Space, Surface, TextAlign, TextRole, TextStyle, Tone, Transition, Weight,
-    is_display, is_printable,
+    ScrollAxes, Space, Surface, TextAlign, TextRole, TextStyle, Tone, Transition, USER_SELECT,
+    Weight, is_display, is_printable,
 };
 pub use validate::{MAX_DEPTH, validate};
 
