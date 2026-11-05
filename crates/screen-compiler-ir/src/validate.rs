@@ -223,6 +223,10 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
             NodeKind::Button { label, .. }
             | NodeKind::Checkbox { label }
             | NodeKind::Tooltip { text: label, .. } => (vec![label], TextRole::Body),
+            NodeKind::Rich { runs, style } => (
+                runs.iter().map(|run| run.text.as_str()).collect(),
+                style.role,
+            ),
             NodeKind::TextInput { placeholder, .. } | NodeKind::TextArea { placeholder, .. } => (
                 placeholder.iter().map(String::as_str).collect(),
                 TextRole::Body,

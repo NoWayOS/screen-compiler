@@ -346,6 +346,7 @@
       "style": []
     }
   ],
+  "inline": [{ "name": "strong", "props": [] }, { "name": "b", "props": [] }, { "name": "em", "props": [] }, { "name": "i", "props": [] }, { "name": "code", "props": [] }, { "name": "a", "props": ["onClick", "onPress"] }, { "name": "span", "props": ["style"] }],
   "colours": ["background", "text", "text-muted", "placeholder", "button", "button-text", "input", "input-border", "focus", "error"],
   "space": ["xs", "sm", "md", "lg", "xl"]
 }

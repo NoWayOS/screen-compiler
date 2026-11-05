@@ -12,6 +12,20 @@ use screen_compiler_ir::{
     MAX_SELECT_OPTIONS, SELECT_ROWS, ScrollAxes, TextAlign, TextRole, Tone, Weight,
 };
 
+/// The elements a text may hold around its words, making it a rich text
+/// (contract v21), and the props each takes: `<strong>` and `<b>` Bold,
+/// `<em>` and `<i>` italics, `<code>` code, `<a>` a link, `<span>` a
+/// colour.
+pub const INLINE: [(&str, &[&str]); 7] = [
+    ("strong", &[]),
+    ("b", &[]),
+    ("em", &[]),
+    ("i", &[]),
+    ("code", &[]),
+    ("a", &["onClick", "onPress"]),
+    ("span", &["style"]),
+];
+
 /// What a component holds between its opening and closing tags.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Children {

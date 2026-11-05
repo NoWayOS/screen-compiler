@@ -9,8 +9,16 @@ declare namespace JSX {
   interface Element {
     readonly "nowayos:kit": true;
   }
-  /** None: a screen is built from the kit's components only. */
-  interface IntrinsicElements {}
+  /** Only inside a <Text>, around its words (contract v21): a rich text. */
+  interface IntrinsicElements {
+    strong: { children?: unknown };
+    b: { children?: unknown };
+    em: { children?: unknown };
+    i: { children?: unknown };
+    code: { children?: unknown };
+    a: { onClick?: () => void; onPress?: () => void; children?: unknown };
+    span: { style: { color: import("nowayos:kit").Colour }; children?: unknown };
+  }
   interface ElementChildrenAttribute {
     children: {};
   }

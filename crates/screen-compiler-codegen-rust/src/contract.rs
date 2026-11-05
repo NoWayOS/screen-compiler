@@ -121,6 +121,12 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v21 adds `rich_text`: one paragraph of runs ([`builder::Run`]),
+//! each in its own weight, italics, theme colour, as code or as a link
+//! reporting an action (`<Text>Press <strong>Save</strong>, or read <a
+//! onClick={props.onGuide}>the guide</a>.</Text>`); the runs are a constant
+//! in the generated code.
+//!
 //! Contract v20 adds layers over the screen ([`builder::LayerId`], in a
 //! screen's `layers` module, one per prop that opens one): `dialog`
 //! (`<Dialog open={props.confirming}>`), `menu` and `popover` beside the
@@ -170,7 +176,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 20;
+pub const VERSION: u32 = 21;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -267,6 +273,11 @@ pub const MAPPINGS: &[Mapping] = &[
         tsx: "<TextArea id=\"note\" rows={4} maxLength={1000} placeholder=\"…\" />",
         ir: "NodeKind::TextArea { placeholder, rows, max_len }",
         rust: "b.text_area(fields::NOTE, 4, 1000, \"…\")? (contract v19), numbered with the fields",
+    },
+    Mapping {
+        tsx: "<Text>Press <strong>Save</strong>, or read <a onClick={props.onGuide}>the guide</a>.</Text>",
+        ir: "NodeKind::Rich { runs: [RichRun { text, bold, italic, code, colour, link }], style }",
+        rust: "b.rich_text({ const RUNS: &[ui::Run] = &[ui::Run::new(\"Press \"), ui::Run::new(\"Save\").bold(), …]; RUNS }, style)? (contract v21)",
     },
     Mapping {
         tsx: "<Dialog open={props.confirming}><Column>…</Column></Dialog>",
@@ -673,6 +684,95 @@ pub mod builder {
         #[must_use]
         pub const fn get(self) -> u16 {
             self.0
+        }
+    }
+
+    /// One run of a rich text (contract v21): its words and how they are
+    /// set. Built with `const` methods, so a screen's runs are a constant.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct Run {
+        text: &'static str,
+        bold: bool,
+        italic: bool,
+        code: bool,
+        colour: Option<Colour>,
+        link: Option<ActionId>,
+    }
+
+    impl Run {
+        /// `text`, set as the text it is in is.
+        #[must_use]
+        pub const fn new(text: &'static str) -> Self {
+            Self {
+                text,
+                bold: false,
+                italic: false,
+                code: false,
+                colour: None,
+                link: None,
+            }
+        }
+
+        /// In Bold.
+        #[must_use]
+        pub const fn bold(self) -> Self {
+            Self { bold: true, ..self }
+        }
+
+        /// In italics.
+        #[must_use]
+        pub const fn italic(self) -> Self {
+            Self {
+                italic: true,
+                ..self
+            }
+        }
+
+        /// As code.
+        #[must_use]
+        pub const fn code(self) -> Self {
+            Self { code: true, ..self }
+        }
+
+        /// In the theme's `colour`.
+        #[must_use]
+        pub const fn colour(self, colour: Colour) -> Self {
+            Self {
+                colour: Some(colour),
+                ..self
+            }
+        }
+
+        /// A link reporting `action`.
+        #[must_use]
+        pub const fn link(self, action: ActionId) -> Self {
+            Self {
+                link: Some(action),
+                ..self
+            }
+        }
+
+        /// Its text, and how it is set: bold, italic, code, colour and
+        /// link - for a recording builder.
+        #[must_use]
+        pub const fn parts(
+            &self,
+        ) -> (
+            &'static str,
+            bool,
+            bool,
+            bool,
+            Option<Colour>,
+            Option<ActionId>,
+        ) {
+            (
+                self.text,
+                self.bold,
+                self.italic,
+                self.code,
+                self.colour,
+                self.link,
+            )
         }
     }
 
@@ -1421,6 +1521,18 @@ pub mod builder {
             list: ListId,
             row_height: u16,
             rows: &[Self::Node],
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// One paragraph of `runs`, wrapped as one text in `style`
+        /// (contract v21).
+        ///
+        /// # Errors
+        ///
+        /// The builder's error: for example when it is full.
+        fn rich_text(
+            &mut self,
+            runs: &'static [Run],
+            style: TextStyle,
         ) -> Result<Self::Node, Self::Error>;
 
         /// A modal dialog holding `child` (contract v20), opened and closed
