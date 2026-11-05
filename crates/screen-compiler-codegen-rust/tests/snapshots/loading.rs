@@ -47,14 +47,14 @@ pub mod loading {
         let n1 = b.text_styled("Fetching your results", ui::TextStyle::new(ui::TextRole::Title))?; // loading.tsx:19:9 <Text>
         let n2 = b.progress(slots::FETCHED)?; // loading.tsx:20:9 <ProgressBar>
         let n4 = b.text("Loading the first result")?; // loading.tsx:22:11 <Text>
-        let n3 = b.column_on(ui::Surface::Card, ui::Layout::new().padding(super::tokens::GAP).look(ui::Look::NONE.animation(ui::Animation::new(ui::Property::Shimmer, 0, 1000, 1500).delay(0).easing(ui::Easing::Linear).repeat(ui::Repeat::Forever).release())), &[n4])?; // loading.tsx:21:9 <Card>
+        let n3 = b.column_on(ui::Surface::Card, ui::Layout::new().padding(super::tokens::GAP).look(ui::Look::NONE.animation({ const A: ui::Animation = ui::Animation::new(ui::Property::Shimmer, 0, 1000, 1500).delay(0).easing(ui::Easing::Linear).repeat(ui::Repeat::Forever).release(); &A })), &[n4])?; // loading.tsx:21:9 <Card>
         let n6 = b.text("Nearly there")?; // loading.tsx:25:11 <Text>
-        let n5 = b.column_on(ui::Surface::Card, ui::Layout::new().padding(super::tokens::GAP).look(ui::Look::NONE.animation(ui::Animation::keyframes(ui::Property::Scale, &[(0, 1000), (500, 1060), (1000, 1000)], 1200).delay(100).easing(ui::Easing::EaseInOut).repeat(ui::Repeat::Forever).alternate())), &[n6])?; // loading.tsx:24:9 <Card>
+        let n5 = b.column_on(ui::Surface::Card, ui::Layout::new().padding(super::tokens::GAP).look(ui::Look::NONE.animation({ const A: ui::Animation = ui::Animation::new(ui::Property::Scale, 1000, 1060, 600).alternate().delay(100).easing(ui::Easing::EaseInOut).repeat(ui::Repeat::Forever); &A })), &[n6])?; // loading.tsx:24:9 <Card>
         let n9 = b.text("Your results are ready")?; // loading.tsx:29:13 <Text>
-        let n8 = b.column_on(ui::Surface::Card, ui::Layout::new().padding(super::tokens::GAP).look(ui::Look::NONE.transition(ui::Transition::new(ui::Property::Opacity, 250).delay(50).easing(ui::Easing::EaseOut))), &[n9])?; // loading.tsx:28:11 <Card>
+        let n8 = b.column_on(ui::Surface::Card, ui::Layout::new().padding(super::tokens::GAP).look(ui::Look::NONE.transition({ const T: ui::Transition = ui::Transition::new(ui::Property::Opacity, 250).delay(50).easing(ui::Easing::EaseOut); &T })), &[n9])?; // loading.tsx:28:11 <Card>
         let n7 = b.group(groups::READY, n8)?; // loading.tsx:27:10 {ready && ...}
         let n12 = b.text("And sorted")?; // loading.tsx:34:13 <Text>
-        let n11 = b.column_on(ui::Surface::Card, ui::Layout::new().padding(super::tokens::GAP).look(ui::Look::NONE.transition(ui::Transition::new(ui::Property::TranslateY, 300).delay(80).easing(ui::Easing::Bezier([200, 0, 0, 1000])))), &[n12])?; // loading.tsx:33:11 <Card>
+        let n11 = b.column_on(ui::Surface::Card, ui::Layout::new().padding(super::tokens::GAP).look(ui::Look::NONE.transition({ const T: ui::Transition = ui::Transition::new(ui::Property::TranslateY, 300).delay(80).easing(ui::Easing::Bezier([200, 0, 0, 1000])); &T })), &[n12])?; // loading.tsx:33:11 <Card>
         let n10 = b.group(groups::READY, n11)?; // loading.tsx:32:10 {ready && ...}
         let n0 = b.column(ui::Layout::new().gap(super::tokens::GAP).padding(super::tokens::EDGE), &[n1, n2, n3, n5, n7, n10])?; // loading.tsx:18:7 <Column>
         Ok(Nodes { root: n0 })

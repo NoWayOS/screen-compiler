@@ -1050,8 +1050,9 @@ fn look(look: Look) -> String {
         out.push_str(&format!(".opacity({opacity})"));
     }
     if let Some(t) = look.transition {
+        // A constant, by reference: a node stays small.
         out.push_str(&format!(
-            ".transition(ui::Transition::new({}, {}).delay({}).easing({}))",
+            ".transition({{ const T: ui::Transition = ui::Transition::new({}, {}).delay({}).easing({}); &T }})",
             t.property.rust(),
             t.duration,
             t.delay,
@@ -1064,9 +1065,10 @@ fn look(look: Look) -> String {
                 "ui::Animation::new(ui::Property::Turn, 0, 3600, {})",
                 a.duration
             ),
+            // Growing for half the run and back for the other half.
             AnimationName::Pulse => format!(
-                "ui::Animation::keyframes(ui::Property::Scale, &[(0, 1000), (500, 1060), (1000, 1000)], {})",
-                a.duration
+                "ui::Animation::new(ui::Property::Scale, 1000, 1060, {}).alternate()",
+                a.duration / 2
             ),
             AnimationName::Fade => format!(
                 "ui::Animation::new(ui::Property::Opacity, 0, 255, {})",
@@ -1085,8 +1087,16 @@ fn look(look: Look) -> String {
                 )
             }
         };
+        // A pulse's run is two of the runtime's, there and back.
+        let runs = |times: u16| {
+            if a.name == AnimationName::Pulse {
+                times.saturating_mul(2)
+            } else {
+                times
+            }
+        };
         let repeat = match a.repeat {
-            Some(times) => format!("ui::Repeat::Times({times})"),
+            Some(times) => format!("ui::Repeat::Times({})", runs(times)),
             None => "ui::Repeat::Forever".to_owned(),
         };
         let mut animation = format!(
@@ -1094,13 +1104,15 @@ fn look(look: Look) -> String {
             a.delay,
             a.easing.rust()
         );
-        if a.alternate {
+        if a.alternate && a.name != AnimationName::Pulse {
             animation.push_str(".alternate()");
         }
         if !a.keep {
             animation.push_str(".release()");
         }
-        out.push_str(&format!(".animation({animation})"));
+        out.push_str(&format!(
+            ".animation({{ const A: ui::Animation = {animation}; &A }})"
+        ));
     }
     out
 }

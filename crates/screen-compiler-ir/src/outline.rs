@@ -211,15 +211,22 @@ fn looked(look: Look) -> String {
         ));
     }
     if let Some(a) = look.animation {
+        // As the runtime runs it: a pulse's run is two of the runtime's,
+        // there and back, each half as long.
+        let pulse = a.name == crate::AnimationName::Pulse;
+        let (duration, repeat, alternate) = if pulse {
+            (a.duration / 2, a.repeat.map(|n| n.saturating_mul(2)), true)
+        } else {
+            (a.duration, a.repeat, a.alternate)
+        };
         out.push_str(&format!(
             " animation={}-{}-{}-{}-{}{}{}",
             a.name.css(),
-            a.duration,
+            duration,
             a.delay,
             a.easing.outline(),
-            a.repeat
-                .map_or_else(|| "infinite".to_owned(), |n| n.to_string()),
-            if a.alternate { "-alternate" } else { "" },
+            repeat.map_or_else(|| "infinite".to_owned(), |n| n.to_string()),
+            if alternate { "-alternate" } else { "" },
             if a.keep { "-forwards" } else { "" }
         ));
     }

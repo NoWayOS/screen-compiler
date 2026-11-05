@@ -1030,10 +1030,10 @@ pub mod builder {
         pub gradient: Option<Gradient>,
         /// How opaque it and its children are, out of 255 (contract v22).
         pub opacity: Option<u8>,
-        /// How it comes into view (contract v23).
-        pub transition: Option<Transition>,
-        /// An animation of its own (contract v23).
-        pub animation: Option<Animation>,
+        /// How it comes into view (contract v23): a constant, by reference.
+        pub transition: Option<&'static Transition>,
+        /// An animation of its own (contract v23): a constant, by reference.
+        pub animation: Option<&'static Animation>,
     }
 
     /// A timing function (contract v23).
@@ -1270,7 +1270,7 @@ pub mod builder {
 
         /// Coming into view by `transition`.
         #[must_use]
-        pub const fn transition(self, transition: Transition) -> Self {
+        pub const fn transition(self, transition: &'static Transition) -> Self {
             Self {
                 transition: Some(transition),
                 ..self
@@ -1279,7 +1279,7 @@ pub mod builder {
 
         /// Running `animation`.
         #[must_use]
-        pub const fn animation(self, animation: Animation) -> Self {
+        pub const fn animation(self, animation: &'static Animation) -> Self {
             Self {
                 animation: Some(animation),
                 ..self
