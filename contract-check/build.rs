@@ -9,8 +9,9 @@
 //! every approved image must belong to a converted screen. A converted screen
 //! with groups, slots (subset v1) or field errors (contract v12)
 //! is drawn a second time as the application would show it with every
-//! group visible, every slot filled and every field's error set, and that
-//! frame must match `golden/FIXTURE/SCREEN.shown.png`. A converted
+//! group visible, every slot filled, every field's error set and every
+//! text area (contract v19) holding two paragraphs, and that frame must
+//! match `golden/FIXTURE/SCREEN.shown.png`. A converted
 //! screen that names one of the theme's spacing tokens (contract v7)
 //! or colours (contract v8) is drawn a third time, in the large-text,
 //! high-contrast theme, which spaces half again as much and has colours of
@@ -454,6 +455,24 @@ mod run {
         }
         tree.layout(Rect::new(0, 0, WIDTH, HEIGHT), &theme.metrics())
             .unwrap();
+        // A text area (contract v19) holds what a person typed: a line
+        // long enough to wrap, and a second paragraph.
+        if errors {
+            let areas: std::vec::Vec<nowayos_ui::FieldId> = tree
+                .paint_order()
+                .filter_map(|(_, node)| match node.kind() {
+                    nowayos_ui::NodeKind::TextArea { field, .. } => Some(*field),
+                    _ => None,
+                })
+                .collect();
+            for field in areas {
+                tree.set_value(
+                    field,
+                    "Text a person typed, long enough to wrap onto a second line at the width of the area.\nAnd a second paragraph.",
+                )
+                .unwrap();
+            }
+        }
         if scrolled {
             tree.scroll_to(u32::MAX).unwrap();
         }

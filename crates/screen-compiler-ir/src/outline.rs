@@ -330,6 +330,22 @@ fn describe(module: &Module, numbers: &Numbers<'_>, node: &Node) -> String {
             }
             line
         }
+        NodeKind::TextArea {
+            placeholder,
+            rows,
+            max_len,
+        } => {
+            let field = node.id.as_ref().map_or(0, |id| number(&numbers.fields, id));
+            let max_len = module.resolve(max_len).unwrap_or_default();
+            let mut line = format!(
+                "text-area field={field} rows={} max_len={max_len}",
+                rows.unwrap_or(2)
+            );
+            if let Some(p) = placeholder.as_ref().filter(|p| !p.is_empty()) {
+                line.push_str(&format!(" placeholder={p:?}"));
+            }
+            line
+        }
         NodeKind::Checkbox { label } => {
             let field = node.id.as_ref().map_or(0, |id| number(&numbers.fields, id));
             format!("checkbox field={field} {label:?}")

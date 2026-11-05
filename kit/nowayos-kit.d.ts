@@ -199,6 +199,21 @@ declare module "nowayos:kit" {
   /** A single-line text field. */
   export function TextInput(props: TextInputProps): JSX.Element;
 
+  /** The props of `<TextArea>`. */
+  export interface TextAreaProps {
+    /** An id: letters, digits, `-` and `_`, starting with a letter. */
+    id: string;
+    /** A string literal. */
+    placeholder?: string;
+    /** A whole number from 1 to 32. */
+    rows?: number;
+    /** A whole number from 1 to 65535, or a design token. */
+    maxLength: number;
+    children?: never;
+  }
+  /** Several lines a person types: wrapped, Enter starting a line, scrolled to keep the caret in view. */
+  export function TextArea(props: TextAreaProps): JSX.Element;
+
   /** The props of `<Spacer>`. */
   export interface SpacerProps {
     /** An id: letters, digits, `-` and `_`, starting with a letter. */

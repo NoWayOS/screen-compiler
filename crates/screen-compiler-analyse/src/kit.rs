@@ -7,9 +7,9 @@
 use std::fmt;
 
 use screen_compiler_ir::{
-    AlignItems, ButtonVariant, Fit, ICON_NAMES, InputMode, Justify, MAX_BORDER_WIDTH,
-    MAX_INPUT_LEN, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS,
-    SELECT_ROWS, ScrollAxes, TextAlign, TextRole, Tone, Weight,
+    AREA_ROWS, AlignItems, ButtonVariant, Fit, ICON_NAMES, InputMode, Justify, MAX_AREA_LEN,
+    MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS,
+    MAX_SELECT_OPTIONS, SELECT_ROWS, ScrollAxes, TextAlign, TextRole, Tone, Weight,
 };
 
 /// What a component holds between its opening and closing tags.
@@ -202,6 +202,8 @@ pub enum KitComponent {
     Button,
     /// A single-line text field.
     TextInput,
+    /// Several lines a person types (contract v19).
+    TextArea,
     /// Empty space.
     Spacer,
     /// A box the person ticks (subset v1).
@@ -237,13 +239,14 @@ pub enum KitComponent {
 
 impl KitComponent {
     /// Every component, in documentation order.
-    pub const ALL: [Self; 20] = [
+    pub const ALL: [Self; 21] = [
         Self::Screen,
         Self::Column,
         Self::Row,
         Self::Text,
         Self::Button,
         Self::TextInput,
+        Self::TextArea,
         Self::Spacer,
         Self::Checkbox,
         Self::RadioGroup,
@@ -287,6 +290,7 @@ impl KitComponent {
             Self::Text => "Text",
             Self::Button => "Button",
             Self::TextInput => "TextInput",
+            Self::TextArea => "TextArea",
             Self::Spacer => "Spacer",
             Self::Checkbox => "Checkbox",
             Self::RadioGroup => "RadioGroup",
@@ -314,6 +318,9 @@ impl KitComponent {
             Self::Text => "Text: literal, or one prop the application sets.",
             Self::Button => "A button that emits an action.",
             Self::TextInput => "A single-line text field.",
+            Self::TextArea => {
+                "Several lines a person types: wrapped, Enter starting a line, scrolled to keep the caret in view."
+            }
             Self::Spacer => "Empty space: flexible, or of a fixed size.",
             Self::Checkbox => "A box the person ticks.",
             Self::RadioGroup => "One choice of a few options.",
@@ -363,6 +370,7 @@ impl KitComponent {
             Self::Text => Children::TextOrProp,
             Self::Button => Children::Text,
             Self::TextInput
+            | Self::TextArea
             | Self::Spacer
             | Self::Checkbox
             | Self::RadioGroup
@@ -446,6 +454,30 @@ impl KitComponent {
                             },
                         ),
                         Prop::optional("inputMode", Value::Choice(&InputMode::NAMES)),
+                    ]
+                }
+            }
+            Self::TextArea => {
+                const {
+                    &[
+                        FIELD_ID,
+                        Prop::optional("placeholder", Value::Text),
+                        Prop::optional(
+                            "rows",
+                            Value::Whole {
+                                least: *AREA_ROWS.start() as u16,
+                                most: *AREA_ROWS.end() as u16,
+                                token: false,
+                            },
+                        ),
+                        Prop::required(
+                            "maxLength",
+                            Value::Whole {
+                                least: 1,
+                                most: MAX_AREA_LEN,
+                                token: true,
+                            },
+                        ),
                     ]
                 }
             }
@@ -592,7 +624,7 @@ impl KitComponent {
                     .to_owned()
             }
             (_, "key") => "keys matter only in lists, which are outside subset v1".to_owned(),
-            (Self::TextInput, "value" | "defaultValue" | "onChange") => {
+            (Self::TextInput | Self::TextArea, "value" | "defaultValue" | "onChange") => {
                 "controlled inputs need state, which is outside subset v1; the application reads the field through its id"
                     .to_owned()
             }

@@ -1942,6 +1942,64 @@ fn a_list_picker_s_bounds_are_refused_where_written() {
     }
 }
 
+/// `KIT` with `TextArea` and `Keyboard`, a design token `MOST` and a
+/// component taking `props`, returning `<Screen>{body}</Screen>` on line 3.
+fn writing_screen(body: &str) -> String {
+    let kit = KIT.replace(" } from", ", TextArea, Keyboard } from");
+    format!(
+        "{kit}const MOST = 2000;\nexport function S(props: P) {{ return <Screen>{body}</Screen>; }}\n"
+    )
+}
+
+#[test]
+fn a_text_area_reaches_the_ir() {
+    // Its rows - two when not given - most bytes, a number or a token, and
+    // placeholder; a keyboard types into it.
+    assert_eq!(
+        ok_outline(&writing_screen(
+            "<Column><TextArea id=\"note\" rows={4} maxLength={500} placeholder=\"Write here\" /><TextArea id=\"more\" maxLength={MOST} /><Keyboard /></Column>"
+        )),
+        "column gap=0 padding=0\n  text-area field=1 rows=4 max_len=500 placeholder=\"Write here\"\n  text-area field=2 rows=2 max_len=2000\n  keyboard\n"
+    );
+}
+
+#[test]
+fn a_text_area_s_bounds_are_refused_where_written() {
+    // Rows outside 1 to 32, bytes outside 1 to 65,535, no maxLength, no
+    // id, children.
+    for (body, code, marker) in [
+        (
+            "<TextArea id=\"note\" rows={0} maxLength={10} />",
+            Code::InvalidValue,
+            "0}",
+        ),
+        (
+            "<TextArea id=\"note\" rows={33} maxLength={10} />",
+            Code::InvalidValue,
+            "33}",
+        ),
+        (
+            "<TextArea id=\"note\" maxLength={65536} />",
+            Code::InvalidValue,
+            "65536}",
+        ),
+        ("<TextArea id=\"note\" />", Code::MissingProp, "<TextArea"),
+        (
+            "<TextArea maxLength={10} />",
+            Code::MissingProp,
+            "<TextArea",
+        ),
+    ] {
+        let e = error(&writing_screen(body));
+        // Line 3: line 2 declares the token.
+        assert_eq!(
+            (e.code, e.loc),
+            (code, at(3, column_of(body, marker))),
+            "{body}: {e:?}"
+        );
+    }
+}
+
 /// `KIT` with `Keyboard`, plus a component taking `props`,
 /// returning `<Screen>{body}</Screen>` on line 2.
 fn typing_screen(body: &str) -> String {

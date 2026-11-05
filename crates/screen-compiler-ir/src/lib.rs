@@ -38,6 +38,14 @@ pub use validate::{MAX_DEPTH, validate};
 /// `long_text::MAX_LONG_TEXT`.
 pub const MAX_LONG_TEXT: u16 = u16::MAX;
 
+/// The most bytes a text area may hold (contract v19): NoWayOS's
+/// `area::MAX_AREA`.
+pub const MAX_AREA_LEN: u16 = u16::MAX;
+
+/// How many lines a `<TextArea>` may show (contract v19); 2 when not
+/// given, as HTML's `<textarea>`.
+pub const AREA_ROWS: core::ops::RangeInclusive<u8> = 1..=32;
+
 /// One converted source file: its design tokens and screens, in source order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Module {
@@ -264,6 +272,7 @@ impl Node {
             NodeKind::Text { .. } | NodeKind::Slot { .. } => "Text",
             NodeKind::Button { .. } => "Button",
             NodeKind::TextInput { .. } => "TextInput",
+            NodeKind::TextArea { .. } => "TextArea",
             NodeKind::Checkbox { .. } => "Checkbox",
             NodeKind::RadioGroup { .. } => "RadioGroup",
             NodeKind::Select { .. } => "Select",
@@ -334,6 +343,19 @@ pub enum NodeKind {
         max_len: Option<Length>,
         /// Which characters it takes (subset v1: `inputMode`).
         mode: InputMode,
+    },
+    /// Several lines a person types (contract v19): `<TextArea rows={4}
+    /// maxLength={1000} />`, wrapped at its width and scrolled to keep the
+    /// caret in view, its bytes in the text store of the tree the screen is
+    /// built into.
+    TextArea {
+        /// Hint text shown while it is empty.
+        placeholder: Option<String>,
+        /// How many lines show, within [`AREA_ROWS`]; 2 when `None`.
+        rows: Option<u8>,
+        /// The most bytes it takes, 1 to [`MAX_AREA_LEN`]: required, as
+        /// they come out of the tree's text store.
+        max_len: Length,
     },
     /// A box the person ticks or unticks, with its label (subset v1).
     Checkbox {
@@ -452,12 +474,14 @@ pub enum NodeKind {
 
 impl NodeKind {
     /// Whether this kind holds a value the application reads by field
-    /// number: a text input, a checkbox, a radio group or a list picker.
+    /// number: a text input or area, a checkbox, a radio group or a list
+    /// picker.
     #[must_use]
     pub const fn is_field(&self) -> bool {
         matches!(
             self,
             Self::TextInput { .. }
+                | Self::TextArea { .. }
                 | Self::Checkbox { .. }
                 | Self::RadioGroup { .. }
                 | Self::Select { .. }

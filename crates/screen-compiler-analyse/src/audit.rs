@@ -116,7 +116,8 @@ const POSITION: &[&str] = &["position", "top", "right", "bottom", "left"];
 
 /// The HTML elements the road maps by fixed rules.
 const HTML: &[&str] = &[
-    "div", "span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "label", "button", "input", "hr",
+    "div", "span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "label", "button", "input", "textarea",
+    "hr",
 ];
 
 /// What the subset makes of `construct`, in a module that declares no
@@ -209,7 +210,12 @@ fn prop_verdict(element: &str, prop: &str) -> Verdict {
         (_, "key") => Verdict::Subset,
         (Some(KitComponent::TextInput), "type") => road(Step::ImagesAndMasking),
         (
-            Some(KitComponent::TextInput | KitComponent::Checkbox | KitComponent::RadioGroup),
+            Some(
+                KitComponent::TextInput
+                | KitComponent::TextArea
+                | KitComponent::Checkbox
+                | KitComponent::RadioGroup,
+            ),
             "value" | "defaultValue" | "checked" | "defaultChecked" | "onChange",
         ) => Verdict::Out(FIELDS),
         (Some(_), _) => Verdict::Unknown,

@@ -121,6 +121,11 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v19 adds `text_area`: several lines a person types,
+//! `<TextArea id="note" rows={4} maxLength={1000} placeholder="…" />`,
+//! bound to a field as a text input is, its bytes in the text store of the
+//! tree the screen is built into.
+//!
 //! Contract v18 adds `virtual_list`: `<VirtualList rowHeight={56}>`
 //! around one list from a prop sliced to its pool,
 //! `{props.items.slice(0, 12).map(…)}`. Its rows, built once, show as many
@@ -159,7 +164,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 18;
+pub const VERSION: u32 = 19;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -251,6 +256,11 @@ pub const MAPPINGS: &[Mapping] = &[
         tsx: "<TextInput id=\"phone\" placeholder=\"…\" maxLength={15} inputMode=\"tel\" />",
         ir: "NodeKind::TextInput { placeholder, max_len, mode }",
         rust: "b.input(fields::PHONE, ui::Input::new().placeholder(\"…\").max_len(15).mode(ui::InputMode::Digits))?, with pub const PHONE: ui::FieldId = ui::FieldId::new(N)",
+    },
+    Mapping {
+        tsx: "<TextArea id=\"note\" rows={4} maxLength={1000} placeholder=\"…\" />",
+        ir: "NodeKind::TextArea { placeholder, rows, max_len }",
+        rust: "b.text_area(fields::NOTE, 4, 1000, \"…\")? (contract v19), numbered with the fields",
     },
     Mapping {
         tsx: "<Checkbox id=\"remind\" label=\"…\" />",
@@ -1369,6 +1379,22 @@ pub mod builder {
             list: ListId,
             row_height: u16,
             rows: &[Self::Node],
+        ) -> Result<Self::Node, Self::Error>;
+
+        /// A text area (contract v19): several lines a person types into,
+        /// bound to `field`, `rows` lines high, up to `max_len` bytes kept
+        /// in the tree's text store; empty at first, `placeholder` showing.
+        ///
+        /// # Errors
+        ///
+        /// The builder's error: for example when it is full, its text
+        /// store has too few bytes left, or `field` is already bound.
+        fn text_area(
+            &mut self,
+            field: FieldId,
+            rows: u8,
+            max_len: u16,
+            placeholder: &'static str,
         ) -> Result<Self::Node, Self::Error>;
 
         /// One choice of `options` bound to `field`, in a list `picker`

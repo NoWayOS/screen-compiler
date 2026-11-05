@@ -230,6 +230,15 @@ mod fixture_inbox {
     dead_code,
     reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
 )]
+mod fixture_feedback {
+    use crate::nowayos_ui;
+    include!("snapshots/feedback.rs");
+}
+
+#[allow(
+    dead_code,
+    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+)]
 mod fixture_order_ready {
     use crate::nowayos_ui;
     include!("snapshots/order-ready.rs");
@@ -272,7 +281,7 @@ mod fixture_lost_property_3_review {
 }
 
 /// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 26] = [
+const COMPILED: [&str; 27] = [
     "article",
     "bike-hire",
     "check-in",
@@ -280,6 +289,7 @@ const COMPILED: [&str; 26] = [
     "check-in-parts",
     "details-form",
     "edge-names",
+    "feedback",
     "form-controls",
     "fuelling",
     "inbox",
@@ -319,6 +329,21 @@ fn welcome_builds_exactly_its_ir() {
     assert_eq!(screen::actions::START.get(), 1);
     assert_eq!(screen::actions::HELP.get(), 2);
     assert_eq!((tokens::SPACE_SM, tokens::SPACE_LG), (8, 24));
+}
+
+/// A text area, numbered with the fields, builds exactly as the IR says
+/// (contract v19).
+#[test]
+fn feedback_builds_exactly_its_ir() {
+    let mut recorder = Recorder::with_capacity(32);
+    let nodes = fixture_feedback::feedback::build(&mut recorder).unwrap();
+    let outline = recorder.outline(nodes.root);
+    assert_eq!(outline, ir_outline("feedback.tsx"));
+    assert!(
+        outline.contains("text-area field=2 rows=5 max_len=1000 placeholder="),
+        "{outline}"
+    );
+    assert_eq!(fixture_feedback::feedback::fields::COMMENTS.get(), 2);
 }
 
 /// A virtual list's pool of rows, its slots numbered as a list's rows
