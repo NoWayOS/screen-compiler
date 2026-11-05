@@ -9,7 +9,8 @@ use std::fmt;
 use screen_compiler_ir::{
     AREA_ROWS, AlignItems, ButtonVariant, Elevation, Fit, ICON_NAMES, InputMode, Justify,
     MAX_AREA_LEN, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS,
-    MAX_RADIUS, MAX_SELECT_OPTIONS, SELECT_ROWS, ScrollAxes, TextAlign, TextRole, Tone, Weight,
+    MAX_RADIUS, MAX_SELECT_OPTIONS, SELECT_ROWS, ScrollAxes, TextAlign, TextRole, Tone,
+    USER_SELECT, Weight,
 };
 
 /// The elements a text may hold around its words, making it a rich text
@@ -655,6 +656,7 @@ impl KitComponent {
                     &[
                         styled("color", Value::Colour),
                         styled("textAlign", Value::Choice(&TextAlign::STYLE_NAMES)),
+                        styled("userSelect", Value::Choice(&USER_SELECT)),
                     ]
                 }
             }

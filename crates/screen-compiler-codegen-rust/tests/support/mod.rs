@@ -188,10 +188,14 @@ fn styled(style: TextStyle) -> String {
     if let Some(text) = style.colour {
         lines.push_str(&format!(" colour={}", colour(text)));
     }
+    if style.selectable {
+        lines.push_str(" selectable");
+    }
     let plain = TextStyle {
         lines: 1,
         align: TextAlign::Start,
         colour: None,
+        selectable: false,
         ..style
     };
     if plain == TextStyle::BODY {

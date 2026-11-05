@@ -880,7 +880,14 @@ pub struct TextStyle {
     pub align: TextAlign,
     /// Its colour, one of the theme's: a style's `color`.
     pub colour: Option<Colour>,
+    /// Whether a press selects it, for Ctrl+C to copy: a style's
+    /// `userSelect: "text"` (contract v24).
+    pub selectable: bool,
 }
+
+/// Every value a style's `userSelect` takes: `"none"`, the default, or
+/// `"text"`.
+pub const USER_SELECT: [&str; 2] = ["none", "text"];
 
 impl Default for TextStyle {
     fn default() -> Self {
@@ -907,6 +914,7 @@ impl TextStyle {
             lines: 1,
             align: TextAlign::Start,
             colour: None,
+            selectable: false,
         }
     }
 
@@ -937,6 +945,15 @@ impl TextStyle {
     pub const fn colour(self, colour: Colour) -> Self {
         Self {
             colour: Some(colour),
+            ..self
+        }
+    }
+
+    /// The same, selectable: a press selects it, for Ctrl+C to copy.
+    #[must_use]
+    pub const fn selectable(self) -> Self {
+        Self {
+            selectable: true,
             ..self
         }
     }

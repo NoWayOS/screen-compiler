@@ -203,6 +203,7 @@ declare module "nowayos:kit" {
     /** One of the theme's colours, by name or as `var(--name)`. */
     color?: Colour | `var(--${Colour})`;
     textAlign?: "left" | "start" | "center" | "right" | "end";
+    userSelect?: "none" | "text";
   }
 
   /** The props of `<Text>`. */

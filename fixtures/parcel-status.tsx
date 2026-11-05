@@ -3,7 +3,8 @@
 // application knows - the locker, the time to collect by, whether the
 // parcel is ready or late - reaches the screen as props: a prop alone in a
 // <Text> is a slot the application fills, and each condition a group it
-// shows or hides. Written for Screen Compiler's tests; not taken from any product.
+// shows or hides. The locker's number can be selected and copied (contract
+// v24). Written for Screen Compiler's tests; not taken from any product.
 import { Button, Column, Row, Screen, Spacer, Text } from "nowayos:kit";
 
 const GAP = 12;
@@ -31,7 +32,9 @@ export function ParcelStatus(props: ParcelStatusProps) {
         )}
         <Row gap={GAP}>
           <Text>Locker:</Text>
-          <Text id="locker">{props.locker}</Text>
+          <Text id="locker" style={{ userSelect: "text" }}>
+            {props.locker}
+          </Text>
         </Row>
         <Row gap={GAP}>
           <Text>Collect by:</Text>

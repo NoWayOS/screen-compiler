@@ -121,6 +121,9 @@
 //!   v13), each with its cases numbered from 0 in the order they are first
 //!   written, as `u8` constants in a module named after the switch.
 //!
+//! Contract v24 adds `TextStyle::selectable`: text a press selects, for
+//! Ctrl+C to copy (`<Text style={{ userSelect: "text" }}>`).
+//!
 //! Contract v23 adds to `Look` a [`builder::Transition`] - how a node comes
 //! into view when a condition shows it - and an [`builder::Animation`] of
 //! its own: `style={{ transition: "opacity 200ms ease-out", animation:
@@ -186,7 +189,7 @@
 //! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
-pub const VERSION: u32 = 23;
+pub const VERSION: u32 = 24;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
@@ -333,6 +336,11 @@ pub const MAPPINGS: &[Mapping] = &[
         tsx: "<Text style={{ color: \"text-muted\", textAlign: \"right\" }}>literal</Text>",
         ir: "Text { style: TextStyle { colour: Some(TextMuted), align: End, .. } }",
         rust: "ui::TextStyle::new(ui::TextRole::Body).align(ui::TextAlign::End).colour(ui::Colour::TextMuted)",
+    },
+    Mapping {
+        tsx: "<Text style={{ userSelect: \"text\" }}>literal</Text>",
+        ir: "Text { style: TextStyle { selectable: true, .. } }",
+        rust: "ui::TextStyle::new(ui::TextRole::Body).selectable()",
     },
     Mapping {
         tsx: "<Button style={{ backgroundColor: \"text\", color: \"background\" }} onPress={onDone}>Done</Button>",
@@ -1390,6 +1398,8 @@ pub mod builder {
         pub align: TextAlign,
         /// Its colour, one of the theme's (contract v8).
         pub colour: Option<Colour>,
+        /// Whether a press selects it, for Ctrl+C to copy (contract v24).
+        pub selectable: bool,
     }
 
     impl TextStyle {
@@ -1410,6 +1420,7 @@ pub mod builder {
                 lines: 1,
                 align: TextAlign::Start,
                 colour: None,
+                selectable: false,
             }
         }
 
@@ -1418,6 +1429,16 @@ pub mod builder {
         pub const fn bold(self) -> Self {
             Self {
                 weight: Weight::Bold,
+                ..self
+            }
+        }
+
+        /// The same, selectable: a press selects it, for Ctrl+C to copy
+        /// (contract v24).
+        #[must_use]
+        pub const fn selectable(self) -> Self {
+            Self {
+                selectable: true,
                 ..self
             }
         }

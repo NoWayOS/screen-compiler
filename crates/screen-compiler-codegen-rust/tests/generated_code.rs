@@ -579,7 +579,7 @@ fn parcel_status_builds_exactly_its_ir_with_groups_and_slots() {
         ),
         (1, 2, 3)
     );
-    assert_eq!(recorder.describe(nodes.locker), "slot 1");
+    assert_eq!(recorder.describe(nodes.locker), "slot 1 selectable");
     assert_eq!(
         recorder.describe(nodes.open),
         "button \"Open the locker\" action=2"

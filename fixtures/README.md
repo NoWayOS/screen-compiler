@@ -7,7 +7,8 @@ customer, and none may be added from one.
 * `*.tsx` — screens inside the subset. Each must convert; the generated Rust
   is kept in `crates/screen-compiler-codegen-rust/tests/snapshots/`, and compiled
   and run by `crates/screen-compiler-codegen-rust/tests/generated_code.rs`.
-  `parcel-status.tsx` uses subset v1's slots and conditional rendering, and
+  `parcel-status.tsx` uses subset v1's slots and conditional rendering, with
+  a locker number that can be selected and copied (contract v24), and
   `visit-booking.tsx` its form controls: text inputs with a length limit and
   an input mode, a radio group and a checkbox. `details-form.tsx` gives each
   field a line for its errors, which `make contract-check` sets in

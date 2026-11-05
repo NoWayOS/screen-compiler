@@ -1706,6 +1706,14 @@ fn a_declared_style_reaches_the_ir() {
         )),
         "column gap=0 padding=0 surface=card radius=4\n  text \"A\"\n"
     );
+    // Text a press selects (contract v24); "none", the default, may be
+    // written.
+    assert_eq!(
+        ok_outline(&spaced_screen(
+            "<Column><Text style={{ userSelect: \"text\" }}>Ref 4471</Text><Text style={{ userSelect: \"none\" }}>B</Text></Column>"
+        )),
+        "column gap=0 padding=0\n  text \"Ref 4471\" selectable\n  text \"B\"\n"
+    );
 }
 
 #[test]
@@ -1774,6 +1782,16 @@ fn everything_a_style_may_not_name_is_refused_where_written() {
             "<Text align=\"center\" style={{ textAlign: \"right\" }}>x</Text>",
             Code::DuplicateName,
             "style",
+        ),
+        (
+            "<Text style={{ userSelect: \"all\" }}>x</Text>",
+            Code::InvalidValue,
+            "\"all",
+        ),
+        (
+            "<Column style={{ userSelect: \"text\" }}><Text>x</Text></Column>",
+            Code::UnknownProp,
+            "userSelect",
         ),
         (
             "<Column style={{ gap: 4, gap: 8 }}><Text>x</Text></Column>",
