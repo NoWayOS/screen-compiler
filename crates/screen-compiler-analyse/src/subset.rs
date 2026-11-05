@@ -152,6 +152,8 @@ fn value_json(value: Value) -> String {
         Value::Prop => kind("prop"),
         Value::Options { most } => format!("{{ \"kind\": \"options\", \"most\": {most} }}"),
         Value::Style => kind("style"),
+        Value::Fraction => kind("fraction"),
+        Value::Gradient => kind("gradient"),
     }
 }
 
@@ -353,6 +355,8 @@ fn ts_type(value: Value, component: &str) -> String {
         Value::Prop => "number".to_owned(),
         Value::Options { .. } => "readonly string[]".to_owned(),
         Value::Style => format!("{component}Style"),
+        Value::Fraction => "number".to_owned(),
+        Value::Gradient => "`linear-gradient(${string})` | `radial-gradient(${string})`".to_owned(),
     }
 }
 
@@ -379,6 +383,8 @@ fn doc(value: Value) -> Option<String> {
         Value::Colour => {
             "One of the theme's colours, by name or as `var(--name)`.".to_owned()
         }
+        Value::Fraction => "A number from 0 to 1.".to_owned(),
+        Value::Gradient => "`linear-gradient(90deg, input, focus)` - an angle or `to right`, then two of the theme's colours - or `radial-gradient(input, focus)`.".to_owned(),
         Value::Choice(_) | Value::Style => return None,
     })
 }

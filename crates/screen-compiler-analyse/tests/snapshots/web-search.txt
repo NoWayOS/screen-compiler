@@ -6,8 +6,8 @@ web-search.tsx:8:16: error[unsupported]: top-level constant `tokens` must be a w
   help: design tokens are written `const SPACE_MD = 16;`
 web-search.tsx:11:3: error[unsupported]: React hook `useState` in a component body is not supported
   help: state and effects are outside subset v1: keep state in the application and pass callbacks as props
-web-search.tsx:14:35: error[unknown-prop]: `background` is not a style property of <Column> in subset v1
-  help: <Column>'s style takes gap, padding, width, height, minWidth, maxWidth, alignItems, justifyContent, backgroundColor, borderColor, borderWidth, borderRadius, overflow, overflowX, overflowY
+web-search.tsx:14:47: error[invalid-value]: `background` names a gradient of two of the theme's colours; a single colour is `backgroundColor`
+  help: write "linear-gradient(90deg, input, focus)" - an angle in degrees or `to right` first, if any - or "radial-gradient(input, focus)", of the theme's colours: "background", "text", "text-muted", "placeholder", "button", "button-text", "input", "input-border", "focus" or "error"
 web-search.tsx:15:9: error[unknown-element]: HTML element <h1> is not supported
   help: use the kit's elements: Column, Row, Text, Button, TextInput, TextArea, Spacer, Checkbox, RadioGroup, Card, Notice, HeaderBar, ProgressBar, Icon, Image, VirtualList, ScrollView, Select, Dialog, Menu, Popover, Tooltip, Keyboard or FieldError
 web-search.tsx:16:28: error[unknown-name]: `query` is not a prop of the component

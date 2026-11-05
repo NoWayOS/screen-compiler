@@ -1,13 +1,13 @@
-screen-compiler audit: 32 files
-  convert                30  93.7%
+screen-compiler audit: 33 files
+  convert                31  93.9%
   do not convert          2
   cannot be read          0
 
-constructs           1139
-  in the subset      1128  99.0%
+constructs           1184
+  in the subset      1174  99.1%
   on the road           2  0.1%
   out by design         5  0.4%
-  unknown               4  0.3%
+  unknown               3  0.2%
 
 on the road
   common HTML elements                     1 in 1 file
@@ -29,7 +29,6 @@ unknown
   a statement: local variable              1
   disabled on <Button>                     1
   setQuery()                               1
-  style background on <Column>             1
 
 files
   article.tsx  converts
@@ -58,9 +57,10 @@ files
   parts/theme.tsx  converts
   parts/visitor.tsx  converts
   photo-card.tsx  does not convert: 0 on the road, 0 out by design, 0 unknown
+  promo.tsx  converts
   queue-ticket.tsx  converts
   table-ready.tsx  converts
   tiles.tsx  converts
-  unsupported/web-search.tsx  does not convert: 2 on the road, 5 out by design, 4 unknown
+  unsupported/web-search.tsx  does not convert: 2 on the road, 5 out by design, 3 unknown
   visit-booking.tsx  converts
   welcome.tsx  converts

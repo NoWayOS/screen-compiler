@@ -5,12 +5,12 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use screen_compiler_ir::RichRun;
 use screen_compiler_ir::{
-    AREA_ROWS, AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Fit, Group,
-    ICON_NAMES, InputMode, Justify, LayerKind, Length, Loc, Look, MAX_AREA_LEN, MAX_BORDER_WIDTH,
-    MAX_INPUT_LEN, MAX_LABEL_BYTES, MAX_LINES, MAX_LONG_TEXT, MAX_RADIO_OPTIONS, MAX_RADIUS,
-    MAX_SELECT_OPTIONS, MAX_TEMPLATE_BYTES, Module, Name, Node, NodeKind, SELECT_ROWS, Screen,
-    ScrollAxes, Space, Surface, Template, TextAlign, TextRole, TextStyle, Token, Tone, Weight,
-    has_errors, sort_diagnostics, special_char, validate,
+    AREA_ROWS, AlignItems, ButtonVariant, Case, Code, Colour, Container, Diagnostic, Elevation,
+    Fit, Gradient, Group, ICON_NAMES, InputMode, Justify, LayerKind, Length, Loc, Look,
+    MAX_AREA_LEN, MAX_BORDER_WIDTH, MAX_INPUT_LEN, MAX_LABEL_BYTES, MAX_LINES, MAX_LONG_TEXT,
+    MAX_RADIO_OPTIONS, MAX_RADIUS, MAX_SELECT_OPTIONS, MAX_TEMPLATE_BYTES, Module, Name, Node,
+    NodeKind, SELECT_ROWS, Screen, ScrollAxes, Space, Surface, Template, TextAlign, TextRole,
+    TextStyle, Token, Tone, Weight, has_errors, sort_diagnostics, special_char, validate,
 };
 use screen_compiler_tsx::SourceModule;
 use screen_compiler_tsx::syntax::{
@@ -3386,6 +3386,13 @@ impl Lower<'_, '_, '_> {
                 "borderRadius" => {
                     style.look.radius = self.style_number(key, &prop.value, MAX_RADIUS);
                 }
+                // A theme's shadow, a gradient and an opacity (contract v22).
+                "boxShadow" => {
+                    style.look.shadow =
+                        self.keyword(key, &prop.value, &Elevation::NAMES, Elevation::parse);
+                }
+                "background" => style.look.gradient = self.gradient(&prop.value),
+                "opacity" => style.look.opacity = self.fraction(key, &prop.value),
                 "objectFit" => {
                     style.fit = self.keyword(key, &prop.value, &Fit::NAMES, Fit::parse);
                 }
@@ -3478,6 +3485,58 @@ impl Lower<'_, '_, '_> {
 
     /// One of the theme's colours, by its name, in a style: never
     /// a colour value.
+    /// `opacity: 0.5`: a number from 0 to 1, as 0 to 255.
+    fn fraction(&mut self, key: &str, value: &Expr) -> Option<u8> {
+        match value {
+            Expr::Num { value: number, .. }
+                if number.is_finite() && (0.0..=1.0).contains(number) =>
+            {
+                // Exact: 0 to 1 times 255, rounded.
+                Some((number * 255.0).round() as u8)
+            }
+            other => {
+                self.cx.error_help(
+                    Code::InvalidValue,
+                    other.loc(),
+                    format!(
+                        "`{key}` must be a number from 0 to 1, not {}",
+                        other.describe()
+                    ),
+                    "write opacity: 0.5",
+                );
+                None
+            }
+        }
+    }
+
+    /// `background: "linear-gradient(90deg, input, focus)"`, or a radial
+    /// gradient: two of the theme's colours, by name or `var(--name)`.
+    fn gradient(&mut self, value: &Expr) -> Option<Gradient> {
+        let help = format!(
+            "write \"linear-gradient(90deg, input, focus)\" - an angle in degrees or `to right` first, if any - or \"radial-gradient(input, focus)\", of the theme's colours: {}",
+            quoted(&Colour::NAMES)
+        );
+        let Expr::Str { value: text, loc } = value else {
+            self.cx.error_help(
+                Code::InvalidValue,
+                value.loc(),
+                format!("`background` must be a gradient, not {}", value.describe()),
+                help,
+            );
+            return None;
+        };
+        let parsed = parse_gradient(text);
+        if parsed.is_none() {
+            self.cx.error_help(
+                Code::InvalidValue,
+                *loc,
+                "`background` names a gradient of two of the theme's colours; a single colour is `backgroundColor`",
+                help,
+            );
+        }
+        parsed
+    }
+
     fn theme_colour(&mut self, key: &str, value: &Expr) -> Option<Colour> {
         let help = format!(
             "colours are the theme's, so its large-text, high-contrast version recolours the screen: {}",
@@ -4457,4 +4516,59 @@ fn has_inline(children: &[Child]) -> bool {
         Child::Fragment { children, .. } => has_inline(children),
         _ => false,
     })
+}
+
+/// A CSS gradient of two theme colours (contract v22):
+/// `linear-gradient([<angle>deg | to <side>,] a, b)` or
+/// `radial-gradient(a, b)`, each colour a theme's name or `var(--name)`.
+fn parse_gradient(text: &str) -> Option<Gradient> {
+    let text = text.trim();
+    let (linear, inside) = if let Some(rest) = text.strip_prefix("linear-gradient(") {
+        (true, rest.strip_suffix(')')?)
+    } else {
+        (
+            false,
+            text.strip_prefix("radial-gradient(")?.strip_suffix(')')?,
+        )
+    };
+    let parts: Vec<&str> = inside.split(',').map(str::trim).collect();
+    let colour = |part: &str| {
+        let name = part
+            .strip_prefix("var(--")
+            .and_then(|rest| rest.strip_suffix(')'))
+            .unwrap_or(part);
+        Colour::parse(name)
+    };
+    match (linear, parts.as_slice()) {
+        (true, [from, to]) => Some(Gradient {
+            angle: Some(180),
+            from: colour(from)?,
+            to: colour(to)?,
+        }),
+        (true, [direction, from, to]) => {
+            let angle = match *direction {
+                "to top" => 0,
+                "to right" => 90,
+                "to bottom" => 180,
+                "to left" => 270,
+                degrees => degrees
+                    .strip_suffix("deg")?
+                    .trim()
+                    .parse::<u16>()
+                    .ok()
+                    .filter(|d| *d < 360)?,
+            };
+            Some(Gradient {
+                angle: Some(angle),
+                from: colour(from)?,
+                to: colour(to)?,
+            })
+        }
+        (false, [from, to]) => Some(Gradient {
+            angle: None,
+            from: colour(from)?,
+            to: colour(to)?,
+        }),
+        _ => None,
+    }
 }

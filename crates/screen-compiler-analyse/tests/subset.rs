@@ -235,6 +235,13 @@ fn valid(value: Value) -> Vec<String> {
         Value::Prop => vec!["props.done".into()],
         Value::Options { most } => vec![options(1), options(most)],
         Value::Style => vec!["{}".into()],
+        Value::Fraction => vec!["0".into(), "0.5".into(), "1".into()],
+        Value::Gradient => vec![
+            "\"linear-gradient(90deg, input, focus)\"".into(),
+            "\"linear-gradient(to bottom, var(--input), var(--focus))\"".into(),
+            "\"linear-gradient(input, focus)\"".into(),
+            "\"radial-gradient(input, placeholder)\"".into(),
+        ],
     }
 }
 
@@ -263,6 +270,12 @@ fn invalid(value: Value) -> Vec<String> {
         Value::Prop => vec!["5".into()],
         Value::Options { most } => vec![options(most + 1), "[]".into(), "props.done".into()],
         Value::Style => vec!["\"gap: 8\"".into()],
+        Value::Fraction => vec!["2".into(), "\"0.5\"".into(), "props.done".into()],
+        Value::Gradient => vec![
+            "\"linear-gradient(red, blue)\"".into(),
+            "\"url(picture.png)\"".into(),
+            "\"input\"".into(),
+        ],
     }
 }
 
