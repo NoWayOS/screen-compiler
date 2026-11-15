@@ -9,9 +9,11 @@ diagnostics and gives no picture.
 
 With --watch it then waits: whenever the file, or any .tsx, .ts or .css file
 in its folder or below (the parts a screen may import), is saved, it draws
-again and says how long that took. Saving is noticed by reading modification
-times, which works across a container's bind mount where file events do not.
-A save that does not convert leaves the last pictures as they were.
+again and says how long that took. Saving is noticed by reading the files
+themselves, a few times a second: in a container on a Mac a bind mount
+carries no file events, and a file's modification time arrives up to four
+seconds late, but its contents are there at once. A save that does not
+convert leaves the last pictures as they were.
 
 Run from the repository's root, by the Makefile. Python 3, standard library
 only.
@@ -23,9 +25,10 @@ import shutil
 import subprocess
 import sys
 import time
+import zlib
 
-# How often --watch looks for a save, in seconds.
-EVERY = 0.2
+# How long --watch leaves the files between looks, in seconds.
+EVERY = 0.1
 # The most files --watch will look at.
 MOST = 2000
 WATCHED = (".tsx", ".ts", ".css")
@@ -90,25 +93,28 @@ class Preview:
         return subprocess.run([program, self.args.out, *self.args.view], check=False).returncode == 0
 
     def stamps(self):
-        """The modification time of every file a save could change."""
+        """What every file a save could change holds (stamp)."""
         found = {}
         for extra in (self.args.file, self.args.pictures):
             if extra:
-                found[extra] = mtime(extra)
+                found[extra] = stamp(extra)
         for folder, folders, files in os.walk(os.path.dirname(self.args.file) or "."):
             folders[:] = [name for name in folders if not name.startswith(".") and name != "node_modules"]
             for name in files:
                 if name.endswith(WATCHED) and len(found) < MOST:
                     path = os.path.join(folder, name)
-                    found[path] = mtime(path)
+                    found[path] = stamp(path)
         return found
 
 
-def mtime(path):
+def stamp(path):
+    """What a file holds, briefly: its length and a checksum. None if it cannot be read."""
     try:
-        return os.stat(path).st_mtime_ns
+        with open(path, "rb") as handle:
+            data = handle.read()
     except OSError:
         return None
+    return len(data), zlib.crc32(data)
 
 
 def main():
