@@ -95,6 +95,8 @@ make -C nowayos container                    # build the pinned dev image once (
 cd screen-compiler
 make test                                    # unit, property, snapshot and CLI tests
 make run ARGS="check fixtures/welcome.tsx"   # check one screen against the subset
+make preview FILE=fixtures/welcome.tsx       # see it: build/preview/welcome_screen.png, drawn as the device draws it
+make preview FILE=fixtures/welcome.tsx WATCH=1   # and again each time you save, in under a second
 make run ARGS="audit fixtures"               # how much of a folder of TSX converts
 make run ARGS="subset"                       # every component, prop and style property, as JSON
 make run ARGS="subset --dts"                 # the same as TypeScript declarations, for your editor (kit/nowayos-kit.d.ts)

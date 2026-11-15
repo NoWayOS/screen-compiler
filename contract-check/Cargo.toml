@@ -23,6 +23,8 @@ build = "build.rs"
 
 [workspace]
 resolver = "3"
+# The drawing the tests use, and `make preview`'s program around it.
+members = ["preview"]
 
 [dependencies]
 # NoWayOS's UI core, from the sibling clone. Cargo.lock cannot pin a path
@@ -40,6 +42,8 @@ nowayos-display = { path = "../../nowayos/crates/nowayos-display", version = "=0
 # versions NoWayOS's own Cargo.lock pins (same-versions.py).
 nowayos-render-eg = { path = "../../nowayos/crates/nowayos-render-eg", version = "=0.1.0" }
 nowayos-testkit = { path = "../../nowayos/crates/nowayos-testkit", version = "=0.1.0" }
+# Draws each screen: the same drawing `make preview` gives a developer.
+screen-compiler-preview = { path = "preview", version = "=0.1.0" }
 
 [lints]
 workspace = true

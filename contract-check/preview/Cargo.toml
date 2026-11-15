@@ -1,0 +1,31 @@
+# screen-compiler-preview: a screen as a picture. `make preview FILE=screen.tsx`
+# converts one file and builds this crate around the Rust it gives; its
+# program draws each screen on a real nowayos-ui tree with NoWayOS's renderer
+# and writes a PNG. Its library is the drawing itself, which the contract
+# check's tests use too, so a preview of a fixture is its approved image.
+#
+# A member of contract-check/'s workspace: the one place Screen Compiler meets
+# NoWayOS, with one Cargo.lock and one set of lints. MIT, like everything in
+# this repository (LICENSE). A developer's tool: never published, and no part
+# of anything that runs on a device.
+
+[package]
+name = "screen-compiler-preview"
+description = "Draws the screens Screen Compiler generates, with NoWayOS's renderer, as PNG files"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+rust-version = "1.93"
+publish = false
+build = "build.rs"
+
+[dependencies]
+# NoWayOS's UI core, viewport, renderer and its frame and PNG harness, from
+# the sibling clone, as contract-check/ takes them.
+nowayos-ui = { path = "../../../nowayos/crates/nowayos-ui", version = "=0.1.0" }
+nowayos-display = { path = "../../../nowayos/crates/nowayos-display", version = "=0.1.0" }
+nowayos-render-eg = { path = "../../../nowayos/crates/nowayos-render-eg", version = "=0.1.0" }
+nowayos-testkit = { path = "../../../nowayos/crates/nowayos-testkit", version = "=0.1.0" }
+
+[lints]
+workspace = true
