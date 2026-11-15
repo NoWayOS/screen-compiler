@@ -138,7 +138,10 @@ screen-compiler/
 │   │                            SCREEN.case-SWITCH-CASE.png, each case of each switch)
 │   └── preview/                 `make preview`: the drawing the contract check's tests use,
 │                                and a program that draws one file's screens as PNG files
-└── fixtures/                    synthetic React screens only
+├── fixtures/                    synthetic React screens only
+└── tools/screens                a product's screens through the tool: each file in its crate's
+                                 tsx/ checked and converted, the Rust kept in src/generated with a
+                                 mod.rs that lists the screens, and gaps.txt (`make screens DIR=`)
 ```
 
 ## Prerequisites
@@ -166,6 +169,7 @@ make doc                       # API docs, warnings as errors
 make fixtures                  # run check and convert on every fixture
 make bless                     # rewrite snapshots after a deliberate change, then review the diff
 make preview FILE=screen.tsx   # the file's screens as PNG files in build/preview/, drawn by NoWayOS's renderer (WATCH=1: again on every save)
+make screens DIR=../product/crate   # a product's screens (DIR/tsx) checked and converted, and compared with the Rust checked in (BLESS=1 writes it)
 make deny                      # the NoWayOS baseline check, then licences, sources, bans and advisories (cargo-deny)
 make sbom                      # a CycloneDX SBOM per workspace in build/sbom/ (NoWayOS's tools/sbom; container only)
 make secrets                   # the tree and every commit scanned for keys and credentials, offline (NoWayOS's tools/secrets-scan; secrets-allow.toml; container only)

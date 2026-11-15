@@ -82,6 +82,18 @@ checked on every change by building each converted screen against the real
 UI runtime and drawing it. Expect the subset and the contract to grow and
 change.
 
+## Use it in an application
+
+To write screens for an application of your own, begin with the
+**[starter](https://github.com/NoWayOS/starter)**: it has the Screen Compiler
+wired in, a browser window that follows your edits (`make dev`), and one
+command to see a screen as a picture (`make preview`). Its README is the guide.
+
+A product keeps its screens in a crate's `tsx/` folder and their Rust beside
+them, checked in. `make screens DIR=../product/crate` checks that every
+screen there converts exactly as checked in, and with `BLESS=1` writes the
+Rust (`tools/screens`).
+
 ## Try it
 
 The Screen Compiler's dev container and its contract check come from NoWayOS, so clone
@@ -129,5 +141,6 @@ Please report vulnerabilities privately: [SECURITY.md](SECURITY.md).
 NoWayOS builds devices from only what their one job needs.
 **[NoWayOS](https://github.com/NoWayOS/nowayos)** is its open
 Single Purpose OS, the **Screen Compiler** brings React screens
-onto it, and the **[Showcase](https://github.com/NoWayOS/showcase)** shows what
-you can build. NoWayOS is sponsored by Adappt.ai.
+onto it, the **[Showcase](https://github.com/NoWayOS/showcase)** shows what
+you can build, and the **[starter](https://github.com/NoWayOS/starter)** is
+where an application of your own begins. NoWayOS is sponsored by Adappt.ai.
