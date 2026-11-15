@@ -32,10 +32,17 @@ UNSUPPORTED := $(sort $(wildcard fixtures/unsupported/*.tsx))
 # drawn, and matched with its approved image in contract-check/golden/.
 CONTRACT := contract-check/Cargo.toml
 CONVERTED := $(CURDIR)/target/contract-check-converted
+# make contract-check: what make preview draws of a fixture, to compare with
+# its approved images.
+PREVIEW_CHECK := $(CURDIR)/target/preview-check
 # make reproducible: the fixtures converted on the host and in the container.
 REPRODUCIBLE := target/reproducible
 # make sbom writes a CycloneDX SBOM for each workspace here.
 SBOM_DIR := build/sbom
+# make preview: where the pictures go, the pictures a screen may name, and -
+# in ARGS - what to show (contract-check/preview/src/main.rs).
+OUT ?= build/preview
+PICTURES ?= fixtures/pictures.names
 
 # Prints which NoWayOS commit the screens are built and drawn against.
 define nowayos_revision
@@ -62,7 +69,7 @@ endef
 -include ../nowayos/tools/make/container.mk
 
 .DEFAULT_GOAL := help
-.PHONY: help fmt lint test doc fixtures bless run contract-check bless-images reproducible \
+.PHONY: help fmt lint test doc fixtures bless run preview contract-check bless-images reproducible \
 	convert-into no-nowayos deny sbom secrets ci ci-local clean
 
 help:
@@ -74,6 +81,9 @@ help:
 	@echo "  make fixtures  run screen-compiler check and convert on every fixture"
 	@echo "  make bless     rewrite the snapshot files after a deliberate change; review the diff"
 	@echo "  make run ARGS=\"check FILE.tsx\"   run the screen-compiler tool (ARGS: its command line)"
+	@echo "  make preview FILE=screen.tsx   the file's screens as PNG files in $(OUT)/ (OUT=dir), drawn by NoWayOS's renderer (../nowayos) as the device draws them: SCREEN.png as it starts and SCREEN.shown.png with every group visible and slot filled"
+	@echo "       WATCH=1                   then draw again whenever the file or a part beside it is saved"
+	@echo "       ARGS='...'                one picture, showing what is named: --show GROUP, --slot NAME=TEXT, --case SWITCH=CASE, --scrolled, --errors; and for any picture --size 1920x1080, --large (the large-text theme)"
 	@echo "  make contract-check   every generated screen built against the real nowayos-ui (../nowayos), host and aarch64-unknown-none; each drawn, and each fixture's frame matched with its approved image (contract-check/golden/)"
 	@echo "  make bless-images     redraw the approved images after a deliberate change, in the dev container; review them by eye"
 	@echo "  make reproducible     from the host: each fixture converts to byte-identical Rust on the host and in the dev container, and draws on the host exactly as approved"
@@ -132,6 +142,15 @@ bless:
 run:
 	@$(SCREEN_COMPILER) $(ARGS)
 
+# One TSX file's screens as pictures, drawn on the real nowayos-ui by
+# NoWayOS's renderer: contract-check/preview, built around the Rust the file
+# converts to. The same drawing the contract check approves.
+preview:
+	@test -n "$(FILE)" || { echo "usage: make preview FILE=screen.tsx [OUT=dir] [WATCH=1] [ARGS='--show GROUP --slot NAME=TEXT --case SWITCH=CASE --size 1920x1080 --large']" >&2; exit 1; }
+	$(call nowayos_revision)
+	@if [ "$(OUT)" = build/preview ]; then mkdir -p build && { test -f build/.gitignore || printf '*\n' > build/.gitignore; }; fi
+	@python3 contract-check/preview/preview.py --cargo "$(CARGO)" $(if $(LOCKED),--locked) --file "$(FILE)" --out "$(OUT)" --pictures "$(PICTURES)" $(if $(WATCH),--watch) -- $(ARGS)
+
 # Screen Compiler's own crates never depend on NoWayOS: only contract-check/
 # does. Fails naming any NoWayOS crate in the main workspace's graph.
 no-nowayos:
@@ -147,8 +166,10 @@ convert-into:
 	$(IN_CONTAINER) make $@ CARGO=cargo LOCKED="$(LOCKED)" DIR='$(DIR)'
 run:
 	@$(IN_CONTAINER) make --no-print-directory run CARGO=cargo LOCKED="$(LOCKED)" ARGS='$(ARGS)'
+preview:
+	@$(IN_CONTAINER) make --no-print-directory preview CARGO=cargo LOCKED="$(LOCKED)" FILE='$(FILE)' OUT='$(OUT)' PICTURES='$(PICTURES)' WATCH='$(WATCH)' ARGS='$(ARGS)'
 else
-fmt lint test doc fixtures bless run no-nowayos convert-into clean:
+fmt lint test doc fixtures bless run preview no-nowayos convert-into clean:
 	@echo "error: make $@ needs ../nowayos/tools/make/container.mk - clone nowayos beside screen-compiler - or IN=host to run on the host" >&2
 	@exit 1
 endif
@@ -173,10 +194,16 @@ contract-check:
 		echo "error: contract-check/Cargo.lock no longer matches the NoWayOS crates in ../nowayos: in screen-compiler, run make contract-check without LOCKED to refresh it (after a NoWayOS version change, update the =0.1.0 requirements in contract-check/Cargo.toml first), then commit it" >&2; exit 1; }
 	@python3 contract-check/same-versions.py
 	$(call convert_fixtures,$(CONVERTED))
-	$(CARGO) fmt --manifest-path $(CONTRACT) -- --check
-	SCREEN_COMPILER_CONVERTED=$(CONVERTED) $(CARGO) clippy --manifest-path $(CONTRACT) --all-targets $(LOCKED) -- -D warnings
+	$(CARGO) fmt --manifest-path $(CONTRACT) -p screen-compiler-contract-check -p screen-compiler-preview -- --check
+	SCREEN_COMPILER_CONVERTED=$(CONVERTED) $(CARGO) clippy --manifest-path $(CONTRACT) --workspace --all-targets $(LOCKED) -- -D warnings
 	NOWAYOS_UPDATE_SNAPSHOTS= SCREEN_COMPILER_CONVERTED=$(CONVERTED) $(CARGO) test --manifest-path $(CONTRACT) $(LOCKED)
 	SCREEN_COMPILER_CONVERTED=$(CONVERTED) $(CARGO) build --manifest-path $(CONTRACT) $(LOCKED) --target aarch64-unknown-none
+	@$(MAKE) --no-print-directory preview LOCKED="$(LOCKED)" FILE=fixtures/visit-booking.tsx OUT=$(PREVIEW_CHECK)
+	@for image in visit_booking.png visit_booking.shown.png; do \
+		cmp $(PREVIEW_CHECK)/$$image contract-check/golden/visit-booking/$$image || { \
+			echo "error: make preview draws $$image differently from the approved image" >&2; exit 1; }; \
+	done
+	@echo "preview: PASS - make preview draws visit-booking exactly as approved"
 
 # Redraws every fixture's approved image from a fresh conversion, after a
 # deliberate change to a fixture, Screen Compiler or NoWayOS's drawing.

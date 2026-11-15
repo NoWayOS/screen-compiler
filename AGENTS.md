@@ -35,7 +35,8 @@ compiler, not a sandbox.
   the help that lists what converts (`DEVELOPING.md`), in the same change.
   Never approve an image in `contract-check/golden/`: a person does.
 - Screen Compiler's own crates never depend on NoWayOS; only `contract-check/`
-  does.
+  does, `make preview`'s crate (`contract-check/preview`) within it. To see a
+  screen you changed: `make preview FILE=fixtures/NAME.tsx`.
 - `unsafe` is forbidden; no `unwrap`, `expect`, `panic!` or unchecked indexing
   or arithmetic outside tests; every `#[allow]` gives a reason.
 - Anything printed that comes from input goes through `escape_special`.

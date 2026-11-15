@@ -32,12 +32,21 @@
 //! Finding the screens reads the generated code's fixed shape: each screen is
 //! a top-level `pub mod NAME {` holding `pub fn build<B: ui::UiBuilder>(`.
 
+#[allow(
+    dead_code,
+    reason = "shared with preview/build.rs, which uses the rest"
+)]
+#[path = "scan.rs"]
+mod scan;
+
 use std::collections::HashSet;
 use std::env;
 use std::error::Error;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use scan::{Switch, input_modes, layers, numbers, screen_names, screens, switches};
 
 /// The snapshots of generated Rust, from this crate's directory.
 const SNAPSHOTS: &str = "../crates/screen-compiler-codegen-rust/tests/snapshots";
@@ -315,15 +324,12 @@ mod run {
     extern crate std;
 
     use nowayos_display::Rect;
-    use nowayos_render_eg::{Theme, render};
+    use nowayos_render_eg::Theme;
     use nowayos_testkit::Framebuffer;
-    use nowayos_ui::{GroupId, NodeId, SlotId, SwitchId, Tree, UiError};
+    use nowayos_ui::{NodeId, Tree, UiError};
+    use screen_compiler_preview::View;
 
     use super::{CAPACITY, TEXT};
-
-    /// What a long text shows in a screen's shown frame (contract v16): a
-    /// synthetic article of 10 KB, `fixtures/article.txt`.
-    const ARTICLE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fixtures/article.txt"));
 
     /// The viewport every screen is laid out and drawn in: 800 x 480, the
     /// Raspberry Pi Touch Display's resolution.
@@ -393,8 +399,10 @@ mod run {
     /// that case (contract v13); if `scrolled`, its scroll view
     /// scrolled as far as it goes; given `typing`, the first text
     /// input in that mode focused - scrolled into view - so the on-screen
-    /// keyboard shows its layout; and, if `errors`, every field's
-    /// error set to "Error from the application".
+    /// keyboard shows its layout; if `errors`, every field's
+    /// error set to "Error from the application"; and given `layer`, that
+    /// layer open (contract v20). The drawing itself is
+    /// `screen_compiler_preview::frame`, which `make preview` uses too.
     #[allow(
         clippy::too_many_arguments,
         reason = "test code: each frame helper above names the arguments it sets"
@@ -410,115 +418,19 @@ mod run {
         errors: bool,
         layer: Option<u16>,
     ) -> Framebuffer {
-        let theme = if large {
-            Theme::high_contrast()
-        } else {
-            Theme::light()
+        let view = View {
+            width: WIDTH,
+            height: HEIGHT,
+            large,
+            groups: groups.to_vec(),
+            slots: slots.iter().map(|&slot| (slot, None)).collect(),
+            cases: case.into_iter().collect(),
+            scrolled,
+            typing,
+            errors,
+            layer,
         };
-        let mut tree = Tree::<CAPACITY, TEXT>::new();
-        let root = build(&mut tree).unwrap();
-        tree.set_root(root).unwrap();
-        for &group in groups {
-            tree.set_visible(GroupId::new(group), true).unwrap();
-        }
-        if let Some((switch, when)) = case {
-            tree.set_case(SwitchId::new(switch), Some(when)).unwrap();
-        }
-        // A virtual list (contract v18) holds a thousand items, its rows
-        // filled as slots are.
-        if !slots.is_empty() {
-            let lists: std::vec::Vec<nowayos_ui::ListId> = tree
-                .scroll_views()
-                .filter_map(|id| match tree.get(id).map(|node| node.kind()) {
-                    Some(nowayos_ui::NodeKind::Scroll {
-                        rows: Some(rows), ..
-                    }) => Some(rows.list),
-                    _ => None,
-                })
-                .collect();
-            for list in lists {
-                tree.set_list_count(list, 1_000).unwrap();
-            }
-        }
-        for &slot in slots {
-            // A long text (contract v16) shows a 10 KB article.
-            let long = tree
-                .find_slot(SlotId::new(slot))
-                .and_then(|id| tree.get(id))
-                .and_then(|node| tree.long_text_of(node))
-                .is_some();
-            if long {
-                tree.set_slot(SlotId::new(slot), ARTICLE).unwrap();
-                continue;
-            }
-            let text = std::format!("Text from the application, {slot}");
-            match tree.set_slot(SlotId::new(slot), &text) {
-                Err(UiError::NoGlyph) => {
-                    let number = std::format!("A{slot:03}");
-                    tree.set_slot(SlotId::new(slot), &number).unwrap();
-                }
-                // A progress bar, shown three fifths full.
-                Err(UiError::UnknownSlot(_))
-                    if tree.find_progress(SlotId::new(slot)).is_some() =>
-                {
-                    tree.set_progress(SlotId::new(slot), 3, 5).unwrap();
-                }
-                other => other.unwrap(),
-            }
-        }
-        if errors {
-            let fields: std::vec::Vec<nowayos_ui::FieldId> = tree
-                .paint_order()
-                .filter_map(|(_, node)| match node.kind() {
-                    nowayos_ui::NodeKind::FieldError { field, .. } => Some(*field),
-                    _ => None,
-                })
-                .collect();
-            for field in fields {
-                tree.set_field_error(field, "Error from the application")
-                    .unwrap();
-            }
-        }
-        tree.layout(Rect::new(0, 0, WIDTH, HEIGHT), &theme.metrics())
-            .unwrap();
-        // A text area (contract v19) holds what a person typed: a line
-        // long enough to wrap, and a second paragraph.
-        if errors {
-            let areas: std::vec::Vec<nowayos_ui::FieldId> = tree
-                .paint_order()
-                .filter_map(|(_, node)| match node.kind() {
-                    nowayos_ui::NodeKind::TextArea { field, .. } => Some(*field),
-                    _ => None,
-                })
-                .collect();
-            for field in areas {
-                tree.set_value(
-                    field,
-                    "Text a person typed, long enough to wrap onto a second line at the width of the area.\nAnd a second paragraph.",
-                )
-                .unwrap();
-            }
-        }
-        if scrolled {
-            tree.scroll_to(u32::MAX).unwrap();
-        }
-        // One layer open over the screen (contract v20).
-        if let Some(layer) = layer {
-            tree.open(nowayos_ui::LayerId::new(layer)).unwrap();
-        }
-        if let Some(typing) = typing {
-            let input = tree
-                .paint_order()
-                .find(|(_, node)| {
-                    matches!(node.kind(), nowayos_ui::NodeKind::TextInput { mode, .. } if *mode == typing)
-                })
-                .map(|(id, _)| id);
-            tree.set_focus(input).unwrap();
-        }
-        let mut frame = Framebuffer::new(WIDTH, HEIGHT).unwrap();
-        nowayos_testkit::glyph_store!(glyphs);
-        render(&tree, &mut frame, &theme, &mut glyphs).unwrap();
-        frame
+        screen_compiler_preview::frame(build, &view).unwrap()
     }
 "#;
 
@@ -731,180 +643,4 @@ fn generated(dir: &Path, prefix: &str) -> Result<Vec<Generated>, Box<dyn Error>>
         });
     }
     Ok(files)
-}
-
-/// The numbers of a screen's groups or slots: each `ui::TY::new(N)` inside
-/// the top-level `pub mod SCREEN {` of a file of generated Rust, in order.
-fn numbers(source: &str, screen: &str, ty: &str) -> Vec<u16> {
-    let open = format!("pub mod {screen} {{");
-    let call = format!("ui::{ty}::new(");
-    let mut inside = false;
-    let mut found = Vec::new();
-    for line in source.lines() {
-        if line == open {
-            inside = true;
-        } else if line == "}" {
-            inside = false;
-        } else if inside
-            && let Some((_, rest)) = line.split_once(&call)
-            && let Some((number, _)) = rest.split_once(')')
-            && let Ok(number) = number.parse()
-        {
-            found.push(number);
-        }
-    }
-    found
-}
-
-/// The layers of `screen` in a file of generated Rust (contract v20):
-/// each one's number and name, lowercase with dashes.
-fn layers(source: &str, screen: &str) -> Vec<(u16, String)> {
-    let open = format!("pub mod {screen} {{");
-    let mut inside = false;
-    let mut found = Vec::new();
-    for line in source.lines() {
-        if line == open || line == "}" {
-            inside = line == open;
-            continue;
-        }
-        if inside
-            && let Some((head, rest)) = line.trim().split_once(": ui::LayerId = ui::LayerId::new(")
-            && let Some(name) = head.strip_prefix("pub const ")
-            && let Some((number, _)) = rest.split_once(')')
-            && let Ok(number) = number.parse()
-        {
-            found.push((number, name.to_lowercase().replace('_', "-")));
-        }
-    }
-    found
-}
-
-/// A switch of a generated screen (contract v13).
-struct Switch {
-    /// Its number.
-    number: u16,
-    /// The name of its cases' module.
-    name: String,
-    /// Each case's number and name, lowercase.
-    cases: Vec<(u8, String)>,
-}
-
-/// The switches of `screen`, in a file of generated Rust (contract v13):
-/// each one's number and the name of its cases' module, and each case's
-/// number and name, lowercase - from the shape the generator writes,
-/// `pub const STEP: ui::SwitchId = ui::SwitchId::new(1);`, then
-/// `pub mod step {` holding `pub const REVIEW: u8 = 0;`.
-fn switches(source: &str, screen: &str) -> Vec<Switch> {
-    let open = format!("pub mod {screen} {{");
-    let mut inside = false;
-    let mut found: Vec<Switch> = Vec::new();
-    // The switch just numbered, until its cases' module opens; then in it.
-    let mut numbered: Option<u16> = None;
-    let mut in_cases = false;
-    for line in source.lines() {
-        if line == open || line == "}" {
-            inside = line == open;
-            continue;
-        }
-        if !inside {
-            continue;
-        }
-        let text = line.trim();
-        if let Some((_, rest)) = text.split_once("ui::SwitchId::new(")
-            && let Some((number, _)) = rest.split_once(')')
-            && let Ok(number) = number.parse()
-        {
-            numbered = Some(number);
-        } else if let Some(name) = text
-            .strip_prefix("pub mod ")
-            .and_then(|rest| rest.strip_suffix(" {"))
-            && let Some(number) = numbered.take()
-        {
-            found.push(Switch {
-                number,
-                name: name.to_owned(),
-                cases: Vec::new(),
-            });
-            in_cases = true;
-        } else if in_cases && text == "}" {
-            in_cases = false;
-        } else if in_cases
-            && let Some(rest) = text.strip_prefix("pub const ")
-            && let Some((name, rest)) = rest.split_once(": u8 = ")
-            && let Some(when) = rest.strip_suffix(';')
-            && let Ok(when) = when.parse()
-            && let Some(switch) = found.last_mut()
-        {
-            switch.cases.push((when, name.to_ascii_lowercase()));
-        }
-    }
-    found
-}
-
-/// Whether `screen`, in a file of generated Rust, names `what` - one of the
-/// theme's spacing tokens, `ui::Space::` (contract v7), or colours,
-/// `ui::Colour::` (contract v8).
-fn screen_names(source: &str, screen: &str, what: &str) -> bool {
-    let open = format!("pub mod {screen} {{");
-    let mut inside = false;
-    for line in source.lines() {
-        if line == open {
-            inside = true;
-        } else if line == "}" {
-            inside = false;
-        } else if inside && line.contains(what) {
-            return true;
-        }
-    }
-    false
-}
-
-/// The modes `screen`'s text inputs take, in a file of generated Rust, each
-/// once, in the order text, digits, email: its name in an image's and a
-/// test's name, and its `nowayos_ui::InputMode` variant. An input
-/// that names no mode takes text.
-fn input_modes(source: &str, screen: &str) -> Vec<(&'static str, &'static str)> {
-    let open = format!("pub mod {screen} {{");
-    let mut inside = false;
-    let mut seen = [false; 3];
-    for line in source.lines() {
-        if line == open {
-            inside = true;
-        } else if line == "}" {
-            inside = false;
-        } else if inside && line.contains(" = b.input(") {
-            let index = if line.contains("ui::InputMode::Digits") {
-                1
-            } else if line.contains("ui::InputMode::Email") {
-                2
-            } else {
-                0
-            };
-            if let Some(seen) = seen.get_mut(index) {
-                *seen = true;
-            }
-        }
-    }
-    [("text", "Text"), ("digits", "Digits"), ("email", "Email")]
-        .into_iter()
-        .zip(seen)
-        .filter_map(|(mode, seen)| seen.then_some(mode))
-        .collect()
-}
-
-/// The screens in a file of generated Rust: each top-level `pub mod NAME {`
-/// that holds a `pub fn build<B: ui::UiBuilder>(`.
-fn screens(source: &str) -> Vec<String> {
-    let mut found = Vec::new();
-    let mut current: Option<&str> = None;
-    for line in source.lines() {
-        if let Some(rest) = line.strip_prefix("pub mod ") {
-            current = rest.strip_suffix(" {");
-        } else if line.starts_with("    pub fn build<B: ui::UiBuilder>(")
-            && let Some(name) = current.take()
-        {
-            found.push(name.to_owned());
-        }
-    }
-    found
 }

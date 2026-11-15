@@ -133,9 +133,11 @@ screen-compiler/
 ├── contract-check/              every generated screen against the real nowayos-ui
 │   │                            (a workspace of its own: Screen Compiler's crates never
 │   │                            depend on NoWayOS)
-│   └── golden/                  each fixture's approved image, FIXTURE/SCREEN.png
-│                                (and SCREEN.shown.png, every group shown and slot filled;
-│                                SCREEN.case-SWITCH-CASE.png, each case of each switch)
+│   ├── golden/                  each fixture's approved image, FIXTURE/SCREEN.png
+│   │                            (and SCREEN.shown.png, every group shown and slot filled;
+│   │                            SCREEN.case-SWITCH-CASE.png, each case of each switch)
+│   └── preview/                 `make preview`: the drawing the contract check's tests use,
+│                                and a program that draws one file's screens as PNG files
 └── fixtures/                    synthetic React screens only
 ```
 
@@ -155,7 +157,7 @@ screen-compiler/
 
 Each target runs in the dev container (add `IN=host` to run the everyday
 ones - all but `deny`, `contract-check`, `bless-images`, `reproducible` and
-`ci` - on the host):
+`ci` - on the host; `preview` on the host needs `CARGO="cargo +stable"` too):
 
 ```sh
 make test                      # unit, property, snapshot and CLI tests
@@ -163,6 +165,7 @@ make lint                      # rustfmt --check, then clippy with warnings deni
 make doc                       # API docs, warnings as errors
 make fixtures                  # run check and convert on every fixture
 make bless                     # rewrite snapshots after a deliberate change, then review the diff
+make preview FILE=screen.tsx   # the file's screens as PNG files in build/preview/, drawn by NoWayOS's renderer (WATCH=1: again on every save)
 make deny                      # the NoWayOS baseline check, then licences, sources, bans and advisories (cargo-deny)
 make sbom                      # a CycloneDX SBOM per workspace in build/sbom/ (NoWayOS's tools/sbom; container only)
 make secrets                   # the tree and every commit scanned for keys and credentials, offline (NoWayOS's tools/secrets-scan; secrets-allow.toml; container only)
@@ -183,6 +186,34 @@ make run ARGS="audit fixtures"                               # how much of a fol
 make run ARGS="subset"                                       # the subset as data (JSON)
 make run ARGS="subset --dts"                                 # the same as TypeScript declarations of the kit
 ```
+
+To see a screen, give `make preview` its file (in the container, or on the
+host with `IN=host`; it needs the `nowayos` clone beside this one):
+
+```sh
+make preview FILE=fixtures/visit-booking.tsx            # build/preview/visit_booking.png and visit_booking.shown.png
+make preview FILE=fixtures/visit-booking.tsx WATCH=1    # then again whenever the file, or a part beside it, is saved
+make preview FILE=fixtures/visit-booking.tsx ARGS='--show phoneError --slot phoneError="Digits only"'
+make preview FILE=fixtures/visit-booking.tsx ARGS='--size 1920x1080 --large' OUT=build/big
+```
+
+It converts the file, builds `contract-check/preview` around the Rust that
+gives and draws each screen on the real `nowayos-ui` with NoWayOS's
+renderer, at 800 x 480 unless `--size` says otherwise: the drawing the
+contract check's tests use, so a fixture's preview is its approved image
+(`make contract-check` compares one). Each screen gives `SCREEN.png`, as it
+starts, and - if it has groups, slots or field errors - `SCREEN.shown.png`,
+every group visible, every slot holding a sample and every error set. To see
+a state of your own, name it in `ARGS`, which gives one picture: `--show
+GROUP`, `--slot NAME=TEXT` (`DONE/OF` for a progress bar), `--case
+SWITCH=CASE`, `--scrolled`, `--errors`; names are the props', in any case.
+`--large` draws in the large-text, high-contrast theme. A file that does not
+convert prints `check`'s diagnostics and gives no picture. With `WATCH=1` a
+save is drawn again in under a second (keep the PNG open in your editor); a
+save that does not convert prints its diagnostics and leaves the last
+picture. The pictures a screen may name are NoWayOS's samples
+(`PICTURES=FILE` gives another list of names from among them). Like the tool
+itself, only for TSX you trust.
 
 `screen-compiler subset` prints the subset as data, from the tables the
 analyser checks against (`crates/screen-compiler-analyse/src/kit.rs`): every
