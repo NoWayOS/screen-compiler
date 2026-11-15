@@ -217,6 +217,8 @@ def mod_rs(converted, capacity, text):
             modules.append("")
     lines = [MOD_HEADER.replace("{capacity}", str(capacity)).replace("{text}", str(text))]
     lines.append("/// Every converted screen: its file's name and the function that builds it.")
+    # One entry a line however few there are, which rustfmt would otherwise join.
+    lines.append("#[rustfmt::skip]")
     if builders:
         lines.append("pub const SCREENS: &[(&str, Build)] = &[")
         lines.extend(f'    ("{label}", {function}),' for label, function in builders)
