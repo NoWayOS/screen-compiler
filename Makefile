@@ -69,7 +69,7 @@ endef
 -include ../nowayos/tools/make/container.mk
 
 .DEFAULT_GOAL := help
-.PHONY: help fmt lint test doc fixtures bless run preview contract-check bless-images reproducible \
+.PHONY: help fmt lint test doc fixtures bless run screens preview contract-check bless-images reproducible \
 	convert-into no-nowayos deny sbom secrets ci ci-local clean
 
 help:
@@ -142,6 +142,15 @@ bless:
 run:
 	@$(SCREEN_COMPILER) $(ARGS)
 
+# A product's screens: every TSX file in DIR/tsx checked and converted, and
+# compared with the Rust the crate has checked in (DIR/src/generated,
+# DIR/gaps.txt) - or, with BLESS=1, written there (tools/screens).
+screens:
+	@test -n "$(DIR)" || { echo "usage: make screens DIR=../product/crate [BLESS=1] [SCREENS_ARGS='--capacity 128 --text 8192']" >&2; exit 1; }
+	@$(CARGO) build $(LOCKED) --quiet -p screen-compiler-cli
+	@python3 tools/screens --screen-compiler "$(if $(CARGO_TARGET_DIR),$(CARGO_TARGET_DIR),target)/debug/screen-compiler" \
+		--screens "$(DIR)" $(if $(BLESS),--bless) $(SCREENS_ARGS)
+
 # One TSX file's screens as pictures, drawn on the real nowayos-ui by
 # NoWayOS's renderer: contract-check/preview, built around the Rust the file
 # converts to. The same drawing the contract check approves.
@@ -166,10 +175,12 @@ convert-into:
 	$(IN_CONTAINER) make $@ CARGO=cargo LOCKED="$(LOCKED)" DIR='$(DIR)'
 run:
 	@$(IN_CONTAINER) make --no-print-directory run CARGO=cargo LOCKED="$(LOCKED)" ARGS='$(ARGS)'
+screens:
+	@$(IN_CONTAINER) make --no-print-directory screens CARGO=cargo LOCKED="$(LOCKED)" DIR='$(DIR)' BLESS='$(BLESS)' SCREENS_ARGS='$(SCREENS_ARGS)'
 preview:
 	@$(IN_CONTAINER) make --no-print-directory preview CARGO=cargo LOCKED="$(LOCKED)" FILE='$(FILE)' OUT='$(OUT)' PICTURES='$(PICTURES)' WATCH='$(WATCH)' ARGS='$(ARGS)'
 else
-fmt lint test doc fixtures bless run preview no-nowayos convert-into clean:
+fmt lint test doc fixtures bless run screens preview no-nowayos convert-into clean:
 	@echo "error: make $@ needs ../nowayos/tools/make/container.mk - clone nowayos beside screen-compiler - or IN=host to run on the host" >&2
 	@exit 1
 endif
