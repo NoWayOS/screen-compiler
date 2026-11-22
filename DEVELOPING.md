@@ -6,7 +6,7 @@ It is **not** a general React compiler: it converts a declared subset exactly
 and reports everything else with its line and column. It never approximates.
 The subset grows, a construct at a time, towards the React and CSS that real
 interfaces use; what needs JavaScript or a browser on the device - state,
-hooks and effects, raw colours, animation - stays out.
+hooks and effects, raw colours - stays out.
 
 ## Status
 
