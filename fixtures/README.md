@@ -66,7 +66,7 @@ customer, and none may be added from one.
   `crates/screen-compiler-analyse/tests/snapshots/`.
 
 After adding or changing a fixture, run `make bless`, review the snapshot
-diff, and (for a new convertible fixture) add its `include!` module to
+diff, and (for a new convertible fixture) add its line to `fixtures!` in
 `generated_code.rs`. Then run `make bless-images` and look at its approved
 images in `contract-check/golden/` (with groups or slots, also
 `SCREEN.shown.png`) before committing them.
