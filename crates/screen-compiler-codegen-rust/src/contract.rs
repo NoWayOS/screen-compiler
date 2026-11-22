@@ -16,7 +16,7 @@
 //! crate's tests build every snapshot of generated code against it, so the
 //! contract and the generator cannot drift apart.
 //!
-//! **Status: provisional (contract v10).** NoWayOS's first-cut UI
+//! **Status: provisional; the version is [`VERSION`].** NoWayOS's UI
 //! core (`nowayos-ui`, in the separate `nowayos` repository) implements it:
 //! its `builder` module has these items, with `UiBuilder` implemented for its
 //! bounded node arena (`Tree`). `make contract-check` builds every generated
@@ -65,8 +65,7 @@
 //!
 //! Contract v9 adds `scroll_view`: one child - a column - shown
 //! through a view that scrolls, `<ScrollView><Column>…</Column></ScrollView>`;
-//! at most one in a screen and never nested, which Screen Compiler checks and the
-//! runtime refuses too.
+//! at most one in a screen and never nested until contract v17.
 //!
 //! Contract v8 adds what a `style={{…}}` declares: on a
 //! [`builder::Layout`], a fixed `width` and `height`, a `min_width` and
@@ -190,269 +189,12 @@
 //! shown while a group is hidden (`{!props.ready && <X/>}`), and `case` and
 //! `case_or`, a child shown while a switch is on one case
 //! (`{props.step === "review" && <X/>}`, or `? <X/> : <Y/>`).
-//!
-//! The mapping from subset-v0 TSX to emitted Rust is [`MAPPINGS`].
 
 /// The contract version. Generated code names it in its header comment.
 pub const VERSION: u32 = 25;
 
 /// The path generated code imports (as `ui`).
 pub const API_MODULE: &str = "nowayos_ui::builder";
-
-/// How one TSX construct is emitted.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Mapping {
-    /// The TSX construct.
-    pub tsx: &'static str,
-    /// Its IR form.
-    pub ir: &'static str,
-    /// What the generator emits for it.
-    pub rust: &'static str,
-}
-
-/// TSX to IR to emitted Rust, one row per construct of the subset.
-pub const MAPPINGS: &[Mapping] = &[
-    Mapping {
-        tsx: "export function WelcomeScreen(props) { return <Screen>…</Screen>; }",
-        ir: "Screen { name, root }",
-        rust: "pub mod welcome_screen { pub mod actions; pub struct Nodes<N>; pub fn build<B: ui::UiBuilder>(b: &mut B) -> Result<Nodes<B::Node>, B::Error> }",
-    },
-    Mapping {
-        tsx: "<Column gap={G} padding={P}>…</Column>",
-        ir: "NodeKind::Column(Container { gap, padding, children })",
-        rust: "b.column(ui::Layout::new().gap(G).padding(P), &[children…])?",
-    },
-    Mapping {
-        tsx: "<Row gap={G} padding={P}>…</Row>",
-        ir: "NodeKind::Row(Container { gap, padding, children })",
-        rust: "b.row(ui::Layout::new().gap(G).padding(P), &[children…])?",
-    },
-    Mapping {
-        tsx: "<Card gap={G} padding={P}>…</Card>",
-        ir: "NodeKind::Column(Container { gap, padding, children, surface: Some(Surface::Card) })",
-        rust: "b.column_on(ui::Surface::Card, ui::Layout::new().gap(G).padding(P), &[children…])?",
-    },
-    Mapping {
-        tsx: "<Notice tone=\"success\">…</Notice>",
-        ir: "NodeKind::Column(Container { …, surface: Some(Surface::Notice(Tone::Success)) })",
-        rust: "b.column_on(ui::Surface::Notice(ui::Tone::Success), layout, &[children…])?",
-    },
-    Mapping {
-        tsx: "<HeaderBar gap={G} padding={P}>…</HeaderBar>",
-        ir: "NodeKind::Row(Container { …, surface: Some(Surface::Header) })",
-        rust: "b.row_on(ui::Surface::Header, layout, &[children…])?",
-    },
-    Mapping {
-        tsx: "<Text>literal</Text>",
-        ir: "NodeKind::Text { text }",
-        rust: "b.text(\"literal\")?",
-    },
-    Mapping {
-        tsx: "<Text role=\"title\">literal</Text>, <Text weight=\"bold\">literal</Text>",
-        ir: "NodeKind::Text { text, style: TextStyle { role, weight } }",
-        rust: "b.text_styled(\"literal\", ui::TextStyle::new(ui::TextRole::Title))? or ui::TextStyle::new(ui::TextRole::Body).bold()",
-    },
-    Mapping {
-        tsx: "<Icon name=\"fuel\" />",
-        ir: "NodeKind::Icon { name: \"fuel\" }",
-        rust: "b.icon(&ui::icons::FUEL)?",
-    },
-    Mapping {
-        tsx: "<Image src=\"harbour\" alt=\"…\" fit=\"cover\" style={{ width: 320, height: 200 }} /> (fit, or a style's objectFit)",
-        ir: "NodeKind::Image { picture: \"harbour\", alt, fit: Cover, width, height }",
-        rust: "b.image(&crate::pictures::HARBOUR, ui::Fit::Cover, \"…\", ui::Layout::new().width(320).height(200))? (contract v15)",
-    },
-    Mapping {
-        tsx: "<ProgressBar value={props.fuelled} />",
-        ir: "NodeKind::Progress { slot: fuelled }",
-        rust: "b.progress(slots::FUELLED)?, with pub const FUELLED: ui::SlotId = ui::SlotId::new(N), numbered with the slots",
-    },
-    Mapping {
-        tsx: "<Text lines={3}>literal</Text>",
-        ir: "NodeKind::Text { text, style: TextStyle { lines: 3, … } }",
-        rust: "b.text_styled(\"literal\", ui::TextStyle::new(ui::TextRole::Body).lines(3))?",
-    },
-    Mapping {
-        tsx: "<Button onPress={onContinue}>Label</Button>",
-        ir: "NodeKind::Button { label, action: continue }",
-        rust: "b.button(\"Label\", actions::CONTINUE)?, with pub const CONTINUE: ui::ActionId = ui::ActionId::new(N)",
-    },
-    Mapping {
-        tsx: "<Button variant=\"secondary\" onPress={onBack}>Label</Button>",
-        ir: "NodeKind::Button { label, action: back, variant: Secondary }",
-        rust: "b.button_with(\"Label\", actions::BACK, ui::ButtonVariant::Secondary)?",
-    },
-    Mapping {
-        tsx: "<TextInput id=\"phone\" placeholder=\"…\" maxLength={15} inputMode=\"tel\" />",
-        ir: "NodeKind::TextInput { placeholder, max_len, mode }",
-        rust: "b.input(fields::PHONE, ui::Input::new().placeholder(\"…\").max_len(15).mode(ui::InputMode::Digits))?, with pub const PHONE: ui::FieldId = ui::FieldId::new(N)",
-    },
-    Mapping {
-        tsx: "<TextArea id=\"note\" rows={4} maxLength={1000} placeholder=\"…\" />",
-        ir: "NodeKind::TextArea { placeholder, rows, max_len }",
-        rust: "b.text_area(fields::NOTE, 4, 1000, \"…\")? (contract v19), numbered with the fields",
-    },
-    Mapping {
-        tsx: "<Text>Press <strong>Save</strong>, or read <a onClick={props.onGuide}>the guide</a>.</Text>",
-        ir: "NodeKind::Rich { runs: [RichRun { text, bold, italic, code, colour, link }], style }",
-        rust: "b.rich_text({ const RUNS: &[ui::Run] = &[ui::Run::new(\"Press \"), ui::Run::new(\"Save\").bold(), …]; RUNS }, style)? (contract v21)",
-    },
-    Mapping {
-        tsx: "<Dialog open={props.confirming}><Column>…</Column></Dialog>",
-        ir: "NodeKind::Layer { kind: Dialog, open: confirming, anchor: None, children }",
-        rust: "b.dialog(layers::CONFIRMING, column)? (contract v20), with pub const CONFIRMING: ui::LayerId = ui::LayerId::new(N)",
-    },
-    Mapping {
-        tsx: "<Button id=\"more\" …/><Menu for=\"more\" open={props.menuOpen}><Column>…</Column></Menu>, or <Popover …>",
-        ir: "NodeKind::Layer { kind: Menu, open: menuOpen, anchor: Some(more), children }",
-        rust: "b.menu(layers::MENU_OPEN, more, column)?, or b.popover(…)? (contract v20): the anchor is the variable of the element `for` names",
-    },
-    Mapping {
-        tsx: "<Tooltip for=\"delete\">Deletes it for good</Tooltip>",
-        ir: "NodeKind::Tooltip { anchor: delete, text }",
-        rust: "b.tooltip(delete, \"Deletes it for good\")? (contract v20)",
-    },
-    Mapping {
-        tsx: "<Checkbox id=\"remind\" label=\"…\" />",
-        ir: "NodeKind::Checkbox { label }",
-        rust: "b.checkbox(fields::REMIND, \"…\")?",
-    },
-    Mapping {
-        tsx: "<RadioGroup id=\"time\" options={[\"…\", \"…\"]} />",
-        ir: "NodeKind::RadioGroup { options }",
-        rust: "b.radio_group(fields::TIME, &[\"…\", \"…\"])?",
-    },
-    Mapping {
-        tsx: "<Text align=\"center\">literal</Text>",
-        ir: "Text { text, style: TextStyle { align: Center, .. } }",
-        rust: "b.text_styled(\"literal\", ui::TextStyle::new(ui::TextRole::Body).align(ui::TextAlign::Center))?",
-    },
-    Mapping {
-        tsx: "<Column gap={space.md} padding={space.lg}>…</Column>",
-        ir: "Container { gap: Length::Space(Md), padding: Length::Space(Lg), .. }",
-        rust: "b.column(ui::Layout::new().gap_space(ui::Space::Md).padding_space(ui::Space::Lg), &[children…])?",
-    },
-    Mapping {
-        tsx: "<Column style={{ width: 360, alignItems: \"center\", justifyContent: \"space-between\", backgroundColor: \"input\", borderColor: \"input-border\", borderWidth: 2, borderRadius: 12 }}>",
-        ir: "Container { width, align, justify, look: Look { fill, border, border_width, radius, .. }, .. }",
-        rust: "ui::Layout::new().width(360).align(ui::Align::Center).justify(ui::Justify::SpaceBetween).look(ui::Look::NONE.fill(ui::Colour::Input).border(ui::Colour::InputBorder).border_width(2).radius(12))",
-    },
-    Mapping {
-        tsx: "<Text style={{ color: \"text-muted\", textAlign: \"right\" }}>literal</Text>",
-        ir: "Text { style: TextStyle { colour: Some(TextMuted), align: End, .. } }",
-        rust: "ui::TextStyle::new(ui::TextRole::Body).align(ui::TextAlign::End).colour(ui::Colour::TextMuted)",
-    },
-    Mapping {
-        tsx: "<Text style={{ userSelect: \"text\" }}>literal</Text>",
-        ir: "Text { style: TextStyle { selectable: true, .. } }",
-        rust: "ui::TextStyle::new(ui::TextRole::Body).selectable()",
-    },
-    Mapping {
-        tsx: "<Button onPress={onOpen} onContextMenu={onMore} style={{ cursor: \"pointer\" }}>Open</Button>",
-        ir: "Node { context: Some(onMore), cursor: Some(Pointer), .. }",
-        rust: "b.context_action(n3, actions::MORE)?; b.cursor(n3, ui::Cursor::Hand)?;",
-    },
-    Mapping {
-        tsx: "<Button style={{ backgroundColor: \"text\", color: \"background\" }} onPress={onDone}>Done</Button>",
-        ir: "Button { look: Look { fill, text, .. }, .. }",
-        rust: "b.button_look(\"Done\", actions::DONE, ui::ButtonVariant::Primary, ui::Look::NONE.fill(ui::Colour::Text).text(ui::Colour::Background))?",
-    },
-    Mapping {
-        tsx: "<Select id=\"kind\" placeholder=\"…\" options={[\"…\", …]} rows={5} />",
-        ir: "NodeKind::Select { options, placeholder, rows }",
-        rust: "b.list_picker(fields::KIND, &[\"…\", …], ui::Picker::new().placeholder(\"…\").rows(5))?",
-    },
-    Mapping {
-        tsx: "<FieldError for=\"phone\" />",
-        ir: "NodeKind::FieldError { field: phone }",
-        rust: "b.field_error(fields::PHONE)?",
-    },
-    Mapping {
-        tsx: "<Keyboard />",
-        ir: "NodeKind::Keyboard",
-        rust: "b.keyboard()?",
-    },
-    Mapping {
-        tsx: "<Column style={{ overflowY: \"auto\", height: 200 }}>…</Column> (overflowX across; overflow, or both, both ways)",
-        ir: "NodeKind::Column(Container { overflow: Some(ScrollAxes::Vertical), height, … })",
-        rust: "{ let inner = b.column(layout, &[…])?; b.scroll_view_axes(ui::Layout::new().height(200), ui::ScrollAxes::Vertical, inner) }? (contract v17)",
-    },
-    Mapping {
-        tsx: "<VirtualList rowHeight={56}>{props.items.slice(0, 12).map((item) => <Row>…</Row>)}</VirtualList>",
-        ir: "NodeKind::VirtualList { list: items, row_height: 56, rows: [the 12 rows] }",
-        rust: "b.virtual_list(ui::Layout::new(), lists::ITEMS, 56, &[row1, …, row12])?, with pub const ITEMS: ui::ListId = ui::ListId::new(N) (contract v18)",
-    },
-    Mapping {
-        tsx: "<ScrollView><Column>…</Column></ScrollView>",
-        ir: "NodeKind::ScrollView { children: [column] }",
-        rust: "b.scroll_view(ui::Layout::new(), column)?",
-    },
-    Mapping {
-        tsx: "<Spacer size={space.sm} />",
-        ir: "NodeKind::Spacer(Some(Length::Space(Sm)))",
-        rust: "b.spacer_space(ui::Space::Sm)?",
-    },
-    Mapping {
-        tsx: "<Spacer /> or <Spacer size={N} />",
-        ir: "NodeKind::Spacer { size }",
-        rust: "b.spacer(None)? (flexible) or b.spacer(Some(N))?",
-    },
-    Mapping {
-        tsx: "id=\"email\" on any element",
-        ir: "Node { id }",
-        rust: "a field `email: N` of the screen's Nodes<N>, holding that node's handle",
-    },
-    Mapping {
-        tsx: "<Text>{props.name}</Text> (the prop alone)",
-        ir: "NodeKind::Slot { slot: name }",
-        rust: "b.slot(slots::NAME)?, with pub const NAME: ui::SlotId = ui::SlotId::new(N)",
-    },
-    Mapping {
-        tsx: "<Text>Hello, {props.name}!</Text>, or {`Hello, ${props.name}!`} (one prop between literal text)",
-        ir: "NodeKind::Slot { slot: name, template: Some(Template { before: \"Hello, \", after: \"!\" }) }",
-        rust: "b.slot_template(slots::NAME, &ui::Template { before: \"Hello, \", after: \"!\" })?, or b.slot_template_styled(..., style)? (contract v14)",
-    },
-    Mapping {
-        tsx: "<Text maxLength={10240}>{props.article}</Text> (one prop alone)",
-        ir: "NodeKind::Slot { slot: article, capacity: Some(10240), template: None, style }",
-        rust: "b.long_text(slots::ARTICLE, 10240, ui::TextStyle::new(ui::TextRole::Body))? (contract v16)",
-    },
-    Mapping {
-        tsx: "<Text role=\"display\">{props.ticket}</Text>",
-        ir: "NodeKind::Slot { slot: ticket, style }",
-        rust: "b.slot_styled(slots::TICKET, ui::TextStyle::new(ui::TextRole::Display))?",
-    },
-    Mapping {
-        tsx: "{props.ready && <X />}",
-        ir: "NodeKind::Group(Group { name: ready, children: [X] })",
-        rust: "b.group(groups::READY, x)?, with pub const READY: ui::GroupId = ui::GroupId::new(N)",
-    },
-    Mapping {
-        tsx: "{props.ready ? <X /> : <Y />} (or `: null`, as `&&`)",
-        ir: "NodeKind::Group(Group { name: ready, children: [X, Y] })",
-        rust: "b.either(groups::READY, x, y)?",
-    },
-    Mapping {
-        tsx: "{!props.ready && <X />}, or {!props.ready ? <X /> : <Y />} (as {props.ready ? <Y /> : <X />})",
-        ir: "NodeKind::Group(Group { name: ready, children: [X], unless: true })",
-        rust: "b.unless(groups::READY, x)? (contract v13)",
-    },
-    Mapping {
-        tsx: "{props.step === \"review\" && <X />}",
-        ir: "NodeKind::Case(Case { switch: step, when: review, children: [X] })",
-        rust: "b.case(switches::STEP, switches::step::REVIEW, x)?, with pub const STEP: ui::SwitchId = ui::SwitchId::new(N) and pub mod step { pub const REVIEW: u8 = 0; } (contract v13)",
-    },
-    Mapping {
-        tsx: "{props.step === \"review\" ? <X /> : <Y />}",
-        ir: "NodeKind::Case(Case { switch: step, when: review, children: [X, Y] })",
-        rust: "b.case_or(switches::STEP, switches::step::REVIEW, x, y)? (contract v13)",
-    },
-    Mapping {
-        tsx: "const SPACE_MD = 16;",
-        ir: "Token { name, value }",
-        rust: "pub mod tokens { pub const SPACE_MD: u16 = 16; } (used as super::tokens::SPACE_MD)",
-    },
-];
 
 pub mod builder {
     //! Reference definition of `nowayos_ui::builder`, the API generated code
