@@ -622,7 +622,7 @@ declare module "nowayos:kit" {
     /** Exactly one element. */
     children: JSX.Element;
   }
-  /** One child shown through a view that scrolls: at most one in a screen, never nested. */
+  /** One child shown through a view that scrolls: any number in a screen, one inside another. */
   export function ScrollView(props: ScrollViewProps): JSX.Element;
 
   /** The props of `<Select>`. */

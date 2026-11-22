@@ -475,8 +475,8 @@ pub enum NodeKind {
         size: Option<Length>,
     },
     /// One child - a column - shown through a view that scrolls:
-    /// `<ScrollView><Column>…</Column></ScrollView>`. At most one in a
-    /// screen, never inside another ([`validate`]).
+    /// `<ScrollView><Column>…</Column></ScrollView>`. Any number in a
+    /// screen, one inside another.
     ScrollView {
         /// Its one child.
         children: Vec<Node>,

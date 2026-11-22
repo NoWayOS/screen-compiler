@@ -1741,8 +1741,8 @@ impl Lower<'_, '_, '_> {
                     }
                 }
             }
-            // One child shown through a view that scrolls; at most
-            // one in a screen, never nested (checked by `validate`).
+            // One child shown through a view that scrolls; any number
+            // in a screen, one inside another.
             KitComponent::ScrollView => {
                 let children = self.container_children(component, &element.children, depth);
                 if children.len() != 1 {

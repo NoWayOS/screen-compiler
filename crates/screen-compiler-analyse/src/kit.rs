@@ -268,8 +268,8 @@ pub enum KitComponent {
     /// A list of as many items as the application counts, through a pool
     /// of rows (contract v18).
     VirtualList,
-    /// One child shown through a view that scrolls: at most one
-    /// in a screen, never nested.
+    /// One child shown through a view that scrolls: any number in a
+    /// screen, one inside another.
     ScrollView,
     /// One choice of up to 64 options in a list that scrolls inside itself.
     Select,
@@ -396,7 +396,7 @@ impl KitComponent {
                 "As many items as the application counts, shown through a pool of rows from one list of a prop, rebound as it scrolls."
             }
             Self::ScrollView => {
-                "One child shown through a view that scrolls: at most one in a screen, never nested."
+                "One child shown through a view that scrolls: any number in a screen, one inside another."
             }
             Self::Select => "One choice of up to 64 options in a list that scrolls inside itself.",
             Self::Dialog => {
