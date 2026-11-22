@@ -398,7 +398,7 @@ fn converts(source: &str) -> Result<(), String> {
             let mut options = Options::new("sample.tsx");
             options.pictures = Some(vec!["subject".to_owned()]);
             let analysis = analyse(&parsed, &options);
-            if analysis.module.is_some() && !analysis.diagnostics.iter().any(|d| d.is_error()) {
+            if analysis.module.is_some() && analysis.diagnostics.is_empty() {
                 return Ok(());
             }
             analysis.diagnostics

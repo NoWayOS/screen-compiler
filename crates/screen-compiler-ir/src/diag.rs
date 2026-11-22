@@ -47,26 +47,6 @@ impl fmt::Display for Loc {
     }
 }
 
-/// How serious a diagnostic is. Any error stops conversion.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Severity {
-    /// The input cannot be converted exactly; no output is produced.
-    Error,
-    /// Worth knowing, but the conversion is still exact.
-    Warning,
-}
-
-impl Severity {
-    /// The lowercase word used when rendering.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Error => "error",
-            Self::Warning => "warning",
-        }
-    }
-}
-
 /// A stable code for each kind of diagnostic, rendered as `error[code]`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Code {
@@ -123,8 +103,6 @@ impl Code {
 /// One finding about the input, with its position when it has one.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Diagnostic {
-    /// Error or warning.
-    pub severity: Severity,
     /// What kind of finding this is.
     pub code: Code,
     /// Where in the source file, when known.
@@ -140,7 +118,6 @@ impl Diagnostic {
     #[must_use]
     pub fn error(code: Code, loc: Option<Loc>, message: impl Into<String>) -> Self {
         Self {
-            severity: Severity::Error,
             code,
             loc,
             message: message.into(),
@@ -153,12 +130,6 @@ impl Diagnostic {
     pub fn with_help(mut self, help: impl Into<String>) -> Self {
         self.help = Some(help.into());
         self
-    }
-
-    /// Whether this diagnostic stops conversion.
-    #[must_use]
-    pub fn is_error(&self) -> bool {
-        self.severity == Severity::Error
     }
 
     /// Renders `FILE:LINE:COLUMN: error[code]: message`, plus a `help:` line.
@@ -189,7 +160,7 @@ impl Diagnostic {
             Some(loc) => format!("{file}:{loc}: "),
             None => format!("{file}: "),
         };
-        out.push_str(self.severity.as_str());
+        out.push_str("error");
         out.push('[');
         out.push_str(self.code.as_str());
         out.push_str("]: ");
@@ -202,10 +173,10 @@ impl Diagnostic {
     }
 }
 
-/// Whether any diagnostic in the list is an error.
+/// Whether the list holds any diagnostic: each one is an error.
 #[must_use]
 pub fn has_errors(diagnostics: &[Diagnostic]) -> bool {
-    diagnostics.iter().any(Diagnostic::is_error)
+    !diagnostics.is_empty()
 }
 
 /// Sorts diagnostics into a deterministic order: by position (diagnostics
@@ -213,8 +184,7 @@ pub fn has_errors(diagnostics: &[Diagnostic]) -> bool {
 /// message. Exact duplicates are removed.
 pub fn sort_diagnostics(diagnostics: &mut Vec<Diagnostic>) {
     diagnostics.sort_by(|a, b| {
-        (a.loc, a.code, &a.message, &a.help, a.severity)
-            .cmp(&(b.loc, b.code, &b.message, &b.help, b.severity))
+        (a.loc, a.code, &a.message, &a.help).cmp(&(b.loc, b.code, &b.message, &b.help))
     });
     diagnostics.dedup();
 }

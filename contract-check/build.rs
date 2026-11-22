@@ -2,9 +2,10 @@
 //! Writes `screens.rs` into `OUT_DIR`: one module per file of generated Rust,
 //! holding the file exactly as Screen Compiler wrote it, and one test per screen in
 //! it that builds the screen on a real nowayos-ui tree, lays it out and draws
-//! it with NoWayOS's renderer. The files are every checked-in snapshot, and
-//! every fixture `make contract-check` converted afresh into the directory
-//! `SCREEN_COMPILER_CONVERTED` names. Each converted screen's frame must match its
+//! it with NoWayOS's renderer. The files are every fixture `make contract-check`
+//! converted afresh into the directory `SCREEN_COMPILER_CONVERTED` names (the
+//! checked-in snapshots when the variable is unset, which `make test` holds
+//! identical to them). Each converted screen's frame must match its
 //! approved image, `golden/FIXTURE/SCREEN.png`, pixel for pixel, and
 //! every approved image must belong to a converted screen. A converted screen
 //! with groups, slots (subset v1) or field errors (contract v12)
@@ -52,36 +53,24 @@ use scan::{Switch, input_modes, layers, numbers, screen_names, screens, switches
 const SNAPSHOTS: &str = "../crates/screen-compiler-codegen-rust/tests/snapshots";
 
 /// One file of generated Rust: the module that holds it, its path, its text,
-/// and - for a fixture converted afresh - the fixture's name, which names the
-/// directory of its screens' approved images.
+/// and the fixture's name, which names the directory of its screens'
+/// approved images.
 struct Generated {
     module: String,
     path: PathBuf,
     source: String,
-    fixture: Option<String>,
+    fixture: String,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
-    let snapshots = manifest.join(SNAPSHOTS);
-    println!("cargo::rerun-if-changed={}", snapshots.display());
+    let dir = env::var_os("SCREEN_COMPILER_CONVERTED")
+        .map_or_else(|| manifest.join(SNAPSHOTS), PathBuf::from);
+    println!("cargo::rerun-if-changed={}", dir.display());
     println!("cargo::rerun-if-env-changed=SCREEN_COMPILER_CONVERTED");
-    let mut files = generated(&snapshots, "snapshot")?;
-    if let Some(converted) = env::var_os("SCREEN_COMPILER_CONVERTED") {
-        let converted = PathBuf::from(converted);
-        println!("cargo::rerun-if-changed={}", converted.display());
-        let mut fresh = generated(&converted, "converted")?;
-        for file in &mut fresh {
-            file.fixture = Some(fixture_name(&file.path)?);
-        }
-        files.extend(fresh);
-    } else {
-        println!(
-            "cargo::warning=SCREEN_COMPILER_CONVERTED is not set, so no screen is compared with its approved image: run make contract-check"
-        );
-    }
+    let files = generated(&dir, "converted")?;
     if files.is_empty() {
-        return Err(format!("no generated Rust found in {}", snapshots.display()).into());
+        return Err(format!("no generated Rust found in {}", dir.display()).into());
     }
 
     let mut out = String::new();
@@ -145,23 +134,18 @@ fn main() -> Result<(), Box<dyn Error>> {
             writeln!(out, "}}")?;
             writeln!(tests, "    #[test]")?;
             writeln!(tests, "    fn {module}_{screen}() {{")?;
-            match &file.fixture {
-                Some(fixture) => {
-                    let image = format!("{fixture}/{screen}.png");
-                    writeln!(
-                        tests,
-                        "        matches_approved(super::build_{module}_{screen}, {image:?});"
-                    )?;
-                    images.push(image);
-                }
-                None => writeln!(tests, "        frame(super::build_{module}_{screen});")?,
-            }
+            let fixture = &file.fixture;
+            let image = format!("{fixture}/{screen}.png");
+            writeln!(
+                tests,
+                "        matches_approved(super::build_{module}_{screen}, {image:?});"
+            )?;
+            images.push(image);
             writeln!(tests, "    }}")?;
             // In the large-text theme too, where the theme's spacing tokens
             // measure half again.
-            if let Some(fixture) = &file.fixture
-                && (screen_names(&file.source, &screen, "ui::Space::")
-                    || screen_names(&file.source, &screen, "ui::Colour::"))
+            if screen_names(&file.source, &screen, "ui::Space::")
+                || screen_names(&file.source, &screen, "ui::Colour::")
             {
                 let image = format!("{fixture}/{screen}.large.png");
                 writeln!(tests, "    #[test]")?;
@@ -186,9 +170,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let groups = numbers(&file.source, &screen, "GroupId");
             let slots = numbers(&file.source, &screen, "SlotId");
             // Scrolled to its end.
-            if let Some(fixture) = &file.fixture
-                && screen_names(&file.source, &screen, "b.scroll_view(")
-            {
+            if screen_names(&file.source, &screen, "b.scroll_view(") {
                 let image = format!("{fixture}/{screen}.scrolled.png");
                 writeln!(tests, "    #[test]")?;
                 writeln!(tests, "    fn {module}_{screen}_scrolled() {{")?;
@@ -201,9 +183,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             // Each layout of the keyboard, typing for the first input in
             // its mode.
-            if let Some(fixture) = &file.fixture
-                && screen_names(&file.source, &screen, "b.keyboard(")
-            {
+            if screen_names(&file.source, &screen, "b.keyboard(") {
                 for (mode, variant) in input_modes(&file.source, &screen) {
                     let image = format!("{fixture}/{screen}.keys-{mode}.png");
                     writeln!(tests, "    #[test]")?;
@@ -225,20 +205,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                     name.replace('-', "_")
                 )?;
                 let build = format!("super::build_{module}_{screen}");
-                match &file.fixture {
-                    Some(fixture) => {
-                        let image = format!("{fixture}/{screen}.layer-{name}.png");
-                        writeln!(
-                            tests,
-                            "        matches_approved_layer({build}, &{groups:?}, &{slots:?}, {number}, {image:?});"
-                        )?;
-                        images.push(image);
-                    }
-                    None => writeln!(
-                        tests,
-                        "        frame_in(false, {build}, &{groups:?}, &{slots:?}, None, false, None, true, Some({number}));"
-                    )?,
-                }
+                let image = format!("{fixture}/{screen}.layer-{name}.png");
+                writeln!(
+                    tests,
+                    "        matches_approved_layer({build}, &{groups:?}, &{slots:?}, {number}, {image:?});"
+                )?;
+                images.push(image);
                 writeln!(tests, "    }}")?;
             }
             // Each case of each switch.
@@ -252,20 +224,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                     writeln!(tests, "    #[test]")?;
                     writeln!(tests, "    fn {module}_{screen}_case_{name}_{case}() {{")?;
                     let build = format!("super::build_{module}_{screen}");
-                    match &file.fixture {
-                        Some(fixture) => {
-                            let image = format!("{fixture}/{screen}.case-{name}-{case}.png");
-                            writeln!(
-                                tests,
-                                "        matches_approved_case({build}, &{groups:?}, &{slots:?}, ({switch}, {when}), {image:?});"
-                            )?;
-                            images.push(image);
-                        }
-                        None => writeln!(
-                            tests,
-                            "        frame_case({build}, &{groups:?}, &{slots:?}, ({switch}, {when}));"
-                        )?,
-                    }
+                    let image = format!("{fixture}/{screen}.case-{name}-{case}.png");
+                    writeln!(
+                        tests,
+                        "        matches_approved_case({build}, &{groups:?}, &{slots:?}, ({switch}, {when}), {image:?});"
+                    )?;
+                    images.push(image);
                     writeln!(tests, "    }}")?;
                 }
             }
@@ -278,31 +242,21 @@ fn main() -> Result<(), Box<dyn Error>> {
             writeln!(tests, "    #[test]")?;
             writeln!(tests, "    fn {module}_{screen}_shown() {{")?;
             let build = format!("super::build_{module}_{screen}");
-            match &file.fixture {
-                Some(fixture) => {
-                    let image = format!("{fixture}/{screen}.shown.png");
-                    writeln!(
-                        tests,
-                        "        matches_approved_shown({build}, &{groups:?}, &{slots:?}, {image:?});"
-                    )?;
-                    images.push(image);
-                }
-                None => writeln!(
-                    tests,
-                    "        frame_shown({build}, &{groups:?}, &{slots:?});"
-                )?,
-            }
+            let image = format!("{fixture}/{screen}.shown.png");
+            writeln!(
+                tests,
+                "        matches_approved_shown({build}, &{groups:?}, &{slots:?}, {image:?});"
+            )?;
+            images.push(image);
             writeln!(tests, "    }}")?;
         }
     }
     out.push_str(RUN);
-    if !images.is_empty() {
-        out.push_str(RUN_IMAGES);
-        writeln!(tests, "    #[test]")?;
-        writeln!(tests, "    fn every_approved_image_has_a_screen() {{")?;
-        writeln!(tests, "        only_these_images(&{images:?});")?;
-        writeln!(tests, "    }}")?;
-    }
+    out.push_str(RUN_IMAGES);
+    writeln!(tests, "    #[test]")?;
+    writeln!(tests, "    fn every_approved_image_has_a_screen() {{")?;
+    writeln!(tests, "        only_these_images(&{images:?});")?;
+    writeln!(tests, "    }}")?;
     out.push_str(&tests);
     writeln!(out, "}}")?;
 
@@ -635,11 +589,12 @@ fn generated(dir: &Path, prefix: &str) -> Result<Vec<Generated>, Box<dyn Error>>
             })
             .collect();
         let source = fs::read_to_string(&path)?;
+        let fixture = fixture_name(&path)?;
         files.push(Generated {
             module: format!("{prefix}_{name}"),
             path,
             source,
-            fixture: None,
+            fixture,
         });
     }
     Ok(files)

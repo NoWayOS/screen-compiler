@@ -37,319 +37,59 @@ mod pictures {
     pub static BADGE: Picture = Picture::new("badge", 48, 48);
 }
 
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_welcome {
-    use crate::nowayos_ui;
-    include!("snapshots/welcome.rs");
+/// Each fixture's generated Rust, compiled as a module of its own, and
+/// `COMPILED`, the list of them, from one list so the two cannot disagree.
+macro_rules! fixtures {
+    ($($module:ident => $name:literal),* $(,)?) => {
+        $(
+            #[allow(
+                dead_code,
+                reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
+            )]
+            mod $module {
+                use crate::nowayos_ui;
+                include!(concat!("snapshots/", $name, ".rs"));
+            }
+        )*
+
+        /// The fixtures compiled above; kept in step with `tests/snapshots/`.
+        const COMPILED: &[&str] = &[$($name),*];
+    };
 }
 
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_details_form {
-    use crate::nowayos_ui;
-    include!("snapshots/details-form.rs");
+fixtures! {
+    fixture_welcome => "welcome",
+    fixture_details_form => "details-form",
+    fixture_edge_names => "edge-names",
+    fixture_parcel_status => "parcel-status",
+    fixture_visit_booking => "visit-booking",
+    fixture_queue_ticket => "queue-ticket",
+    fixture_check_in => "check-in",
+    fixture_check_in_parts => "check-in-parts",
+    fixture_check_in_files => "check-in-files",
+    fixture_bike_hire => "bike-hire",
+    fixture_table_ready => "table-ready",
+    fixture_form_controls => "form-controls",
+    fixture_parking_paid_css => "parking-paid-css",
+    fixture_order_summary => "order-summary",
+    fixture_notice_board => "notice-board",
+    fixture_fuelling => "fuelling",
+    fixture_tiles => "tiles",
+    fixture_photo_card => "photo-card",
+    fixture_article => "article",
+    fixture_panels => "panels",
+    fixture_inbox => "inbox",
+    fixture_feedback => "feedback",
+    fixture_message => "message",
+    fixture_help => "help",
+    fixture_promo => "promo",
+    fixture_loading => "loading",
+    fixture_order_ready => "order-ready",
+    fixture_parking_paid => "parking-paid",
+    fixture_lost_property_1_item => "lost-property-1-item",
+    fixture_lost_property_2_contact => "lost-property-2-contact",
+    fixture_lost_property_3_review => "lost-property-3-review",
 }
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_edge_names {
-    use crate::nowayos_ui;
-    include!("snapshots/edge-names.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_parcel_status {
-    use crate::nowayos_ui;
-    include!("snapshots/parcel-status.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_visit_booking {
-    use crate::nowayos_ui;
-    include!("snapshots/visit-booking.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_queue_ticket {
-    use crate::nowayos_ui;
-    include!("snapshots/queue-ticket.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_check_in {
-    use crate::nowayos_ui;
-    include!("snapshots/check-in.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_check_in_parts {
-    use crate::nowayos_ui;
-    include!("snapshots/check-in-parts.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_check_in_files {
-    use crate::nowayos_ui;
-    include!("snapshots/check-in-files.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_bike_hire {
-    use crate::nowayos_ui;
-    include!("snapshots/bike-hire.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_table_ready {
-    use crate::nowayos_ui;
-    include!("snapshots/table-ready.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_form_controls {
-    use crate::nowayos_ui;
-    include!("snapshots/form-controls.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_parking_paid_css {
-    use crate::nowayos_ui;
-    include!("snapshots/parking-paid-css.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_order_summary {
-    use crate::nowayos_ui;
-    include!("snapshots/order-summary.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_notice_board {
-    use crate::nowayos_ui;
-    include!("snapshots/notice-board.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_fuelling {
-    use crate::nowayos_ui;
-    include!("snapshots/fuelling.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_tiles {
-    use crate::nowayos_ui;
-    include!("snapshots/tiles.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_photo_card {
-    use crate::nowayos_ui;
-    include!("snapshots/photo-card.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_article {
-    use crate::nowayos_ui;
-    include!("snapshots/article.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_panels {
-    use crate::nowayos_ui;
-    include!("snapshots/panels.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_inbox {
-    use crate::nowayos_ui;
-    include!("snapshots/inbox.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_feedback {
-    use crate::nowayos_ui;
-    include!("snapshots/feedback.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_message {
-    use crate::nowayos_ui;
-    include!("snapshots/message.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_help {
-    use crate::nowayos_ui;
-    include!("snapshots/help.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_promo {
-    use crate::nowayos_ui;
-    include!("snapshots/promo.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_loading {
-    use crate::nowayos_ui;
-    include!("snapshots/loading.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_order_ready {
-    use crate::nowayos_ui;
-    include!("snapshots/order-ready.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_parking_paid {
-    use crate::nowayos_ui;
-    include!("snapshots/parking-paid.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_lost_property_1_item {
-    use crate::nowayos_ui;
-    include!("snapshots/lost-property-1-item.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_lost_property_2_contact {
-    use crate::nowayos_ui;
-    include!("snapshots/lost-property-2-contact.rs");
-}
-
-#[allow(
-    dead_code,
-    reason = "the module is compiled to prove the generated code builds; the tests call only part of it"
-)]
-mod fixture_lost_property_3_review {
-    use crate::nowayos_ui;
-    include!("snapshots/lost-property-3-review.rs");
-}
-
-/// The fixtures compiled above; kept in step with `tests/snapshots/`.
-const COMPILED: [&str; 31] = [
-    "article",
-    "bike-hire",
-    "check-in",
-    "check-in-files",
-    "check-in-parts",
-    "details-form",
-    "edge-names",
-    "feedback",
-    "form-controls",
-    "fuelling",
-    "help",
-    "inbox",
-    "loading",
-    "lost-property-1-item",
-    "lost-property-2-contact",
-    "lost-property-3-review",
-    "message",
-    "notice-board",
-    "order-ready",
-    "order-summary",
-    "parking-paid",
-    "parking-paid-css",
-    "panels",
-    "parcel-status",
-    "photo-card",
-    "promo",
-    "queue-ticket",
-    "table-ready",
-    "tiles",
-    "visit-booking",
-    "welcome",
-];
 
 fn ir_outline(fixture: &str) -> String {
     let (module, _) = support::convert_fixture(fixture);
@@ -822,6 +562,6 @@ fn every_snapshot_is_compiled_here() {
     let compiled: BTreeSet<String> = COMPILED.iter().map(|s| (*s).to_owned()).collect();
     assert_eq!(
         snapshots, compiled,
-        "add an `include!` module above for each new snapshot"
+        "add a line to `fixtures!` above for each new snapshot"
     );
 }

@@ -3,8 +3,8 @@
 //! NoWayOS's UI runtime.
 //!
 //! ```text
-//! screen-compiler convert IN.tsx [-o OUT.rs]   write Rust to OUT.rs (or standard output)
-//! screen-compiler check IN.tsx                 report what is outside the subset
+//! screen-compiler convert IN.tsx [-o OUT.rs] [--pictures NAMES]   write Rust to OUT.rs (or standard output)
+//! screen-compiler check IN.tsx [--pictures NAMES]                 report what is outside the subset
 //! screen-compiler audit DIR                     how much of a folder of TSX converts
 //! screen-compiler subset [--dts]                the subset as data: every component, prop and style property
 //! ```
@@ -390,7 +390,7 @@ fn report_in(files: &[String], diagnostics: &[Diagnostic]) {
         text.push('\n');
     }
     if has_errors(diagnostics) {
-        let errors = diagnostics.iter().filter(|d| d.is_error()).count();
+        let errors = diagnostics.len();
         text.push_str(&format!("{display}: {}\n", count(errors, "error")));
     }
     eprint_best_effort(&text);

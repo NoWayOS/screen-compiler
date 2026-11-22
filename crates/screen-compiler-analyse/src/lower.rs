@@ -23,7 +23,7 @@ use screen_compiler_tsx::syntax::{
 
 use crate::files::{self, Load, LoadError, MAX_FILES};
 use crate::parts::{Expander, Files, Part};
-use crate::{Analysis, KitComponent, Options, parts};
+use crate::{Analysis, KIT_MODULE, KitComponent, Options, parts};
 
 /// Where a component or list is declared: its file and its name there.
 type Origin = (u16, String);
@@ -756,7 +756,7 @@ impl Cx<'_> {
                 "import attributes and import phases are not supported",
             );
         }
-        let is_kit = import.module == self.options.kit_module;
+        let is_kit = import.module == KIT_MODULE;
         let is_react = import.module == "react";
         let is_path = files::is_path(&import.module);
         if import.type_only {
@@ -845,10 +845,7 @@ impl Cx<'_> {
                         Code::Unsupported,
                         *loc,
                         "the kit must be imported by name",
-                        format!(
-                            "import {{ Screen, Column, Text }} from \"{}\";",
-                            self.options.kit_module
-                        ),
+                        format!("import {{ Screen, Column, Text }} from \"{}\";", KIT_MODULE),
                     );
                 }
                 ImportBinding::Namespace { local, loc } if is_path => {
@@ -924,7 +921,7 @@ impl Cx<'_> {
                 format!("imports from \"{}\" are not supported in subset v1", import.module),
                 format!(
                     "import components from \"{}\", or your own from a .tsx file in the screen's folder (\"./header\"); declare design tokens as `const`",
-                    self.options.kit_module
+                    KIT_MODULE
                 ),
             );
         }
@@ -1469,7 +1466,7 @@ impl Lower<'_, '_, '_> {
     /// The kit component an element names, or `None` after reporting why not.
     fn resolve(&mut self, element: &Element) -> Option<KitComponent> {
         let loc = element.loc;
-        let kit = self.cx.options.kit_module.clone();
+        let kit = KIT_MODULE;
         match &element.name {
             ElementName::Component(name) => match self.lookup(name, loc) {
                 Some(Binding::Kit(component)) => Some(component),

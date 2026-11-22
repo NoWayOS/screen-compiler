@@ -29,8 +29,8 @@ customer, and none may be added from one.
   cases `make contract-check` draws one by one (`bike_hire.case-step-pay.png`
   and the others); `table-ready.tsx` has contract v14's text mixing
   literal words with one prop, in JSX and as a template literal, in the
-  heading, body and display roles; `form-controls.tsx`, once refused, has
-  converted since text could mix literals and a prop. `notice-board.tsx` wraps text onto
+  heading, body and display roles; `form-controls.tsx` is the one screen that
+  mixes a template slot, a plain slot in a group and an either. `notice-board.tsx` wraps text onto
   several lines: static text in a notice and a slot in a card;
   `fuelling.tsx` live figures in slots and a progress bar; `tiles.tsx`
   icons on a header bar and on cards; `loading.tsx` motion (contract v23): a shimmer, a pulse in
@@ -66,7 +66,7 @@ customer, and none may be added from one.
   `crates/screen-compiler-analyse/tests/snapshots/`.
 
 After adding or changing a fixture, run `make bless`, review the snapshot
-diff, and (for a new convertible fixture) add its `include!` module to
+diff, and (for a new convertible fixture) add its line to `fixtures!` in
 `generated_code.rs`. Then run `make bless-images` and look at its approved
 images in `contract-check/golden/` (with groups or slots, also
 `SCREEN.shown.png`) before committing them.

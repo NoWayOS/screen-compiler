@@ -2,38 +2,19 @@
 //! Subset checking for Screen Compiler: TSX syntax tree to UI IR.
 //!
 //! [`analyse`] walks the syntax tree from `screen-compiler-tsx`, checks every
-//! construct against **the subset** (v0, and the parts of v1 built so far),
-//! and lowers what it accepts into the IR
+//! construct against **the subset**, and lowers what it accepts into the IR
 //! (`screen-compiler-ir`). Checking and lowering are one walk, so the IR can only
 //! contain what was checked. Anything outside the subset is reported with its
 //! line and column and is **never approximated**: if there is any error, no IR
 //! is produced.
 //!
-//! Subset v0:
-//!
-//! * top level: named imports from the kit module ([`KIT_MODULE`]), `import
-//!   React from "react"`, type-only imports and declarations, integer design
-//!   tokens (`const SPACE_MD = 16;`) and screen components;
-//! * a screen component is a named function (or `const` arrow function) whose
-//!   body is only `return <Screen>…</Screen>`; its parameter is either
-//!   destructured props or a single props object;
-//! * elements: `Screen` (exactly one child), `Column` and `Row` (`gap`,
-//!   `padding`), `Text` (literal text), `Button` (literal label, `onPress`
-//!   naming a callback prop), `TextInput` (`placeholder`, required `id`) and
-//!   `Spacer` (optional `size`); every element accepts `id`;
-//! * values: string literals, whole numbers of pixels, design tokens;
-//! * subset v1 so far: a `Text` whose only content is one prop
-//!   (`<Text>{props.name}</Text>`) becomes a slot the application fills; and
-//!   `{props.NAME && <X/>}` and `{props.NAME ? <X/> : <Y/>}` (or `: null`)
-//!   become a group the application shows or hides, each named after its
-//!   prop. A condition is one prop, and what it shows one element;
-//! * fragments and the screen's own components (*parts*), expanded at build
-//!   time before the walk (its rules in the private `parts` module), so a screen
-//!   built of parts is checked and lowered as if written flat. A part may be
-//!   imported from a `.tsx` file in the screen's folder or below
-//!   (`import { Header } from "./parts/header"`), read through a
-//!   [`files::Load`]er ([`analyse_with`]); each name is resolved in the file
-//!   it is written in, and each error reported there.
+//! Fragments and the screen's own components (*parts*) are expanded at build
+//! time before the walk (their rules in the private `parts` module), so a
+//! screen built of parts is checked and lowered as if written flat. A part may
+//! be imported from a `.tsx` file in the screen's folder or below
+//! (`import { Header } from "./parts/header"`), read through a
+//! [`files::Load`]er ([`analyse_with`]); each name is resolved in the file it
+//! is written in, and each error reported there.
 //!
 //! Every component, prop and style property, with the values each takes,
 //! is in the kit's tables ([`KitComponent::props`], [`KitComponent::style`]),
@@ -87,8 +68,6 @@ impl Default for Limits {
 pub struct Options {
     /// The source file's name, recorded in the IR (not a full path).
     pub source_name: String,
-    /// The module specifier the kit is imported from.
-    pub kit_module: String,
     /// Size bounds.
     pub limits: Limits,
     /// The names of the product's pictures, which an `<Image src>` must be
@@ -103,7 +82,6 @@ impl Options {
     pub fn new(source_name: impl Into<String>) -> Self {
         Self {
             source_name: source_name.into(),
-            kit_module: KIT_MODULE.to_owned(),
             limits: Limits::default(),
             pictures: None,
         }

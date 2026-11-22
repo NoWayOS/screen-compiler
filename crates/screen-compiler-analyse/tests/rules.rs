@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! Subset v0, rule by rule: what converts, and what is reported where.
+//! The subset, rule by rule: what converts, and what is reported where.
 
 #![allow(
     clippy::unwrap_used,
@@ -12,62 +12,14 @@
 
 use proptest::prelude::*;
 use proptest::test_runner::{Config, RngSeed};
-use screen_compiler_analyse::{Analysis, Limits, Options, analyse};
-use screen_compiler_ir::{Code, Diagnostic, Loc, Module, outline};
+use screen_compiler_analyse::{Limits, Options};
+use screen_compiler_ir::{Code, Diagnostic, Loc, outline};
+
+mod support;
+use support::{error, errors, ok, ok_outline, run, run_with};
 
 /// Line 1 of most test sources.
 const KIT: &str = "import { Button, Card, Checkbox, Column, HeaderBar, Icon, Notice, ProgressBar, RadioGroup, Row, Screen, Spacer, Text, TextInput } from \"nowayos:kit\";\n";
-
-fn run_with(source: &str, options: &Options) -> Analysis {
-    match screen_compiler_tsx::parse(source) {
-        Ok(parsed) => analyse(&parsed, options),
-        Err(diagnostics) => Analysis {
-            module: None,
-            diagnostics,
-            imported: Vec::new(),
-        },
-    }
-}
-
-fn run(source: &str) -> Analysis {
-    run_with(source, &Options::new("test.tsx"))
-}
-
-/// The module, or a panic listing the diagnostics.
-fn ok(source: &str) -> Module {
-    let analysis = run(source);
-    match analysis.module {
-        Some(module) => module,
-        None => panic!("expected a module, got {:#?}", analysis.diagnostics),
-    }
-}
-
-/// The outline of the only screen.
-fn ok_outline(source: &str) -> String {
-    let module = ok(source);
-    assert_eq!(module.screens.len(), 1);
-    outline(&module, &module.screens[0])
-}
-
-/// Every error, and a check that no IR was produced.
-fn errors(source: &str) -> Vec<Diagnostic> {
-    let analysis = run(source);
-    assert!(analysis.module.is_none(), "an error must stop conversion");
-    let errors: Vec<Diagnostic> = analysis
-        .diagnostics
-        .into_iter()
-        .filter(Diagnostic::is_error)
-        .collect();
-    assert!(!errors.is_empty(), "expected errors");
-    errors
-}
-
-/// The single error.
-fn error(source: &str) -> Diagnostic {
-    let mut all = errors(source);
-    assert_eq!(all.len(), 1, "expected one error, got {all:#?}");
-    all.remove(0)
-}
 
 fn at(line: u32, column: u32) -> Option<Loc> {
     Some(Loc::new(line, column))
@@ -1573,7 +1525,7 @@ proptest! {
         let source = mixed_screen(&picks);
         let analysis = run(&source);
         let errors: Vec<&Diagnostic> =
-            analysis.diagnostics.iter().filter(|d| d.is_error()).collect();
+            analysis.diagnostics.iter().collect();
         let mut bad_lines = Vec::new();
         for (index, &pick) in picks.iter().enumerate() {
             let line = FIRST_PIECE_LINE + u32::try_from(index).unwrap();

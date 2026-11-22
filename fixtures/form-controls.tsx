@@ -1,9 +1,9 @@
-// Synthetic Screen Compiler fixture: a generic form screen written with the
-// constructs that form screens need and subset v0 refused, most needed first:
-// conditional rendering, text from a prop - here between literal text, the
-// last to convert (contract v14) - a length limit and an input mode on a text
-// input, a checkbox and a radio group. Written for Screen Compiler's tests;
-// not taken from any product.
+// Synthetic Screen Compiler fixture: a generic form screen with the constructs
+// form screens need, most needed first: conditional rendering, text from a
+// prop between literal text (a template slot), a length limit and an input
+// mode on a text input, a checkbox and a radio group; the one screen mixing a
+// template slot, a plain slot in a group and an either. Written for Screen
+// Compiler's tests; not taken from any product.
 import { Button, Checkbox, Column, RadioGroup, Screen, Text, TextInput } from "nowayos:kit";
 
 type BookingProps = {

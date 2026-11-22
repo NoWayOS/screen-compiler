@@ -12,59 +12,12 @@
     reason = "test code: a failed check panics, and tests index and compute on known data"
 )]
 
-use screen_compiler_analyse::{Analysis, Options, analyse};
-use screen_compiler_ir::{Code, Diagnostic, Module, outline};
+use screen_compiler_ir::Code;
+
+mod support;
+use support::{error, errors, ok, ok_outline};
 
 const KIT: &str = "import { Button, Card, Checkbox, Column, HeaderBar, Notice, Row, Screen, Spacer, Text, TextInput, space } from \"nowayos:kit\";\n";
-
-fn run(source: &str) -> Analysis {
-    match screen_compiler_tsx::parse(source) {
-        Ok(parsed) => analyse(&parsed, &Options::new("test.tsx")),
-        Err(diagnostics) => Analysis {
-            module: None,
-            diagnostics,
-            imported: Vec::new(),
-        },
-    }
-}
-
-fn ok(source: &str) -> Module {
-    let analysis = run(source);
-    match analysis.module {
-        Some(module) => module,
-        None => panic!(
-            "expected a module, got {:#?}\n{source}",
-            analysis.diagnostics
-        ),
-    }
-}
-
-/// The outline of the file's only screen.
-fn ok_outline(source: &str) -> String {
-    let module = ok(source);
-    assert_eq!(module.screens.len(), 1, "{source}");
-    outline(&module, &module.screens[0])
-}
-
-fn errors(source: &str) -> Vec<Diagnostic> {
-    let analysis = run(source);
-    assert!(
-        analysis.module.is_none(),
-        "an error must stop conversion:\n{source}"
-    );
-    analysis
-        .diagnostics
-        .into_iter()
-        .filter(Diagnostic::is_error)
-        .collect()
-}
-
-/// The one error `source` gives.
-fn error(source: &str) -> Diagnostic {
-    let all = errors(source);
-    assert_eq!(all.len(), 1, "{all:#?}\n{source}");
-    all.into_iter().next().unwrap()
-}
 
 /// A file of `parts` and one screen whose `<Column>` holds `body`.
 fn file(parts: &str, body: &str) -> String {
