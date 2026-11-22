@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! Subset v0, rule by rule: what converts, and what is reported where.
+//! The subset, rule by rule: what converts, and what is reported where.
 
 #![allow(
     clippy::unwrap_used,

@@ -3,15 +3,8 @@
 //!
 //! The IR is the contract between the TSX front end (`screen-compiler-tsx` and
 //! `screen-compiler-analyse`) and the code generators (`screen-compiler-codegen-rust`). It
-//! holds only what the subset supports: screens built from `Column`, `Row`,
-//! `Text`, `Button`, `TextInput` and `Spacer`, string literals, a few simple
-//! props, and design tokens as named integer constants; and, from subset v1,
-//! slots for text the application sets and groups it shows or hides, each
-//! named after the prop it comes from, checkboxes, radio groups, text
-//! inputs with a length limit and an input mode, and text in a role of the
-//! type scale and a weight ([`TextStyle`]). Anything the IR cannot
-//! express exactly is reported by the analyser instead of being
-//! approximated.
+//! holds only what the subset supports. Anything the IR cannot express exactly
+//! is reported by the analyser instead of being approximated.
 //!
 
 #![deny(clippy::indexing_slicing, clippy::arithmetic_side_effects)]

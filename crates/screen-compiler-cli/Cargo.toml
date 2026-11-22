@@ -1,6 +1,6 @@
 [package]
 name = "screen-compiler-cli"
-description = "The `screen-compiler` command: convert and check React/TSX screens against subset v0."
+description = "The `screen-compiler` command: convert and check React/TSX screens against the subset."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -82,6 +82,7 @@ help:
 	@echo "  make preview FILE=screen.tsx   the file's screens as PNG files in $(OUT)/ (OUT=dir), drawn by NoWayOS's renderer (../nowayos) as the device draws them: SCREEN.png as it starts and SCREEN.shown.png with every group visible and slot filled"
 	@echo "       WATCH=1                   then draw again whenever the file or a part beside it is saved"
 	@echo "       ARGS='...'                one picture, showing what is named: --show GROUP, --slot NAME=TEXT, --case SWITCH=CASE, --scrolled, --errors; and for any picture --size 1920x1080, --large (the large-text theme)"
+	@echo "  make screens DIR=../product/crate [BLESS=1]   a product's screens checked and converted against the Rust checked in (BLESS=1 writes it)"
 	@echo "  make contract-check   every generated screen built against the real nowayos-ui (../nowayos), host and aarch64-unknown-none; each drawn, and each fixture's frame matched with its approved image (contract-check/golden/)"
 	@echo "  make bless-images     redraw the approved images after a deliberate change, in the dev container; review them by eye"
 	@echo "  make reproducible     from the host: each fixture converts to byte-identical Rust on the host and in the dev container, and draws on the host exactly as approved"

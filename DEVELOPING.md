@@ -12,8 +12,10 @@ hooks and effects, raw colours - stays out.
 
 **Subset v0** and **subset v1**: TSX fixture → parse (`oxc_parser`) →
 subset check → UI IR → deterministic Rust. The generated Rust targets a
-**provisional contract** for NoWayOS's UI builder (v12), which `nowayos-ui`'s
-`builder` module implements. `make contract-check`, part of `make ci`, builds every generated
+**provisional contract** for NoWayOS's UI builder, which `nowayos-ui`'s
+`builder` module implements; its version is `VERSION` in
+`crates/screen-compiler-codegen-rust/src/contract.rs`, and every generated
+file's header names it. `make contract-check`, part of `make ci`, builds every generated
 screen against the real `nowayos-ui` from a sibling nowayos clone, for the
 host and `aarch64-unknown-none`, builds each on a real tree, lays it out at
 800×480 and draws it with NoWayOS's renderer; each fixture's frame must match
@@ -55,7 +57,7 @@ its approved image in `contract-check/golden/` pixel for pixel. See
 | `<Card>…</Card>`, `<Notice tone="success">…</Notice>`, `<HeaderBar>…</HeaderBar>` | a column (Card, Notice) or a row (HeaderBar) drawn on a surface (contract v3), with `gap` and `padding` as for `Column` and `Row`; `tone` is `success`, `caution` or `warning`, and a notice needs one. `b.column_on(ui::Surface::Card, …)`, `b.row_on(ui::Surface::Header, …)` |
 | `<Text role="title">…</Text>`, `<Text weight="bold">…</Text>` | text in a role of the theme's type scale (contract v2): `role` is `display`, `title`, `heading`, `body` (the default), `label` or `caption`, and `weight` `regular` or `bold`; display, title and heading are Bold only. `b.text_styled("…", ui::TextStyle::new(ui::TextRole::Title))`, or `b.slot_styled(…)` for a prop; body text in Regular stays `b.text` |
 | `<Text lines={3}>…</Text>` | text that wraps onto up to N lines, 1 to 8 (contract v4): breaks after spaces at the node's width, which layout gives it first, then the height of its lines. `.lines(N)` on its `TextStyle`, through `b.text_styled` or `b.slot_styled`; more than 8, or anything but a whole number, is refused where written |
-| `<Text>Press <strong>Save</strong>, or read <a onClick={props.onGuide}>the guide</a>.</Text>` | a rich text (contract v21): `b.rich_text({ const RUNS: &[ui::Run] = &[ui::Run::new("Press "), ui::Run::new("Save").bold(), …]; RUNS }, style)`, one paragraph of runs wrapped as one text. Inside a `<Text>`, around literal words (and `{" "}`): `<strong>`/`<b>` Bold, `<em>`/`<i>` italics (drawn slanted until an italic face is signed off), `<code>` code (on a tint), `<a onClick={props.onX}>` (or `onPress`) a link - a tab stop raising the action, numbered with the buttons' - and `<span style={{ color: "error" }}>` a theme colour; they nest. Refused where written: any other element, a prop's text, `href` (a station never leaves for an address), a span's style naming more than its colour, and `lines`, `align` or the display role on the text |
+| `<Text>Press <strong>Save</strong>, or read <a onClick={props.onGuide}>the guide</a>.</Text>` | a rich text (contract v21): `b.rich_text({ const RUNS: &[ui::Run] = &[ui::Run::new("Press "), ui::Run::new("Save").bold(), …]; RUNS }, style)`, one paragraph of runs wrapped as one text. Inside a `<Text>`, around literal words (and `{" "}`): `<strong>`/`<b>` Bold, `<em>`/`<i>` italics, in the italic face of the run's weight, `<code>` code, in the monospace face on a tint, `<a onClick={props.onX}>` (or `onPress`) a link - a tab stop raising the action, numbered with the buttons' - and `<span style={{ color: "error" }}>` a theme colour; they nest. Refused where written: any other element, a prop's text, `href` (a station never leaves for an address), a span's style naming more than its colour, and `lines`, `align` or the display role on the text |
 | `<Text maxLength={10240}>{props.article}</Text>` | paragraphs the application sets at run time, up to N bytes (1 to 65,535, a number or a design token; contract v16): `b.long_text(slots::ARTICLE, 10240, style)`, numbered with the slots and set as one. Wrapped onto as many lines as they need, a line break starting a new paragraph; the bytes live in the text store of the `Tree<N, T>` the screen is built into, so the tree must hold `T` bytes for them. One prop alone: literal text, `lines` or the display role is refused where written |
 | `<ProgressBar value={props.fuelled} />` | a bar the application fills (contract v5): `b.progress(slots::FUELLED)`, its number shared with the slots'; the application sets how far it shows with `set_progress(slot, done, whole)`. `value` must be a prop, and a prop fills one slot or bar |
 | `<Icon name="fuel" />` | one of Lucide's icons (ISC), drawn from a build-time alpha mask in the colour of text where it stands (contract v6): `b.icon(&ui::icons::FUEL)`, by its static, so a program links only the icons it names. `name` is a literal from `clipboard-list`, `fuel`, `house`, `message-square`, `shield-check` and `user-check`, NoWayOS's set (`make contract-check` holds the two lists the same) |
@@ -107,10 +109,8 @@ a second prop in one text), other imports (including `import { type … }`: writ
 type`), control or invisible characters in text, attribute strings that span
 lines, and anything that is a syntax error in a module — is reported as an
 error with its position, and nothing is written. `fixtures/unsupported/web-search.tsx`
-shows most of them. `fixtures/form-controls.tsx` shows what form screens
-needed beyond subset v0 - conditional rendering, text from a prop, a length
-limit and an input mode on a text input, a checkbox and a radio group - and
-converts since text could mix literals and a prop (contract v14).
+shows most of them. `fixtures/form-controls.tsx` is the one screen that
+mixes a template slot, a plain slot in a group and an either.
 `fixtures/parcel-status.tsx` converts with slots and groups, and
 `fixtures/visit-booking.tsx` with every v1 form control built so far, and
 `fixtures/queue-ticket.tsx` with the type scale's roles and Bold, and
@@ -273,20 +273,9 @@ input.
 ## The target contract
 
 Generated code imports `nowayos_ui::builder` as `ui` and uses the `UiBuilder`
-trait (children-first, fallible node construction), `Layout`, `Input` and
-`InputMode`, and the numbers `ActionId`, `FieldId`, `GroupId` and `SlotId`
-and, for text in a role, `TextStyle` and `TextRole`, and for the look of
-buttons and surfaces, `ButtonVariant`, `Surface` and `Tone` (contract v3),
-text wrapped onto several lines, `TextStyle::lines` (contract v4), and
-a progress bar, `progress` (contract v5), icons, `icon` with the
-`icons` statics (contract v6), text alignment, `TextAlign`, and the
-theme's spacing tokens, `Space` (contract v7), the declared style subset's
-`Look`, `Colour`, `Align`, `Justify` and `button_look` (contract v8), a
-scroll view, `scroll_view` (contract v9), a list picker, `list_picker` and
-`Picker` (contract v10), the on-screen keyboard, `keyboard` (contract v11),
-and a field's error line, `field_error` (contract v12;
-earlier versions' calls are unchanged, so screens generated for them still
-build). Their reference definitions are compiled in
+trait (children-first, fallible node construction) and its types. The tables
+above name each call with the contract version that added it; each version
+only adds, so screens generated for an earlier one still build. Their reference definitions are compiled in
 `crates/screen-compiler-codegen-rust/src/contract.rs`, and the test suite compiles
 every snapshot of generated code against them and checks that running it
 builds exactly the tree the IR describes. Each screen becomes a module with a
