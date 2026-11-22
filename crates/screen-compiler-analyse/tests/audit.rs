@@ -157,6 +157,22 @@ fn the_road_takes_the_constructs_its_steps_name() {
         }),
         Verdict::Road(Step::CssLayout)
     );
+    // Motion a screen declares converts on the kit's elements; on an
+    // element the road brings, it comes with the element.
+    assert_eq!(
+        road(Construct::Style {
+            element: "Column".into(),
+            property: "transition".into()
+        }),
+        Verdict::Subset
+    );
+    assert_eq!(
+        road(Construct::Style {
+            element: "div".into(),
+            property: "transition".into()
+        }),
+        Verdict::Road(Step::HtmlElements)
+    );
     // React DOM's name for a press, and a function that only calls a prop.
     assert_eq!(
         road(Construct::Prop {

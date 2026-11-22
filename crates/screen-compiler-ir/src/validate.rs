@@ -83,16 +83,15 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
     // Each switch's cases, by the switch's words.
     let mut cases: BTreeMap<&[String], Seen> = BTreeMap::new();
     let mut too_deep = false;
-    // Each node with its depth, and whether a scroll view holds it.
     // The first keyboard, and whether the screen has a text input for it.
     let mut keyboard: Option<Option<Loc>> = None;
     let mut text_input = false;
     // The controls' ids, and each field's error lines, in document order.
     let mut field_ids: Vec<&Name> = Vec::new();
     let mut field_errors: Vec<(&Name, Option<Loc>)> = Vec::new();
-    let mut stack = vec![(&screen.root, 1_usize, false)];
-    while let Some((node, depth, scrolled)) = stack.pop() {
-        let is_scroll = matches!(node.kind, NodeKind::ScrollView { .. });
+    // Each node with its depth.
+    let mut stack = vec![(&screen.root, 1_usize)];
+    while let Some((node, depth)) = stack.pop() {
         match node.kind {
             NodeKind::TextInput { .. } | NodeKind::TextArea { .. } => text_input = true,
             NodeKind::Keyboard if keyboard.is_some() => diagnostics.push(
@@ -405,8 +404,7 @@ fn validate_screen(module: &Module, screen: &Screen, diagnostics: &mut Vec<Diagn
             ));
         }
         let next = depth.saturating_add(1);
-        let inside = scrolled || is_scroll;
-        stack.extend(node.children().iter().rev().map(|c| (c, next, inside)));
+        stack.extend(node.children().iter().rev().map(|c| (c, next)));
     }
     for (switch, whens) in screen.switches() {
         if whens.len() > MAX_CASES {

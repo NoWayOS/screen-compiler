@@ -77,7 +77,6 @@ const FIELDS: &str = "a field is read and set by the application through its id"
 const SPREAD: &str = "a spread's props are known only when the code runs";
 const COMPUTED_STYLE: &str = "a style computed when the code runs";
 const CASCADE: &str = "a global stylesheet: there is no cascade";
-const ANIMATION: &str = "animation";
 const UNBOUNDED: &str = "a list with no most: slice it, .slice(0, N), so the screen knows its rows";
 const COMPARISON: &str = "a comparison other than a prop `===` a string literal: compare in the application and pass the result as a prop";
 const STATEMENT: &str = "a screen's function only returns its tree: choose in it with && or ?:";
@@ -197,7 +196,6 @@ pub fn verdict_in(construct: &Construct, own: &BTreeSet<String>) -> Verdict {
 fn component(name: &str) -> Verdict {
     match name {
         _ if KitComponent::from_name(name).is_some() => Verdict::Subset,
-        "Image" => Verdict::Road(Step::ImagesAndMasking),
         "Stack" => Verdict::Road(Step::Layering),
         _ => Verdict::Out(COMPONENT),
     }
@@ -246,9 +244,6 @@ fn style_verdict(element: &str, property: &str) -> Verdict {
         None if element == "span" && property == "color" => Verdict::Subset,
         _ if LAYOUT.contains(&property) => Verdict::Road(Step::CssLayout),
         _ if POSITION.contains(&property) || property == "zIndex" => Verdict::Road(Step::Layering),
-        _ if property.starts_with("animation") || property.starts_with("transition") => {
-            Verdict::Out(ANIMATION)
-        }
         // A declared property on an element the road brings comes with it.
         None if declared(property) => match verdict(&element_construct(element)) {
             Verdict::Road(step) => Verdict::Road(step),

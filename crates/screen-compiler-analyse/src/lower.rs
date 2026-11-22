@@ -1165,7 +1165,7 @@ impl Cx<'_> {
                         "component `{source_name}` must return <Screen>…</Screen>, not {}",
                         other.describe()
                     ),
-                    "every top-level component is a screen in subset v1",
+                    "a component that no other uses as an element is a screen",
                 );
                 return None;
             }
@@ -1741,8 +1741,8 @@ impl Lower<'_, '_, '_> {
                     }
                 }
             }
-            // One child shown through a view that scrolls; at most
-            // one in a screen, never nested (checked by `validate`).
+            // One child shown through a view that scrolls; any number
+            // in a screen, one inside another.
             KitComponent::ScrollView => {
                 let children = self.container_children(component, &element.children, depth);
                 if children.len() != 1 {
@@ -2628,7 +2628,7 @@ impl Lower<'_, '_, '_> {
                 Code::Unsupported,
                 other.loc(),
                 format!("{} as a child is not supported", other.describe()),
-                "lists and computed content are outside subset v1; conditional rendering is {props.NAME && <Element />} or {props.NAME ? <A /> : <B />}",
+                "computed content is outside subset v1; conditional rendering is {props.NAME && <Element />} or {props.NAME ? <A /> : <B />}",
             ),
             Child::Spread { loc } => self.cx.error(
                 Code::Unsupported,
