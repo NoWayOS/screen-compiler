@@ -24,7 +24,7 @@ mod style;
 mod validate;
 
 pub use chars::{SpecialChar, escape_special, special_char};
-pub use diag::{Code, Diagnostic, Loc, Severity, has_errors, sort_diagnostics};
+pub use diag::{Code, Diagnostic, Loc, has_errors, sort_diagnostics};
 pub use name::{Name, NameError};
 pub use outline::outline;
 pub use style::{

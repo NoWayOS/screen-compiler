@@ -1525,7 +1525,7 @@ proptest! {
         let source = mixed_screen(&picks);
         let analysis = run(&source);
         let errors: Vec<&Diagnostic> =
-            analysis.diagnostics.iter().filter(|d| d.is_error()).collect();
+            analysis.diagnostics.iter().collect();
         let mut bad_lines = Vec::new();
         for (index, &pick) in picks.iter().enumerate() {
             let line = FIRST_PIECE_LINE + u32::try_from(index).unwrap();

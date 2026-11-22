@@ -88,11 +88,7 @@ fn errors(screen: &str, files: &[(&str, &str)]) -> Vec<Diagnostic> {
         analysis.module.is_none(),
         "an error must stop conversion:\n{screen}"
     );
-    analysis
-        .diagnostics
-        .into_iter()
-        .filter(Diagnostic::is_error)
-        .collect()
+    analysis.diagnostics
 }
 
 /// The one error the screen gives.
@@ -335,7 +331,7 @@ export function Card() {
         &[("parts/card.tsx", card)],
     );
     assert!(analysis.module.is_none());
-    let e = analysis.diagnostics.iter().find(|d| d.is_error()).unwrap();
+    let e = analysis.diagnostics.first().unwrap();
     assert_eq!(e.code, Code::UnknownProp, "{e:#?}");
     assert_eq!(e.loc, Some(Loc::new(3, 24).in_file(1)));
     let names = analysis.file_names("screens/screen.tsx");
@@ -386,7 +382,7 @@ fn a_file_that_cannot_be_read_is_reported_where_it_is_imported() {
     ))
     .unwrap();
     let analysis = analyse(&parsed, &Options::new("screen.tsx"));
-    let e = analysis.diagnostics.iter().find(|d| d.is_error()).unwrap();
+    let e = analysis.diagnostics.first().unwrap();
     assert_eq!(e.code, Code::Unsupported, "{e:#?}");
     assert!(e.message.contains("cannot be read"), "{e:#?}");
     // A type imported as a value is no component: refused where it is used.

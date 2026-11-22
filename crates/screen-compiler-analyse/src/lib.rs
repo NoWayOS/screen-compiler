@@ -87,8 +87,6 @@ impl Default for Limits {
 pub struct Options {
     /// The source file's name, recorded in the IR (not a full path).
     pub source_name: String,
-    /// The module specifier the kit is imported from.
-    pub kit_module: String,
     /// Size bounds.
     pub limits: Limits,
     /// The names of the product's pictures, which an `<Image src>` must be
@@ -103,7 +101,6 @@ impl Options {
     pub fn new(source_name: impl Into<String>) -> Self {
         Self {
             source_name: source_name.into(),
-            kit_module: KIT_MODULE.to_owned(),
             limits: Limits::default(),
             pictures: None,
         }

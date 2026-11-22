@@ -418,16 +418,6 @@ impl KitComponent {
         }
     }
 
-    /// Whether it holds child elements: a column or a row, on a surface or
-    /// not.
-    #[must_use]
-    pub const fn is_container(self) -> bool {
-        matches!(
-            self,
-            Self::Column | Self::Row | Self::Card | Self::Notice | Self::HeaderBar
-        )
-    }
-
     /// What it holds between its tags.
     #[must_use]
     pub const fn children(self) -> Children {

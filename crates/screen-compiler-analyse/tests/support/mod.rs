@@ -53,11 +53,7 @@ pub fn errors(source: &str) -> Vec<Diagnostic> {
         analysis.module.is_none(),
         "an error must stop conversion:\n{source}"
     );
-    let errors: Vec<Diagnostic> = analysis
-        .diagnostics
-        .into_iter()
-        .filter(Diagnostic::is_error)
-        .collect();
+    let errors = analysis.diagnostics;
     assert!(!errors.is_empty(), "expected errors\n{source}");
     errors
 }

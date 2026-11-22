@@ -390,7 +390,7 @@ fn report_in(files: &[String], diagnostics: &[Diagnostic]) {
         text.push('\n');
     }
     if has_errors(diagnostics) {
-        let errors = diagnostics.iter().filter(|d| d.is_error()).count();
+        let errors = diagnostics.len();
         text.push_str(&format!("{display}: {}\n", count(errors, "error")));
     }
     eprint_best_effort(&text);
