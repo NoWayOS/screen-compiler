@@ -69,5 +69,4 @@ After adding or changing a fixture, run `make bless`, review the snapshot
 diff, and (for a new convertible fixture) add its `include!` module to
 `generated_code.rs`. Then run `make bless-images` and look at its approved
 images in `contract-check/golden/` (with groups or slots, also
-`SCREEN.shown.png`) before committing them. `make fixtures` runs
-the command-line tool on all of them.
+`SCREEN.shown.png`) before committing them.

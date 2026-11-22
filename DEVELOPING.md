@@ -166,7 +166,6 @@ ones - all but `deny`, `contract-check`, `bless-images`, `reproducible` and
 make test                      # unit, property, snapshot and CLI tests
 make lint                      # rustfmt --check, then clippy with warnings denied
 make doc                       # API docs, warnings as errors
-make fixtures                  # run check and convert on every fixture
 make bless                     # rewrite snapshots after a deliberate change, then review the diff
 make preview FILE=screen.tsx   # the file's screens as PNG files in build/preview/, drawn by NoWayOS's renderer (WATCH=1: again on every save)
 make screens DIR=../product/crate   # a product's screens (DIR/tsx) checked and converted, and compared with the Rust checked in (BLESS=1 writes it)

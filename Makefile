@@ -7,7 +7,7 @@
 # `make container` in nowayos/. `make ci` runs secrets, lint, test, doc,
 # contract-check, no-nowayos, deny and sbom there.
 #
-# The everyday targets - fmt, lint, test, doc, fixtures, bless, run,
+# The everyday targets - fmt, lint, test, doc, bless, run,
 # no-nowayos and clean - can run on the host instead with IN=host, using the
 # toolchain pinned in rust-toolchain.toml (Rust 1.93.1), or the host's stable
 # toolchain where that already is 1.93.1: `make test IN=host CARGO="cargo
@@ -27,7 +27,6 @@ export RUSTUP_AUTO_INSTALL
 LOCKED ?=
 SCREEN_COMPILER = $(CARGO) run $(LOCKED) --quiet -p screen-compiler-cli --
 FIXTURES := $(sort $(wildcard fixtures/*.tsx))
-UNSUPPORTED := $(sort $(wildcard fixtures/unsupported/*.tsx))
 # contract-check/: every generated screen against the real nowayos-ui,
 # drawn, and matched with its approved image in contract-check/golden/.
 CONTRACT := contract-check/Cargo.toml
@@ -69,7 +68,7 @@ endef
 -include ../nowayos/tools/make/container.mk
 
 .DEFAULT_GOAL := help
-.PHONY: help fmt lint test doc fixtures bless run screens preview contract-check bless-images reproducible \
+.PHONY: help fmt lint test doc bless run screens preview contract-check bless-images reproducible \
 	convert-into no-nowayos deny sbom secrets ci ci-local clean
 
 help:
@@ -78,7 +77,6 @@ help:
 	@echo "  make lint      cargo fmt --check, then clippy on all targets with warnings denied"
 	@echo "  make test      unit, property, snapshot and command-line tests"
 	@echo "  make doc       build the API docs, warnings as errors"
-	@echo "  make fixtures  run screen-compiler check and convert on every fixture"
 	@echo "  make bless     rewrite the snapshot files after a deliberate change; review the diff"
 	@echo "  make run ARGS=\"check FILE.tsx\"   run the screen-compiler tool (ARGS: its command line)"
 	@echo "  make preview FILE=screen.tsx   the file's screens as PNG files in $(OUT)/ (OUT=dir), drawn by NoWayOS's renderer (../nowayos) as the device draws them: SCREEN.png as it starts and SCREEN.shown.png with every group visible and slot filled"
@@ -110,19 +108,6 @@ test:
 
 doc:
 	RUSTDOCFLAGS="-D warnings" $(CARGO) doc --workspace --no-deps $(LOCKED)
-
-# Supported fixtures must check and convert; unsupported ones must be refused
-# (exit status 1) with their diagnostics.
-fixtures:
-	@for f in $(FIXTURES); do \
-		echo "==> screen-compiler check $$f"; $(SCREEN_COMPILER) check $$f || exit 1; \
-		echo "==> screen-compiler convert $$f"; $(SCREEN_COMPILER) convert $$f || exit 1; \
-	done
-	@for f in $(UNSUPPORTED); do \
-		echo "==> screen-compiler check $$f (expected: not supported)"; \
-		$(SCREEN_COMPILER) check $$f; status=$$?; \
-		if [ $$status -ne 1 ]; then echo "error: expected exit status 1, got $$status" >&2; exit 1; fi; \
-	done
 
 # Converts every fixture into DIR: make reproducible's helper, run on the host
 # and in the dev container.
@@ -169,7 +154,7 @@ clean:
 	$(CARGO) clean
 	$(CARGO) clean --manifest-path $(CONTRACT)
 else ifdef IN_CONTAINER
-fmt lint test doc fixtures bless no-nowayos clean:
+fmt lint test doc bless no-nowayos clean:
 	$(IN_CONTAINER) make $@ CARGO=cargo LOCKED="$(LOCKED)"
 convert-into:
 	$(IN_CONTAINER) make $@ CARGO=cargo LOCKED="$(LOCKED)" DIR='$(DIR)'
@@ -180,7 +165,7 @@ screens:
 preview:
 	@$(IN_CONTAINER) make --no-print-directory preview CARGO=cargo LOCKED="$(LOCKED)" FILE='$(FILE)' OUT='$(OUT)' PICTURES='$(PICTURES)' WATCH='$(WATCH)' ARGS='$(ARGS)'
 else
-fmt lint test doc fixtures bless run screens preview no-nowayos convert-into clean:
+fmt lint test doc bless run screens preview no-nowayos convert-into clean:
 	@echo "error: make $@ needs ../nowayos/tools/make/container.mk - clone nowayos beside screen-compiler - or IN=host to run on the host" >&2
 	@exit 1
 endif
