@@ -170,7 +170,7 @@ fmt lint test doc bless run screens preview no-nowayos convert-into clean:
 	@exit 1
 endif
 
-ci-local: LOCKED := --locked
+ci-local: override LOCKED := --locked
 ci-local: secrets lint test doc contract-check no-nowayos deny sbom
 
 ifeq ($(NOWAYOS_CONTAINER),1)
