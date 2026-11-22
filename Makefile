@@ -175,8 +175,8 @@ ci-local: secrets lint test doc contract-check no-nowayos deny sbom
 
 ifeq ($(NOWAYOS_CONTAINER),1)
 # Every screen Screen Compiler generates, built against the real nowayos-ui from the
-# sibling clone: the checked-in snapshots, and every fixture
-# converted now. contract-check/ is a workspace of its own, so Screen Compiler's
+# sibling clone: every fixture converted afresh (the checked-in snapshots
+# when SCREEN_COMPILER_CONVERTED is unset). contract-check/ is a workspace of its own, so Screen Compiler's
 # crates never depend on NoWayOS. This prints which NoWayOS commit it
 # built against, then lints it; its tests build each screen on a real
 # nowayos-ui tree, lay it out at 800x480 and draw it with NoWayOS's renderer,

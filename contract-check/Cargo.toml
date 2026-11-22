@@ -1,6 +1,6 @@
 # screen-compiler-contract-check: every screen Screen Compiler generates, built against
-# the real nowayos-ui - the checked-in snapshots, and each
-# fixture converted afresh by `make contract-check` - for the host and for
+# the real nowayos-ui - every fixture converted afresh by `make contract-check`
+# (the checked-in snapshots when SCREEN_COMPILER_CONVERTED is unset) - for the host and for
 # aarch64-unknown-none, then built on a real nowayos-ui tree, laid out and
 # drawn by NoWayOS's renderer; each fixture's frame must match its approved
 # image in golden/ pixel for pixel.

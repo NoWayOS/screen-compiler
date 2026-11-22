@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 //! Every screen Screen Compiler generates, built against the real `nowayos-ui`.
 //!
-//! `build.rs` puts each file of generated Rust in a module of its own,
-//! exactly as Screen Compiler wrote it: every checked-in snapshot (`snapshot_*`),
-//! and every fixture `make contract-check` converted afresh (`converted_*`).
+//! `build.rs` puts each file of generated Rust in a module of its own
+//! (`converted_*`), exactly as Screen Compiler wrote it: every fixture
+//! `make contract-check` converted afresh (the checked-in snapshots when
+//! `SCREEN_COMPILER_CONVERTED` is unset).
 //! Generated code imports `nowayos_ui::builder`; here that is NoWayOS's real
 //! UI core, from the sibling clone, so a change to either side that breaks
 //! the builder contract fails to compile, naming the generated file and the

@@ -9,7 +9,7 @@
 use nowayos_display::Rect;
 use nowayos_render_eg::{Rgb888, Theme};
 use nowayos_ui::{InputEvent, NodeId, Tree, UiError, UiEvent};
-use screen_compiler_contract_check::snapshot_visit_booking::visit_booking::{
+use screen_compiler_contract_check::converted_visit_booking::visit_booking::{
     self, actions, fields, groups, slots,
 };
 
