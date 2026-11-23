@@ -411,10 +411,10 @@ pub enum NodeKind {
     TextInput {
         /// Hint text shown while the field is empty.
         placeholder: Option<String>,
-        /// The most bytes it takes, 1 to [`MAX_INPUT_LEN`] (subset v1:
-        /// `maxLength`); the runtime's most when `None`.
+        /// The most bytes it takes, 1 to [`MAX_INPUT_LEN`] (`maxLength`);
+        /// the runtime's most when `None`.
         max_len: Option<Length>,
-        /// Which characters it takes (subset v1: `inputMode`).
+        /// Which characters it takes (`inputMode`).
         mode: InputMode,
     },
     /// Several lines a person types (contract v19): `<TextArea rows={4}
@@ -430,12 +430,12 @@ pub enum NodeKind {
         /// they come out of the tree's text store.
         max_len: Length,
     },
-    /// A box the person ticks or unticks, with its label (subset v1).
+    /// A box the person ticks or unticks, with its label.
     Checkbox {
         /// The label beside the box.
         label: String,
     },
-    /// One choice of a few options, one per row (subset v1).
+    /// One choice of a few options, one per row.
     RadioGroup {
         /// The options, 1 to [`MAX_RADIO_OPTIONS`].
         options: Vec<String>,
@@ -474,7 +474,7 @@ pub enum NodeKind {
         /// Its one child.
         children: Vec<Node>,
     },
-    /// One line of text the application sets at run time (subset v1):
+    /// One line of text the application sets at run time:
     /// `<Text>{props.name}</Text>`, or between literal text compiled in
     /// (contract v14): `<Text>Hello, {props.name}!</Text>`. Never the
     /// prop's text compiled in from the source.
@@ -570,7 +570,7 @@ pub enum NodeKind {
         /// The prop the value comes from, which names the bar.
         slot: Name,
     },
-    /// Content the application shows or hides (subset v1):
+    /// Content the application shows or hides:
     /// `{props.ready && <X/>}` or `{props.ready ? <X/> : <Y/>}`; and, in
     /// contract v13, `{!props.ready && <X/>}`.
     Group(Group),
@@ -615,7 +615,7 @@ pub const SELECT_ROWS: core::ops::RangeInclusive<u8> = 3..=8;
 /// The most bytes a checkbox's label or a radio option may hold.
 pub const MAX_LABEL_BYTES: usize = 256;
 
-/// Which characters a text input takes (subset v1's `inputMode`), and so
+/// Which characters a text input takes (`inputMode`), and so
 /// the on-screen keyboard's layout.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum InputMode {

@@ -10,7 +10,7 @@ hooks and effects, raw colours - stays out.
 
 ## Status
 
-**Subset v0** and **subset v1**: TSX fixture → parse (`oxc_parser`) →
+**The subset**: TSX fixture → parse (`oxc_parser`) →
 subset check → UI IR → deterministic Rust. The generated Rust targets a
 **provisional contract** for NoWayOS's UI builder, which `nowayos-ui`'s
 `builder` module implements; its version is `VERSION` in
@@ -23,7 +23,7 @@ its approved image in `contract-check/golden/` pixel for pixel. See
 [The target contract](#the-target-contract) and
 [Approved images](#approved-images).
 
-## Subset v0
+## What converts
 
 | Accepted | Notes |
 | --- | --- |
@@ -38,11 +38,6 @@ its approved image in `contract-check/golden/` pixel for pixel. See
 | `<TextInput id="email" placeholder="…" />` | `id` required |
 | `<Spacer />`, `<Spacer size={N} />` | flexible or fixed |
 | `id="…"` on any element | exposed as a handle in generated code |
-
-## Subset v1
-
-| Accepted | Notes |
-| --- | --- |
 | `<Text>{props.name}</Text>`, or `<Text>{name}</Text>` with `name` destructured | text the application sets at run time: a **slot**, `b.slot(slots::NAME)`, never text compiled in; one slot per prop on a screen |
 | `<Text>Hello, {props.name}!</Text>`, `<Text>{props.count} items</Text>`, or `` <Text>{`Hello, ${props.name}!`}</Text> `` | a slot **between literal text** compiled in (contract v14): `b.slot_template(slots::NAME, &ui::Template { before: "Hello, ", after: "!" })`, or `b.slot_template_styled(…, style)` in a role. The literals show from the first frame, the application sets only the prop's part (at most 64 bytes, as any slot), and the whole is measured, wrapped and aligned as one text. JSX text, string expressions and a template literal's text may mix; the literals take at most 64 bytes together and are checked as any text in the role. In a component of the file, a literal given for the prop joins the text, and an omitted one is nothing in JSX and `undefined` in a template literal, as React shows them. Refused where written: a second prop in one text (write a `<Text>` for each, or join them in the application), and any other expression (`{a + b}`, a call). `fixtures/table-ready.tsx` has each form |
 | `{props.ready && <X />}` | a **group** the application shows or hides, `b.group(groups::READY, x)`: hidden at first, and then taking no space |
@@ -50,7 +45,7 @@ its approved image in `contract-check/golden/` pixel for pixel. See
 | `{!props.ready && <X />}`, or `{props.ready ? null : <X />}` | the prop's group negated (contract v13), `b.unless(groups::READY, x)`: shown at first, and while the application hides the group; it shares the prop's group number. `{!props.ready ? <X /> : <Y />}` is `{props.ready ? <Y /> : <X />}` |
 | `{props.step === "review" && <X />}`, `{props.step === "pay" ? <X /> : <Y />}` | a **switch** the application sets to one case (contract v13): one per prop, each string literal it is compared with one case, `b.case(switches::STEP, switches::step::REVIEW, x)` or `b.case_or(…, x, y)`. The screen's `switches` module numbers switches from 1 in document order, each beside a module of its cases, `u8`s from 0 in the order first written; on no case at first, and what a case does not show takes no space. Refused where written: comparing two props, a prop with a number or a computed value, or two literals; `!==`, `==` and the other comparisons; `!!`; `null` while a case holds; a literal that cannot name a constant, or two that name the same one (`"review"` and `"Review"`); more than 256 cases; a prop whose cases' module would be a Rust keyword or `ui`. Each case is drawn on its own (`SCREEN.case-SWITCH-CASE.png`); `fixtures/bike-hire.tsx` has a switch and a negation |
 | `<TextArea id="comments" rows={5} maxLength={1000} placeholder="…" />` | several lines a person types (contract v19): `b.text_area(fields::COMMENTS, 5, 1000, "…")`, numbered with the fields and read as a text input is. Wrapped at its width, Enter starting a line, scrolled to keep the caret in view. `id` and `maxLength` (1 to 65,535 bytes, a number or a design token) required: the bytes come out of the text store of the `Tree<N, T>` the screen is built into. `rows` 1 to 32 (default 2, as HTML's `<textarea>`) |
-| `<TextInput id="phone" placeholder="…" maxLength={15} inputMode="tel" />` | `maxLength` 1–64 bytes, a number or a token (default 64); `inputMode` `text` (the default), `numeric` or `tel` (both digits only) or `email`. Every text input becomes `b.input(fields::PHONE, ui::Input::new()…)`, never v0's `text_input`; the runtime refuses a key outside its mode or beyond its length |
+| `<TextInput id="phone" placeholder="…" maxLength={15} inputMode="tel" />` | `maxLength` 1–64 bytes, a number or a token (default 64); `inputMode` `text` (the default), `numeric` or `tel` (both digits only) or `email`. Every text input becomes `b.input(fields::PHONE, ui::Input::new()…)`, never contract v0's `text_input`; the runtime refuses a key outside its mode or beyond its length |
 | `<Checkbox id="remind" label="…" />` | `b.checkbox(fields::REMIND, "…")`: a literal label of at most 256 bytes; `id` required |
 | `<RadioGroup id="when" options={["…", "…"]} />` | `b.radio_group(fields::WHEN, &["…", "…"])`: 1 to 8 literal options, each at most 256 bytes (more is refused, with help naming `<Select>`); `id` required |
 | `<Button variant="secondary" onPress={…}>Back</Button>` | a button in a variant (contract v3): `variant` is `primary` (the default), `secondary` or `quiet`. `b.button_with("Back", actions::BACK, ui::ButtonVariant::Secondary)`; a primary button stays `b.button` |

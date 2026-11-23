@@ -1,5 +1,5 @@
 // Synthetic Screen Compiler fixture: a parcel locker's status screen, written for
-// subset v1's conditional rendering and text from props. What the
+// the subset's conditional rendering and text from props. What the
 // application knows - the locker, the time to collect by, whether the
 // parcel is ready or late - reaches the screen as props: a prop alone in a
 // <Text> is a slot the application fills, and each condition a group it

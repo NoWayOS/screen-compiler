@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! How text is set (subset v1): a role in the type scale and a
+//! How text is set: a role in the type scale and a
 //! weight, and which characters each role's glyph atlases draw; and how
 //! buttons and containers look: a button's variant and the surface
 //! a container is drawn on.

@@ -1,5 +1,5 @@
 // Synthetic Screen Compiler fixture: a web-style React screen that uses constructs
-// outside subset v0. `screen-compiler check` must report each one with its position
+// outside the subset. `screen-compiler check` must report each one with its position
 // and produce no output. Written for Screen Compiler's tests.
 import { useState } from "react";
 import { Button, Column, Screen, Text } from "nowayos:kit";

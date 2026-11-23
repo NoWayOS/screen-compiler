@@ -299,7 +299,7 @@ fn edge_names_compile_and_build_exactly_their_ir() {
 
 #[test]
 fn parcel_status_builds_exactly_its_ir_with_groups_and_slots() {
-    // Subset v1: conditional rendering and text from props.
+    // Conditional rendering and text from props.
     use fixture_parcel_status::parcel_status as screen;
     let mut recorder = Recorder::with_capacity(64);
     let nodes = screen::build(&mut recorder).unwrap();
@@ -479,7 +479,7 @@ fn check_in_builds_exactly_its_ir_with_its_surfaces_and_variants() {
 
 #[test]
 fn visit_booking_builds_exactly_its_ir_with_its_fields() {
-    // Subset v1: text inputs with a length limit and a mode, a radio
+    // Text inputs with a length limit and a mode, a radio
     // group and a checkbox, each bound to a field named after its id.
     use fixture_visit_booking::{tokens, visit_booking as screen};
     let mut recorder = Recorder::with_capacity(64);

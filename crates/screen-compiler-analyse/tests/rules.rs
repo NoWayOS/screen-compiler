@@ -245,7 +245,7 @@ fn screen_holds_exactly_one_element_and_only_at_the_root() {
 fn text_is_literal_and_lives_in_text() {
     let e = error(&screen("<Column>loose text</Column>"));
     assert_eq!((e.code, e.loc), (Code::InvalidChildren, at(2, 65)));
-    // A prop alone is a slot (subset v1), or between literal text
+    // A prop alone is a slot, or between literal text
     // (contract v14, tests/text.rs); a second prop is refused where written.
     let e = error(&screen("<Text>Hi {onGo} and {onBack}</Text>"));
     assert_eq!((e.code, e.loc), (Code::Unsupported, at(2, 78)));
@@ -283,7 +283,7 @@ fn lists_conditionals_fragments_and_spreads_are_reported() {
         codes("<Column>{items.map((i) => <Text>{i}</Text>)}</Column>"),
         [Code::Unsupported]
     );
-    // Conditions are one prop (subset v1), negated or compared with a
+    // Conditions are one prop, negated or compared with a
     // string literal (contract v13); anything else is reported.
     assert_eq!(
         codes("<Column>{elsewhere && <Text>x</Text>}</Column>"),
@@ -325,7 +325,7 @@ fn column_of(body: &str, marker: &str) -> u32 {
 
 #[test]
 fn a_prop_alone_in_text_is_a_slot_the_application_fills() {
-    // Subset v1: never text compiled in from the source.
+    // Never text compiled in from the source.
     assert_eq!(
         ok_outline(&props_screen(
             "<Row><Text>Name:</Text><Text id=\"name\">{props.name}</Text><Text>{props.when}</Text></Row>"
@@ -396,7 +396,7 @@ fn a_prop_alone_in_text_is_a_slot_the_application_fills() {
 
 #[test]
 fn a_prop_shows_or_hides_one_element_or_chooses_between_two() {
-    // Subset v1: a group named after the prop, hidden at first.
+    // A group named after the prop, hidden at first.
     let outline = ok_outline(&props_screen(
         "<Column>{props.ready && <Text>Ready</Text>}{props.late ? <Text>Late</Text> : <Text>On time</Text>}{props.ready ? <Spacer /> : null}</Column>",
     ));
@@ -512,7 +512,6 @@ fn a_prop_shows_or_hides_one_element_or_chooses_between_two() {
 
 #[test]
 fn form_controls_are_fields_numbered_in_document_order() {
-    // Subset v1.
     let source = format!(
         "{KIT}const LEN = 12;\nexport function S() {{ return <Screen><Column>\
          <TextInput id=\"name\" maxLength={{LEN}} />\
@@ -542,7 +541,7 @@ fn form_controls_are_fields_numbered_in_document_order() {
 
 #[test]
 fn form_control_props_outside_the_subset_are_refused_where_written() {
-    // Subset v1: each refused at the marker's first character, on
+    // Each refused at the marker's first character, on
     // line 2 of `props_screen`.
     let nine = "[\"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\"]";
     let nine_options = format!("<RadioGroup id=\"r\" options={{{nine}}} />");
@@ -1410,14 +1409,14 @@ fn config() -> Config {
     }
 }
 
-/// One child of a generated screen's root `<Column>`: inside subset v0, or a
+/// One child of a generated screen's root `<Column>`: inside the subset, or a
 /// construct outside it with the error it must produce and where.
 struct Piece {
     /// The TSX, on one line; `{n}` becomes the piece's index (unique ids).
     tsx: &'static str,
     /// Elements it adds to the IR when supported.
     nodes: usize,
-    /// For a construct outside subset v0: the code it must be reported with
+    /// For a construct outside the subset: the code it must be reported with
     /// and the character offset in `tsx` it must be reported at.
     error: Option<(Code, u32)>,
 }
@@ -1515,7 +1514,7 @@ proptest! {
     #![proptest_config(config())]
 
     /// "Never approximate", as a property of the analyser: a screen mixing
-    /// subset-v0 elements with constructs outside the subset converts
+    /// the kit's elements with constructs outside the subset converts
     /// exactly when it has none of the latter, every one of them is reported
     /// with its code where it is written, and nothing else is reported.
     #[test]

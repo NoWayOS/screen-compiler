@@ -1,11 +1,11 @@
-web-search.tsx:4:10: error[unsupported]: React API `useState` is not supported in subset v1
-  help: hooks, state and effects are outside subset v1
+web-search.tsx:4:10: error[unsupported]: React API `useState` is not supported in the subset
+  help: hooks, state and effects are outside the subset
 web-search.tsx:6:1: error[unsupported]: importing "./search.css" for its side effects is not supported
   help: Screen Compiler does not implement CSS files: write style={{ … }} with the declared properties, and layout props (gap, padding) and design tokens
 web-search.tsx:8:16: error[unsupported]: top-level constant `tokens` must be a whole number (a design token) or a screen component, not an object literal
   help: design tokens are written `const SPACE_MD = 16;`
 web-search.tsx:11:3: error[unsupported]: React hook `useState` in a component body is not supported
-  help: state and effects are outside subset v1: keep state in the application and pass callbacks as props
+  help: state and effects are outside the subset: keep state in the application and pass callbacks as props
 web-search.tsx:14:47: error[invalid-value]: `background` names a gradient of two of the theme's colours; a single colour is `backgroundColor`
   help: write "linear-gradient(90deg, input, focus)" - an angle in degrees or `to right` first, if any - or "radial-gradient(input, focus)", of the theme's colours: "background", "text", "text-muted", "placeholder", "button", "button-text", "input", "input-border", "focus" or "error"
 web-search.tsx:15:9: error[unknown-element]: HTML element <h1> is not supported
@@ -18,7 +18,7 @@ web-search.tsx:18:10: error[unsupported]: a binary expression as a condition is 
   help: a condition is one prop of the component: work anything more out in the application and pass it as a prop, such as {props.canRetry && …}
 web-search.tsx:18:47: error[unsupported]: a function here may only call a callback prop, with no arguments
   help: pass a callback prop of the component: onPress={onContinue}, or onPress={() => props.onContinue()}
-web-search.tsx:19:36: error[unknown-prop]: <Button> has no prop `disabled` in subset v1
-  help: the application decides what is required and where focus goes; subset v1 has no such prop
+web-search.tsx:19:36: error[unknown-prop]: <Button> has no prop `disabled` in the subset
+  help: the application decides what is required and where focus goes; the subset has no such prop
 web-search.tsx:22:15: error[unsupported]: `&copy;` is not a supported character reference
   help: write the character itself, or use &amp; &lt; &gt; &quot; &apos; &nbsp; or a numeric reference such as &#169;
