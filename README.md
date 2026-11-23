@@ -92,7 +92,7 @@ command to see a screen as a picture (`make preview`). Its README is the guide.
 A product keeps its screens in a crate's `tsx/` folder and their Rust beside
 them, checked in. `make screens DIR=../product/crate` checks that every
 screen there converts exactly as checked in, and with `BLESS=1` writes the
-Rust (`tools/screens`).
+Rust (`tools/screens`); a screen it refuses fails the check either way.
 
 ## Try it
 

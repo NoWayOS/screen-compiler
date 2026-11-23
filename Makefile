@@ -129,8 +129,9 @@ run:
 	@$(SCREEN_COMPILER) $(ARGS)
 
 # A product's screens: every TSX file in DIR/tsx checked and converted, and
-# compared with the Rust the crate has checked in (DIR/src/generated,
-# DIR/gaps.txt) - or, with BLESS=1, written there (tools/screens).
+# compared with the Rust the crate has checked in (DIR/src/generated) - or,
+# with BLESS=1, written there (tools/screens). A screen Screen Compiler
+# refuses fails it either way, and nothing is written.
 screens:
 	@test -n "$(DIR)" || { echo "usage: make screens DIR=../product/crate [BLESS=1] [SCREENS_ARGS='--capacity 128 --text 8192']" >&2; exit 1; }
 	@$(CARGO) build $(LOCKED) --quiet -p screen-compiler-cli
