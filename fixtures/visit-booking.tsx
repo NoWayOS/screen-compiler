@@ -1,4 +1,4 @@
-// Synthetic Screen Compiler fixture: booking a visit, written for subset v1's
+// Synthetic Screen Compiler fixture: booking a visit, written for the subset's
 // form controls - text inputs with a length limit and an input
 // mode, a radio group and a checkbox, each a field the application reads
 // by number - with the phone number's error a group holding a slot.

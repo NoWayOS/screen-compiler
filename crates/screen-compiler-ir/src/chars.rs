@@ -5,7 +5,7 @@
 //! controls, zero-width characters and the like) and the Unicode line and
 //! paragraph separators either act on whatever displays them (a terminal, a
 //! text layout engine) or show nothing at all. Screen Compiler writes them as
-//! `\u{…}` in everything it prints ([`escape_special`]), and subset v0 does not
+//! `\u{…}` in everything it prints ([`escape_special`]), and the subset does not
 //! accept them in UI text: the device could not show them as a browser does,
 //! and bidirectional controls can make source text read differently from what
 //! is rendered.

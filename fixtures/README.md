@@ -7,7 +7,7 @@ customer, and none may be added from one.
 * `*.tsx` — screens inside the subset. Each must convert; the generated Rust
   is kept in `crates/screen-compiler-codegen-rust/tests/snapshots/`, and compiled
   and run by `crates/screen-compiler-codegen-rust/tests/generated_code.rs`.
-  `parcel-status.tsx` uses subset v1's slots and conditional rendering, with
+  `parcel-status.tsx` uses the subset's slots and conditional rendering, with
   a locker number that can be selected and copied (contract v24), and
   `visit-booking.tsx` its form controls: text inputs with a length limit and
   an input mode, a radio group and a checkbox. `details-form.tsx` gives each
@@ -56,7 +56,7 @@ customer, and none may be added from one.
   does (its approved images are copies of parking-paid's). The three
   `lost-property-*.tsx` are the steps of one invented form, which together
   use every control the UI core lists for form-heavy kiosks: the
-  screens subset v1 is designed against. Each moved up from `unsupported/`
+  screens the subset is designed against. Each moved up from `unsupported/`
   once it converted: the review step with the scroll view, the item
   step with the list picker and the contact step with the on-screen
   keyboard, which `make contract-check` draws in each of its

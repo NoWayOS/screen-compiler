@@ -249,9 +249,9 @@ pub enum KitComponent {
     TextArea,
     /// Empty space.
     Spacer,
-    /// A box the person ticks (subset v1).
+    /// A box the person ticks.
     Checkbox,
-    /// One choice of a few options (subset v1).
+    /// One choice of a few options.
     RadioGroup,
     /// Children stacked vertically on a card.
     Card,
@@ -447,7 +447,7 @@ impl KitComponent {
         }
     }
 
-    /// The props the component accepts in subset v1.
+    /// The props the component accepts in the subset.
     #[must_use]
     pub const fn props(self) -> &'static [Prop] {
         match self {
@@ -705,16 +705,16 @@ impl KitComponent {
             }
             (_, "key") => "a `key` belongs on the element a `.map()` returns; remove it here".to_owned(),
             (Self::TextInput | Self::TextArea, "value" | "defaultValue" | "onChange") => {
-                "controlled inputs need state, which is outside subset v1; the application reads the field through its id"
+                "controlled inputs need state, which is outside the subset; the application reads the field through its id"
                     .to_owned()
             }
             (Self::Checkbox, "checked" | "defaultChecked" | "onChange")
             | (Self::RadioGroup, "value" | "defaultValue" | "onChange") => {
-                "controlled inputs need state, which is outside subset v1; the application reads and sets the field through its id"
+                "controlled inputs need state, which is outside the subset; the application reads and sets the field through its id"
                     .to_owned()
             }
             (Self::TextInput, "type") => {
-                "masked entry (passwords, PINs) is not in subset v1: do not remove `type` to make a screen convert; for a type that is not secret, use inputMode (text, numeric, tel or email) and maxLength"
+                "masked entry (passwords, PINs) is not in the subset: do not remove `type` to make a screen convert; for a type that is not secret, use inputMode (text, numeric, tel or email) and maxLength"
                     .to_owned()
             }
             (Self::TextInput, "pattern" | "minLength") => {
@@ -722,14 +722,14 @@ impl KitComponent {
                     .to_owned()
             }
             (_, "disabled" | "required" | "autoFocus") => {
-                "the application decides what is required and where focus goes; subset v1 has no such prop"
+                "the application decides what is required and where focus goes; the subset has no such prop"
                     .to_owned()
             }
             (_, "children") => "write children between the opening and closing tags".to_owned(),
-            (Self::Screen, _) => "<Screen> takes no props in subset v1".to_owned(),
+            (Self::Screen, _) => "<Screen> takes no props in the subset".to_owned(),
             _ => {
                 let names: Vec<&str> = self.props().iter().map(|p| p.name).collect();
-                format!("props of <{}> in subset v1: {}", self.name(), names.join(", "))
+                format!("props of <{}> in the subset: {}", self.name(), names.join(", "))
             }
         }
     }

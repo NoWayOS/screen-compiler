@@ -121,7 +121,7 @@ impl TextError {
             Self::LineSeparator { .. } => "remove the character",
             Self::AttributeLineBreak { .. } => "keep the attribute value on one line",
             Self::UnsupportedChar { .. } => {
-                "remove it: text in subset v0 is visible characters and spaces only"
+                "remove it: text in the subset is visible characters and spaces only"
             }
         }
     }

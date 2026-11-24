@@ -534,7 +534,7 @@ impl<'o> Cx<'o> {
                 Item::Other(other) => self.error(
                     Code::Unsupported,
                     other.loc,
-                    format!("{} is not supported in subset v1", other.kind),
+                    format!("{} is not supported in the subset", other.kind),
                 ),
             }
         }
@@ -813,7 +813,7 @@ impl Cx<'_> {
                         *loc,
                         format!("`{imported}` is not a component of the kit"),
                         format!(
-                            "subset v1 has {}, and `{SPACE}`: the theme's spacing tokens",
+                            "the subset has {}, and `{SPACE}`: the theme's spacing tokens",
                             KitComponent::list("and")
                         ),
                     ),
@@ -828,8 +828,8 @@ impl Cx<'_> {
                     self.error_help(
                         Code::Unsupported,
                         *loc,
-                        format!("React API `{imported}` is not supported in subset v1"),
-                        "hooks, state and effects are outside subset v1",
+                        format!("React API `{imported}` is not supported in the subset"),
+                        "hooks, state and effects are outside the subset",
                     );
                 }
                 ImportBinding::Default { local, .. } | ImportBinding::Namespace { local, .. }
@@ -918,7 +918,7 @@ impl Cx<'_> {
             self.error_help(
                 Code::Unsupported,
                 import.loc,
-                format!("imports from \"{}\" are not supported in subset v1", import.module),
+                format!("imports from \"{}\" are not supported in the subset", import.module),
                 format!(
                     "import components from \"{}\", or your own from a .tsx file in the screen's folder (\"./header\"); declare design tokens as `const`",
                     KIT_MODULE
@@ -1236,7 +1236,7 @@ impl Cx<'_> {
                 Stmt::Other(other) => {
                     ok = false;
                     let help = if other.kind.starts_with("React hook") {
-                        "state and effects are outside subset v1: keep state in the application and pass callbacks as props"
+                        "state and effects are outside the subset: keep state in the application and pass callbacks as props"
                     } else {
                         "a screen component's body is only `return <Screen>…</Screen>;`"
                     };
@@ -1476,7 +1476,7 @@ impl Lower<'_, '_, '_> {
                     self.cx.error_help(
                         Code::UnknownElement,
                         loc,
-                        format!("custom component <{name}> is not supported in subset v1"),
+                        format!("custom component <{name}> is not supported in the subset"),
                         "use the kit's elements directly",
                     );
                     None
@@ -1494,7 +1494,7 @@ impl Lower<'_, '_, '_> {
                     self.cx.error_help(
                         Code::UnknownElement,
                         loc,
-                        format!("<{name}> is not a component of subset v1"),
+                        format!("<{name}> is not a component of the subset"),
                         format!("use {} from \"{kit}\"", KitComponent::list("or")),
                     );
                     None
@@ -1531,7 +1531,7 @@ impl Lower<'_, '_, '_> {
             self.cx.error(
                 Code::UnknownProp,
                 loc,
-                "<Screen> takes no props in subset v1",
+                "<Screen> takes no props in the subset",
             );
         }
         let mut roots: Vec<&Element> = Vec::new();
@@ -2125,7 +2125,7 @@ impl Lower<'_, '_, '_> {
         true
     }
 
-    /// Conditional rendering (subset v1): `{props.NAME && <X/>}` becomes a
+    /// Conditional rendering: `{props.NAME && <X/>}` becomes a
     /// group showing `<X/>` while the prop is true, and `{props.NAME ? <X/>
     /// : <Y/>}` (or `: null`) one choosing between the two. The group is a
     /// node of its own at `depth`, its content one level below. Anything
@@ -2422,7 +2422,7 @@ impl Lower<'_, '_, '_> {
         }
     }
 
-    /// A `<Text>` whose content is a prop (subset v1), alone or between
+    /// A `<Text>` whose content is a prop, alone or between
     /// literal text, written in JSX or as a template literal (contract
     /// v14): a slot the application fills. Text with no expression in it is
     /// literal text, and anything else is reported by
@@ -2625,7 +2625,7 @@ impl Lower<'_, '_, '_> {
                 Code::Unsupported,
                 other.loc(),
                 format!("{} as a child is not supported", other.describe()),
-                "computed content is outside subset v1; conditional rendering is {props.NAME && <Element />} or {props.NAME ? <A /> : <B />}",
+                "computed content is outside the subset; conditional rendering is {props.NAME && <Element />} or {props.NAME ? <A /> : <B />}",
             ),
             Child::Spread { loc } => self.cx.error(
                 Code::Unsupported,
@@ -2808,7 +2808,7 @@ impl Lower<'_, '_, '_> {
                 u32::from(c),
                 kind.describe()
             ),
-            "remove it: text in subset v1 is visible characters and spaces only",
+            "remove it: text in the subset is visible characters and spaces only",
         );
         false
     }
@@ -3354,7 +3354,7 @@ impl Lower<'_, '_, '_> {
                 self.cx.error_help(
                     Code::UnknownProp,
                     prop.loc,
-                    format!("`{key}` is not a style property of <{component}> in subset v1"),
+                    format!("`{key}` is not a style property of <{component}> in the subset"),
                     format!("<{component}>'s style takes {}", allowed.join(", ")),
                 );
                 continue;
@@ -3818,7 +3818,7 @@ impl Lower<'_, '_, '_> {
                 self.cx.error_help(
                     Code::UnknownProp,
                     loc,
-                    format!("<{component}> has no prop `{name}` in subset v1"),
+                    format!("<{component}> has no prop `{name}` in the subset"),
                     help,
                 );
                 continue;
@@ -4067,7 +4067,7 @@ impl Lower<'_, '_, '_> {
                         Code::Unsupported,
                         *loc,
                         format!("`{prop}` cannot come from a prop"),
-                        "layout is static in subset v1: use a number or a design token",
+                        "layout is static in the subset: use a number or a design token",
                     );
                     None
                 }
@@ -4128,7 +4128,7 @@ impl Lower<'_, '_, '_> {
                     Code::Unsupported,
                     *loc,
                     format!(
-                        "`{object}.{property}`: design tokens must be plain constants in subset v1"
+                        "`{object}.{property}`: design tokens must be plain constants in the subset"
                     ),
                     format!(
                         "declare `const SPACE_MD = 16;` and write gap={{SPACE_MD}}, or name one of the theme's spacing tokens: import {{ {SPACE} }} from the kit and write gap={{{SPACE}.md}}"

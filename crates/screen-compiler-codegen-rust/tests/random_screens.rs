@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //! Property: any screen built from the subset converts, and its IR is exactly
-//! the screen that was written - subset v0's elements, and subset v1's slots
+//! the screen that was written - the subset's elements and slots
 //! and conditional rendering, checkboxes, radio groups and text
 //! inputs' length limits and modes.
 //!

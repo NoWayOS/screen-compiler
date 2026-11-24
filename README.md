@@ -73,10 +73,10 @@ by element: [DEVELOPING.md](DEVELOPING.md).
 
 ## Status
 
-**In development.** Subset v0 and subset v1 - every control a form-heavy
-kiosk needs - are built. The subset now grows towards parity with the React
-and CSS that real interfaces use, as far as converting exactly allows:
-whatever needs JavaScript or a browser on the device stays out. The
+**In development.** Every control a form-heavy kiosk needs converts. The
+subset now grows towards parity with the React and CSS that real
+interfaces use, as far as converting exactly allows: whatever needs
+JavaScript or a browser on the device stays out. The
 generated Rust targets a provisional contract with NoWayOS's UI builder,
 checked on every change by building each converted screen against the real
 UI runtime and drawing it. Expect the subset and the contract to grow and

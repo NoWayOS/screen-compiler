@@ -55,7 +55,7 @@ GAPS = [
     ("unsupported", r"inserts a value from props or state", "text from a prop or state"),
     ("unsupported", r"^a call to `\.map\(\)` as a child", "lists (`.map()`)"),
     ("unknown-name", r"^`(\w+)` is not a component of the kit", "component <{0}>"),
-    ("unknown-element", r"^<(\w+)> is not a component of subset v\d", "component <{0}>"),
+    ("unknown-element", r"^<(\w+)> is not a component of (?:the subset|subset v\d)", "component <{0}>"),
     ("unknown-prop", r"^<(\w+)> has no prop `(\w+)`", "prop `{1}` on <{0}>"),
 ]
 

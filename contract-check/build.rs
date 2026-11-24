@@ -8,7 +8,7 @@
 //! identical to them). Each converted screen's frame must match its
 //! approved image, `golden/FIXTURE/SCREEN.png`, pixel for pixel, and
 //! every approved image must belong to a converted screen. A converted screen
-//! with groups, slots (subset v1) or field errors (contract v12)
+//! with groups, slots or field errors (contract v12)
 //! is drawn a second time as the application would show it with every
 //! group visible, every slot filled, every field's error set and every
 //! text area (contract v19) holding two paragraphs, and that frame must
