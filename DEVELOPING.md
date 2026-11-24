@@ -136,7 +136,7 @@ screen-compiler/
 ├── fixtures/                    synthetic React screens only
 └── tools/screens                a product's screens through the tool: each file in its crate's
                                  tsx/ checked and converted, the Rust kept in src/generated with a
-                                 mod.rs that lists the screens, and gaps.txt (`make screens DIR=`)
+                                 mod.rs that lists the screens; a refused screen fails (`make screens DIR=`)
 ```
 
 ## Prerequisites
